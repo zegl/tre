@@ -1,0 +1,106 @@
+package parser
+
+import (
+	"github.com/zegl/tre/lexer"
+	"log"
+	"strconv"
+)
+
+type Node interface {
+}
+
+type CallNode struct {
+	Function  string
+	Arguments []Node
+}
+
+type BlockNode struct {
+	Instructions []Node
+}
+
+type DataType uint8
+
+const (
+	STRING DataType = iota
+	NUMBER
+)
+
+type ConstantNode struct {
+	Type     DataType
+	Value    int
+	ValueStr string
+}
+
+type parser struct {
+	i     int
+	input []lexer.Item
+}
+
+func Parse(input []lexer.Item) Node {
+	p := &parser{
+		i:     0,
+		input: input,
+	}
+
+	return p.rootParse()
+}
+
+func (p *parser) rootParse() Node {
+	return BlockNode{
+		Instructions: p.parseUntil(lexer.Item{Type: lexer.EOF}),
+	}
+}
+
+func (p *parser) parseOne() Node {
+	current := p.input[p.i]
+
+	switch current.Type {
+	case lexer.IDENTIFIER:
+		next := p.lookAhead(1)
+
+		if next.Type == lexer.SEPARATOR && next.Val == "(" {
+			p.i += 2 // identifier and left paren
+			return CallNode{
+				Function:  current.Val,
+				Arguments: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"}),
+			}
+		}
+
+		panic("unable to handle identifier")
+		break
+
+	case lexer.NUMBER:
+		val, err := strconv.Atoi(current.Val)
+		if err != nil {
+			panic(err)
+		}
+
+		return ConstantNode{
+			Type:  NUMBER,
+			Value: val,
+		}
+		break
+
+	}
+
+	log.Panicf("unable to handle default: %+v", current)
+	panic("")
+}
+
+func (p *parser) lookAhead(steps int) lexer.Item {
+	return p.input[p.i+steps]
+}
+
+func (p *parser) parseUntil(until lexer.Item) []Node {
+	var res []Node
+
+	for {
+		current := p.input[p.i]
+		if current.Type == until.Type && current.Val == until.Val {
+			return res
+		}
+
+		res = append(res, p.parseOne())
+		p.i++
+	}
+}
