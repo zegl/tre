@@ -9,6 +9,7 @@ import (
 	"github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 	"github.com/llir/llvm/ir/constant"
+	"log"
 )
 
 type compiler struct {
@@ -40,7 +41,10 @@ func Compile(root parser.BlockNode) string {
 	// TODO: Set automatically
 	c.module.TargetTriple = "x86_64-apple-macosx10.13.0"
 
-	c.compile(root)
+	mainFunc := c.module.NewFunction("main", i32)
+	block := mainFunc.NewBlock("entry")
+
+	c.compile(mainFunc, block, root.Instructions)
 
 	// Print IR
 	return fmt.Sprintln(c.module)
@@ -70,27 +74,51 @@ func (c *compiler) addGlobal() {
 	c.globalFuncs["printf"] = c.externalFuncs["printf"]
 }
 
-func (c *compiler) compile(root parser.BlockNode) {
-	mainFunc := c.module.NewFunction("main", i32)
-	entry := mainFunc.NewBlock("entry")
-
-	for _, i := range root.Instructions {
+func (c *compiler) compile(function *ir.Function, block *ir.BasicBlock, instructions []parser.Node) {
+	for _, i := range instructions {
 		switch v := i.(type) {
 		case parser.CallNode:
-
 			var args []value.Value
 
 			for _, vv := range v.Arguments {
-				args = append(args, c.compileValue(entry, vv))
+				args = append(args, c.compileValue(block, vv))
 			}
 
-			entry.NewCall(c.funcByName(v.Function), args...)
+			block.NewCall(c.funcByName(v.Function), args...)
+			break
+
+		case parser.ConditionNode:
+			xPtr := block.NewAlloca(i64)
+			block.NewStore(c.compileValue(block, v.Cond.Left), xPtr)
+
+			yPtr := block.NewAlloca(i64)
+			block.NewStore(c.compileValue(block, v.Cond.Right), yPtr)
+
+			cond := block.NewICmp(getConditionLLVMpred(v.Cond.Operator), block.NewLoad(xPtr), block.NewLoad(yPtr))
+
+			afterBlock := function.NewBlock(getBlockName())
+			trueBlock := function.NewBlock(getBlockName())
+			falseBlock := function.NewBlock(getBlockName())
+
+			c.compile(function, trueBlock, v.True)
+			c.compile(function, falseBlock, v.False)
+
+			trueBlock.NewBr(afterBlock)
+			falseBlock.NewBr(afterBlock)
+
+			block.NewCondBr(cond, trueBlock, falseBlock)
+
+			block = afterBlock
+			break
+
+		default:
+			log.Panicf("Unkown op: %+v", v)
 			break
 		}
 	}
 
 	// Return 0
-	entry.NewRet(constant.NewInt(0, i32))
+	block.NewRet(constant.NewInt(0, i32))
 }
 
 func (c *compiler) funcByName(name string) *ir.Function {
