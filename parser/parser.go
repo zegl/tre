@@ -18,6 +18,28 @@ type BlockNode struct {
 	Instructions []Node
 }
 
+type Operator uint8
+
+const (
+	OP_ADD Operator = iota
+	OP_SUB
+	OP_DIV
+	OP_MUL
+)
+
+var opsCharToOp = map[string]Operator{
+	"+": OP_ADD,
+	"-": OP_SUB,
+	"/": OP_DIV,
+	"*": OP_MUL,
+}
+
+type OperatorNode struct {
+	Operator Operator
+	Left     Node
+	Right    Node
+}
+
 type DataType uint8
 
 const (
@@ -53,13 +75,12 @@ func (p *parser) parseOne() Node {
 	switch current.Type {
 	case lexer.IDENTIFIER:
 		next := p.lookAhead(1)
-
 		if next.Type == lexer.SEPARATOR && next.Val == "(" {
 			p.i += 2 // identifier and left paren
-			return CallNode{
+			return p.aheadParse(CallNode{
 				Function:  current.Val,
 				Arguments: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"}),
-			}
+			})
 		}
 
 		panic("unable to handle identifier")
@@ -71,16 +92,30 @@ func (p *parser) parseOne() Node {
 			panic(err)
 		}
 
-		return ConstantNode{
+		return p.aheadParse(ConstantNode{
 			Type:  NUMBER,
 			Value: val,
-		}
+		})
 		break
-
 	}
 
 	log.Panicf("unable to handle default: %+v", current)
 	panic("")
+}
+
+func (p *parser) aheadParse(input Node) Node {
+	next := p.lookAhead(1)
+
+	if next.Type == lexer.OPERATOR {
+		p.i += 2
+		return OperatorNode{
+			Operator: opsCharToOp[next.Val],
+			Left:     input,
+			Right:    p.parseOne(),
+		}
+	}
+
+	return input
 }
 
 func (p *parser) lookAhead(steps int) lexer.Item {
