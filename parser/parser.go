@@ -114,6 +114,13 @@ func (p *parser) parseOne() Node {
 			Value: val,
 		})
 		break
+
+	case lexer.STRING:
+		return p.aheadParse(ConstantNode{
+			Type:     STRING,
+			ValueStr: current.Val,
+		})
+		break
 	}
 
 	log.Panicf("unable to handle default: %+v", current)
