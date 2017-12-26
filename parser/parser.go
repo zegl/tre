@@ -27,7 +27,7 @@ const (
 
 type ConstantNode struct {
 	Type     DataType
-	Value    int
+	Value    int64
 	ValueStr string
 }
 
@@ -36,16 +36,12 @@ type parser struct {
 	input []lexer.Item
 }
 
-func Parse(input []lexer.Item) Node {
+func Parse(input []lexer.Item) BlockNode {
 	p := &parser{
 		i:     0,
 		input: input,
 	}
 
-	return p.rootParse()
-}
-
-func (p *parser) rootParse() Node {
 	return BlockNode{
 		Instructions: p.parseUntil(lexer.Item{Type: lexer.EOF}),
 	}
@@ -70,7 +66,7 @@ func (p *parser) parseOne() Node {
 		break
 
 	case lexer.NUMBER:
-		val, err := strconv.Atoi(current.Val)
+		val, err := strconv.ParseInt(current.Val, 10, 64)
 		if err != nil {
 			panic(err)
 		}
