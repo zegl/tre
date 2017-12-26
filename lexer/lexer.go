@@ -9,6 +9,7 @@ const (
 	NUMBER
 	OPERATOR
 	SEPARATOR
+	EOF
 )
 
 type Item struct {
@@ -76,6 +77,8 @@ func Lex(input string) []Item {
 
 		i++
 	}
+
+	res = append(res, Item{Type: EOF})
 
 	return res
 }

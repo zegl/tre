@@ -12,9 +12,9 @@ func TestLexerSimpleAdd(t *testing.T) {
 		{IDENTIFIER, "aa"},
 		{OPERATOR, "+"},
 		{IDENTIFIER, "b"},
+		{EOF, ""},
 	}
 
-	assert.Len(t, r, len(expected))
 	assert.Equal(t, expected, r)
 }
 
@@ -25,9 +25,9 @@ func TestLexerSimpleAddNumber(t *testing.T) {
 		{IDENTIFIER, "aa"},
 		{OPERATOR, "+"},
 		{NUMBER, "14"},
+		{EOF, ""},
 	}
 
-	assert.Len(t, r, len(expected))
 	assert.Equal(t, expected, r)
 }
 
@@ -39,8 +39,8 @@ func TestLexerSimpleCall(t *testing.T) {
 		{SEPARATOR, "("},
 		{IDENTIFIER, "bar"},
 		{SEPARATOR, ")"},
+		{EOF, ""},
 	}
 
-	assert.Len(t, r, len(expected))
 	assert.Equal(t, expected, r)
 }
