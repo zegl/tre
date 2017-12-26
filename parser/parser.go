@@ -4,71 +4,7 @@ import (
 	"github.com/zegl/tre/lexer"
 	"log"
 	"strconv"
-	"fmt"
 )
-
-type Node interface {
-}
-
-type CallNode struct {
-	Function  string
-	Arguments []Node
-}
-
-func (cn CallNode) String() string {
-	return fmt.Sprintf("CallNode: %s(%+v)", cn.Function, cn.Arguments)
-}
-
-type BlockNode struct {
-	Instructions []Node
-}
-
-func (bn BlockNode) String() string {
-	return fmt.Sprintf("BlockNode: %+v", bn.Instructions)
-}
-
-type Operator uint8
-
-const (
-	OP_ADD Operator = '+'
-	OP_SUB          = '-'
-	OP_DIV          = '/'
-	OP_MUL          = '*'
-)
-
-var opsCharToOp = map[string]Operator{
-	"+": OP_ADD,
-	"-": OP_SUB,
-	"/": OP_DIV,
-	"*": OP_MUL,
-}
-
-type OperatorNode struct {
-	Operator Operator
-	Left     Node
-	Right    Node
-}
-
-func (on OperatorNode) String() string {
-	return fmt.Sprintf("(%v %s %v)", on.Left, string(on.Operator), on.Right)
-}
-
-type DataType uint8
-
-const (
-	STRING DataType = iota
-	NUMBER
-)
-
-type ConstantNode struct {
-	Type     DataType
-	Value    int64
-	ValueStr string
-}
-
-func (cn ConstantNode) String() string {
-	return fmt.Sprintf("%d", cn.Value)
-}
 
 type parser struct {
 	i     int
@@ -121,6 +57,28 @@ func (p *parser) parseOne() Node {
 			ValueStr: current.Val,
 		})
 		break
+
+	case lexer.KEYWORD:
+		if current.Val == "if" {
+			p.i++
+			condNodes := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
+
+			if len(condNodes) != 1 {
+				panic("could not parse if-condition")
+			}
+
+			cond, ok := condNodes[0].(OperatorNode)
+			if !ok {
+				panic("node in if-condition must be OperatorNode")
+			}
+
+			p.i++
+
+			return p.aheadParse(ConditionNode{
+				Cond: cond,
+				True: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"}),
+			})
+		}
 	}
 
 	log.Panicf("unable to handle default: %+v", current)
