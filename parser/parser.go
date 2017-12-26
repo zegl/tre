@@ -4,6 +4,7 @@ import (
 	"github.com/zegl/tre/lexer"
 	"log"
 	"strconv"
+	"fmt"
 )
 
 type Node interface {
@@ -14,17 +15,25 @@ type CallNode struct {
 	Arguments []Node
 }
 
+func (cn CallNode) String() string {
+	return fmt.Sprintf("CallNode: %s(%+v)", cn.Function, cn.Arguments)
+}
+
 type BlockNode struct {
 	Instructions []Node
+}
+
+func (bn BlockNode) String() string {
+	return fmt.Sprintf("BlockNode: %+v", bn.Instructions)
 }
 
 type Operator uint8
 
 const (
-	OP_ADD Operator = iota
-	OP_SUB
-	OP_DIV
-	OP_MUL
+	OP_ADD Operator = '+'
+	OP_SUB          = '-'
+	OP_DIV          = '/'
+	OP_MUL          = '*'
 )
 
 var opsCharToOp = map[string]Operator{
@@ -40,6 +49,10 @@ type OperatorNode struct {
 	Right    Node
 }
 
+func (on OperatorNode) String() string {
+	return fmt.Sprintf("(%v %s %v)", on.Left, string(on.Operator), on.Right)
+}
+
 type DataType uint8
 
 const (
@@ -51,6 +64,10 @@ type ConstantNode struct {
 	Type     DataType
 	Value    int64
 	ValueStr string
+}
+
+func (cn ConstantNode) String() string {
+	return fmt.Sprintf("%d", cn.Value)
 }
 
 type parser struct {
@@ -108,11 +125,18 @@ func (p *parser) aheadParse(input Node) Node {
 
 	if next.Type == lexer.OPERATOR {
 		p.i += 2
-		return OperatorNode{
+		res := OperatorNode{
 			Operator: opsCharToOp[next.Val],
 			Left:     input,
 			Right:    p.parseOne(),
 		}
+
+		// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
+		if right, ok := res.Right.(OperatorNode); ok {
+			return sortInfix(res, right)
+		}
+
+		return res
 	}
 
 	return input
