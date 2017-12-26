@@ -97,7 +97,6 @@ func TestLexerSimpleCallWithTwoStrings(t *testing.T) {
 	assert.Equal(t, expected, r)
 }
 
-
 func TestLexerSimpleCallWithStringNum(t *testing.T) {
 	r := Lex(`printf("%d\n", 123)`)
 
