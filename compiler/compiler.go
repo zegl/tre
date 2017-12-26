@@ -53,7 +53,8 @@ func (c *compiler) addExternal() {
 }
 
 func (c *compiler) addGlobal() {
-	percentD := c.module.NewGlobalDef(".str0", constantString("%d\n"))
+	// TODO: Remove println method
+	percentD := c.module.NewGlobalDef(getNextStringName(), constantString("%d\n"))
 	percentD.IsConst = true
 
 	printlnFunc := c.module.NewFunction("println", types.Void, ir.NewParam("num", i64))
@@ -64,6 +65,9 @@ func (c *compiler) addGlobal() {
 
 	block.NewCall(c.externalFuncs["printf"], stringToi8Ptr(block, percentD), printlnFunc.Sig.Params[0])
 	block.NewRet(nil)
+
+	// Expose printf
+	c.globalFuncs["printf"] = c.externalFuncs["printf"]
 }
 
 func (c *compiler) compile(root parser.BlockNode) {
@@ -99,9 +103,18 @@ func (c *compiler) funcByName(name string) *ir.Function {
 
 func (c *compiler) compileValue(block *ir.BasicBlock, node parser.Node) value.Value {
 	switch v := node.(type) {
+
 	case parser.ConstantNode:
-		if v.Type == parser.NUMBER {
+		switch v.Type {
+		case parser.NUMBER:
 			return constant.NewInt(v.Value, i64)
+			break
+
+		case parser.STRING:
+			res := c.module.NewGlobalDef(getNextStringName(), constantString(v.ValueStr))
+			res.IsConst = true
+			return stringToi8Ptr(block, res)
+			break
 		}
 		break
 
@@ -130,24 +143,4 @@ func (c *compiler) compileValue(block *ir.BasicBlock, node parser.Node) value.Va
 	}
 
 	panic("compileValue fail")
-}
-
-func constantString(in string) *constant.Array {
-	var constants []constant.Constant
-
-	for _, char := range in {
-		constants = append(constants, constant.NewInt(int64(char), i8))
-	}
-
-	// null
-	constants = append(constants, constant.NewInt(0, i8))
-
-	s := constant.NewArray(constants...)
-	s.CharArray = true
-
-	return s
-}
-
-func stringToi8Ptr(block *ir.BasicBlock, src value.Value) *ir.InstGetElementPtr {
-	return block.NewGetElementPtr(src, constant.NewInt(0, i64), constant.NewInt(0, i64))
 }
