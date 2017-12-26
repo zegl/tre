@@ -162,6 +162,12 @@ func (p *parser) parseUntil(until lexer.Item) []Node {
 			return res
 		}
 
+		// Ignore comma
+		if current.Type == lexer.SEPARATOR && current.Val == "," {
+			p.i++
+			continue
+		}
+
 		res = append(res, p.parseOne())
 		p.i++
 	}
