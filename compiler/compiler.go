@@ -77,7 +77,7 @@ func (c *compiler) compile(root parser.BlockNode) {
 			var args []value.Value
 
 			for _, vv := range v.Arguments {
-				args = append(args, c.compileValue(vv))
+				args = append(args, c.compileValue(entry, vv))
 			}
 
 			entry.NewCall(c.funcByName(v.Function), args...)
@@ -97,14 +97,35 @@ func (c *compiler) funcByName(name string) *ir.Function {
 	panic("funcByName: no such func: " + name)
 }
 
-func (c *compiler) compileValue(node parser.Node) value.Value {
+func (c *compiler) compileValue(block *ir.BasicBlock, node parser.Node) value.Value {
 	switch v := node.(type) {
 	case parser.ConstantNode:
-
 		if v.Type == parser.NUMBER {
 			return constant.NewInt(v.Value, i64)
 		}
+		break
 
+	case parser.OperatorNode:
+		lPtr := block.NewAlloca(i64)
+		block.NewStore(c.compileValue(block, v.Left), lPtr)
+
+		rPtr := block.NewAlloca(i64)
+		block.NewStore(c.compileValue(block, v.Right), rPtr)
+
+		switch v.Operator {
+		case parser.OP_ADD:
+			return block.NewAdd(block.NewLoad(lPtr), block.NewLoad(rPtr))
+			break
+		case parser.OP_SUB:
+			return block.NewSub(block.NewLoad(lPtr), block.NewLoad(rPtr))
+			break
+		case parser.OP_MUL:
+			return block.NewMul(block.NewLoad(lPtr), block.NewLoad(rPtr))
+			break
+		case parser.OP_DIV:
+			return block.NewSDiv(block.NewLoad(lPtr), block.NewLoad(rPtr)) // SDiv == Signed Division
+			break
+		}
 		break
 	}
 
