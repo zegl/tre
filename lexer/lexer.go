@@ -28,9 +28,12 @@ var operations = map[string]struct{}{
 	">":  {},
 	"<=": {},
 	">=": {},
-	"=":  {},
 	"==": {},
 	"!=": {},
+
+	// the following are not really operations, and will fail if used
+	"=":  {},
+	"!": {},
 }
 
 var separators = map[string]struct{}{
