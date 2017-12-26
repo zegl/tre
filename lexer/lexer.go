@@ -1,12 +1,15 @@
 package lexer
 
-import "strings"
+import (
+	"strings"
+)
 
 type lexType uint8
 
 const (
 	IDENTIFIER lexType = iota
 	NUMBER
+	STRING
 	OPERATOR
 	SEPARATOR
 	EOF
@@ -37,6 +40,37 @@ func Lex(input string) []Item {
 			fallthrough
 		case ')':
 			res = append(res, Item{Type: SEPARATOR, Val: string(input[i])})
+			break
+
+		case '"':
+			// String continues until next unescaped "
+			var str string
+			var escaped bool
+
+			i++
+
+			for i < len(input) {
+				chr := input[i]
+
+				if chr == '\\' {
+					escaped = true
+					i += 2
+					continue
+				}
+
+				if !escaped && chr == '"' {
+					break
+				}
+
+				if escaped {
+					escaped = false
+				}
+
+				str += string(chr)
+				i++
+			}
+
+			res = append(res, Item{Type: STRING, Val: str})
 			break
 
 		default:

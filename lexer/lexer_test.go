@@ -44,3 +44,39 @@ func TestLexerSimpleCall(t *testing.T) {
 
 	assert.Equal(t, expected, r)
 }
+
+func TestLexerSimpleCallWithString(t *testing.T) {
+	r := Lex("foo(\"bar\")")
+
+	expected := []Item{
+		{IDENTIFIER, "foo"},
+		{SEPARATOR, "("},
+		{STRING, "bar"},
+		{SEPARATOR, ")"},
+		{EOF, ""},
+	}
+
+	assert.Equal(t, expected, r)
+}
+
+func TestString(t *testing.T) {
+	r := Lex(`"bar"`)
+
+	expected := []Item{
+		{STRING, "bar"},
+		{EOF, ""},
+	}
+
+	assert.Equal(t, expected, r)
+}
+
+func TestEscapedString(t *testing.T) {
+	r := Lex(`"bar\""`)
+
+	expected := []Item{
+		{STRING, "bar\""},
+		{EOF, ""},
+	}
+
+	assert.Equal(t, expected, r)
+}
