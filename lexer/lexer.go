@@ -39,34 +39,32 @@ func Lex(input string) []Item {
 		case '(':
 			fallthrough
 		case ')':
+			fallthrough
+		case ',':
 			res = append(res, Item{Type: SEPARATOR, Val: string(input[i])})
 			break
 
 		case '"':
 			// String continues until next unescaped "
 			var str string
-			var escaped bool
 
 			i++
 
 			for i < len(input) {
-				chr := input[i]
-
-				if chr == '\\' {
-					escaped = true
-					i += 2
-					continue
-				}
-
-				if !escaped && chr == '"' {
+				if input[i] == '"' {
 					break
 				}
 
-				if escaped {
-					escaped = false
+				// parse escape sequences
+				if input[i] == '\\' {
+					if esc, ok := escapeSequences[string(input[i])+string(input[i+1])]; ok {
+						str += esc
+						i += 2
+						continue
+					}
 				}
 
-				str += string(chr)
+				str += string(input[i])
 				i++
 			}
 
