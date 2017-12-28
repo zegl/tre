@@ -9,7 +9,6 @@ import (
 	"github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 	"github.com/llir/llvm/ir/constant"
-	"log"
 )
 
 type compiler struct {
@@ -20,6 +19,11 @@ type compiler struct {
 
 	// functions provided by the language, such as println
 	globalFuncs map[string]*ir.Function
+
+	contextFunc         *ir.Function
+	contextBlock        *ir.BasicBlock
+	contextFuncRetBlock *ir.BasicBlock
+	contextFuncRetVal   *ir.InstAlloca
 }
 
 var (
@@ -41,10 +45,7 @@ func Compile(root parser.BlockNode) string {
 	// TODO: Set automatically
 	c.module.TargetTriple = "x86_64-apple-macosx10.13.0"
 
-	mainFunc := c.module.NewFunction("main", i32)
-	block := mainFunc.NewBlock("entry")
-
-	c.compile(mainFunc, block, root.Instructions)
+	c.compile(root.Instructions)
 
 	// Print IR
 	return fmt.Sprintln(c.module)
@@ -65,7 +66,7 @@ func (c *compiler) addGlobal() {
 	printlnFunc.Sig.Variadic = true
 
 	c.globalFuncs["println"] = printlnFunc
-	block := printlnFunc.NewBlock("entry")
+	block := printlnFunc.NewBlock(getBlockName())
 
 	block.NewCall(c.externalFuncs["printf"], stringToi8Ptr(block, percentD), printlnFunc.Sig.Params[0])
 	block.NewRet(nil)
@@ -74,51 +75,99 @@ func (c *compiler) addGlobal() {
 	c.globalFuncs["printf"] = c.externalFuncs["printf"]
 }
 
-func (c *compiler) compile(function *ir.Function, block *ir.BasicBlock, instructions []parser.Node) {
+func (c *compiler) compile(instructions []parser.Node) {
 	for _, i := range instructions {
+		block := c.contextBlock
+		function := c.contextFunc
+
 		switch v := i.(type) {
-		case parser.CallNode:
-			var args []value.Value
-
-			for _, vv := range v.Arguments {
-				args = append(args, c.compileValue(block, vv))
-			}
-
-			block.NewCall(c.funcByName(v.Function), args...)
-			break
-
 		case parser.ConditionNode:
 			xPtr := block.NewAlloca(i64)
-			block.NewStore(c.compileValue(block, v.Cond.Left), xPtr)
+			block.NewStore(c.compileValue(v.Cond.Left), xPtr)
 
 			yPtr := block.NewAlloca(i64)
-			block.NewStore(c.compileValue(block, v.Cond.Right), yPtr)
+			block.NewStore(c.compileValue(v.Cond.Right), yPtr)
 
 			cond := block.NewICmp(getConditionLLVMpred(v.Cond.Operator), block.NewLoad(xPtr), block.NewLoad(yPtr))
 
-			afterBlock := function.NewBlock(getBlockName())
-			trueBlock := function.NewBlock(getBlockName())
-			falseBlock := function.NewBlock(getBlockName())
-
-			c.compile(function, trueBlock, v.True)
-			c.compile(function, falseBlock, v.False)
-
-			trueBlock.NewBr(afterBlock)
-			falseBlock.NewBr(afterBlock)
+			afterBlock := function.NewBlock(getBlockName() + "-after")
+			trueBlock := function.NewBlock(getBlockName() + "-true")
+			falseBlock := function.NewBlock(getBlockName() + "-false")
 
 			block.NewCondBr(cond, trueBlock, falseBlock)
 
-			block = afterBlock
+			c.contextBlock = trueBlock
+			c.compile(v.True)
+
+			// Jump to after-block if no terminator has been set (such as a return statement)
+			if trueBlock.Term == nil {
+				trueBlock.NewBr(afterBlock)
+			}
+
+			c.contextBlock = falseBlock
+			c.compile(v.False)
+
+			// Jump to after-block if no terminator has been set (such as a return statement)
+			if falseBlock.Term == nil {
+				falseBlock.NewBr(afterBlock)
+			}
+
+			c.contextBlock = afterBlock
+			break
+
+		case parser.DefineFuncNode:
+			params := make([]*types.Param, len(v.Arguments))
+			for k, par := range v.Arguments {
+				params[k] = ir.NewParam(par.Name, i64)
+			}
+
+			funcRetType := types.Type(types.Void)
+			if len(v.ReturnValues) == 1 {
+				funcRetType = convertTypes(v.ReturnValues[0].Type)
+			}
+
+			// Create a new function, and add it to the list of global functions
+			fn := c.module.NewFunction(v.Name, funcRetType, params...)
+			c.globalFuncs[v.Name] = fn
+
+			entry := fn.NewBlock(getBlockName())
+
+			// There can only be one ret statement per function
+			if len(v.ReturnValues) == 1 {
+				// Allocate variable to return, allocated in the entry block
+				c.contextFuncRetVal = entry.NewAlloca(funcRetType)
+
+				// The return block contains only load + return instruction
+				c.contextFuncRetBlock = fn.NewBlock(getBlockName() + "-return")
+				c.contextFuncRetBlock.NewRet(c.contextFuncRetBlock.NewLoad(c.contextFuncRetVal))
+			} else {
+				// Unset to make sure that they are not accidentally used
+				c.contextFuncRetBlock = nil
+				c.contextFuncRetVal = nil
+			}
+
+			c.contextFunc = fn
+			c.contextBlock = entry
+
+			c.compile(v.Body)
+
+			// Return void if there is no return type explicitly set
+			if len(v.ReturnValues) == 0 {
+				entry.NewRet(nil)
+			}
+			break
+
+		case parser.ReturnNode:
+			// Set value and jump to return block
+			block.NewStore(c.compileValue(v.Val), c.contextFuncRetVal)
+			block.NewBr(c.contextFuncRetBlock)
 			break
 
 		default:
-			log.Panicf("Unkown op: %+v", v)
+			c.compileValue(v)
 			break
 		}
 	}
-
-	// Return 0
-	block.NewRet(constant.NewInt(0, i32))
 }
 
 func (c *compiler) funcByName(name string) *ir.Function {
@@ -129,7 +178,9 @@ func (c *compiler) funcByName(name string) *ir.Function {
 	panic("funcByName: no such func: " + name)
 }
 
-func (c *compiler) compileValue(block *ir.BasicBlock, node parser.Node) value.Value {
+func (c *compiler) compileValue(node parser.Node) value.Value {
+	block := c.contextBlock
+
 	switch v := node.(type) {
 
 	case parser.ConstantNode:
@@ -148,10 +199,10 @@ func (c *compiler) compileValue(block *ir.BasicBlock, node parser.Node) value.Va
 
 	case parser.OperatorNode:
 		lPtr := block.NewAlloca(i64)
-		block.NewStore(c.compileValue(block, v.Left), lPtr)
+		block.NewStore(c.compileValue(v.Left), lPtr)
 
 		rPtr := block.NewAlloca(i64)
-		block.NewStore(c.compileValue(block, v.Right), rPtr)
+		block.NewStore(c.compileValue(v.Right), rPtr)
 
 		switch v.Operator {
 		case parser.OP_ADD:
@@ -168,7 +219,25 @@ func (c *compiler) compileValue(block *ir.BasicBlock, node parser.Node) value.Va
 			break
 		}
 		break
+
+	case parser.NameNode:
+		for _, param := range block.Parent.Params() {
+			if param.Name == v.Name {
+				return param
+			}
+		}
+		break
+
+	case parser.CallNode:
+		var args []value.Value
+
+		for _, vv := range v.Arguments {
+			args = append(args, c.compileValue(vv))
+		}
+
+		return block.NewCall(c.funcByName(v.Function), args...)
+		break
 	}
 
-	panic("compileValue fail")
+	panic("compileValue fail: " + fmt.Sprintf("%+v", node))
 }
