@@ -88,3 +88,24 @@ type ConditionNode struct {
 	True  []Node
 	False []Node
 }
+
+type DefineFuncNode struct {
+	Name         string
+	Arguments    []NameNode
+	ReturnValues []NameNode
+	Body         []Node
+}
+
+// Variables, etc.
+type NameNode struct {
+	Name string
+	Type string
+}
+
+type ReturnNode struct {
+	Val Node
+}
+
+func (rn ReturnNode) String() string {
+	return fmt.Sprintf("return %v", rn.Val)
+}
