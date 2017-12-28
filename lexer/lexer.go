@@ -103,7 +103,7 @@ func Lex(input string) []Item {
 		if input[i] >= 'a' && input[i] <= 'z' {
 			name := ""
 
-			for i < len(input) && (input[i] >= 'a' && input[i] <= 'z') || (input[i] >= '0' && input[i] <= '9') {
+			for i < len(input) && ((input[i] >= 'a' && input[i] <= 'z') || (input[i] >= '0' && input[i] <= '9')) {
 				name += string(input[i])
 				i++
 			}
