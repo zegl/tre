@@ -143,6 +143,18 @@ func (p *parser) aheadParse(input Node) Node {
 
 	if next.Type == lexer.OPERATOR {
 		p.i += 2
+
+		if next.Val == ":=" {
+			if nameNode, ok := input.(NameNode); ok {
+				return AllocNode{
+					Name: nameNode.Name,
+					Val:  p.parseOne(),
+				}
+			} else {
+				panic(":= can only be used after a name")
+			}
+		}
+
 		res := OperatorNode{
 			Operator: opsCharToOp[next.Val],
 			Left:     input,

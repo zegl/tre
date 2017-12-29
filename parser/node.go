@@ -109,3 +109,12 @@ type ReturnNode struct {
 func (rn ReturnNode) String() string {
 	return fmt.Sprintf("return %v", rn.Val)
 }
+
+type AllocNode struct {
+	Name string
+	Val  Node
+}
+
+func (an AllocNode) String() string {
+	return fmt.Sprintf("alloc %s = %v", an.Name, an.Val)
+}
