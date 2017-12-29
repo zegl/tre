@@ -30,10 +30,10 @@ var operations = map[string]struct{}{
 	">=": {},
 	"==": {},
 	"!=": {},
-
-	// the following are not really operations, and will fail if used
 	"=": {},
 	"!": {},
+	":": {}, // is not really a operation. Is only defined here so that := can be found.
+	":=": {},
 }
 
 var separators = map[string]struct{}{
