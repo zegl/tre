@@ -20,10 +20,11 @@ type compiler struct {
 	// functions provided by the language, such as println
 	globalFuncs map[string]*ir.Function
 
-	contextFunc         *ir.Function
-	contextBlock        *ir.BasicBlock
-	contextFuncRetBlock *ir.BasicBlock
-	contextFuncRetVal   *ir.InstAlloca
+	contextFunc           *ir.Function
+	contextBlock          *ir.BasicBlock
+	contextBlockVariables map[string]value.Value
+	contextFuncRetBlock   *ir.BasicBlock
+	contextFuncRetVal     *ir.InstAlloca
 }
 
 var (
@@ -148,6 +149,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 			c.contextFunc = fn
 			c.contextBlock = entry
+			c.contextBlockVariables = make(map[string]value.Value)
 
 			c.compile(v.Body)
 
@@ -161,6 +163,14 @@ func (c *compiler) compile(instructions []parser.Node) {
 			// Set value and jump to return block
 			block.NewStore(c.compileValue(v.Val), c.contextFuncRetVal)
 			block.NewBr(c.contextFuncRetBlock)
+			break
+
+		case parser.AllocNode:
+			allocVal := c.compileValue(v.Val)
+			alloc := block.NewAlloca(allocVal.Type())
+			alloc.SetName(v.Name)
+			block.NewStore(allocVal, alloc)
+			c.contextBlockVariables[v.Name] = alloc
 			break
 
 		default:
@@ -221,11 +231,19 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		break
 
 	case parser.NameNode:
+		// Any parameter?
 		for _, param := range block.Parent.Params() {
 			if param.Name == v.Name {
 				return param
 			}
 		}
+
+		// Named variable in this block?
+		if val, ok := c.contextBlockVariables[v.Name]; ok {
+			return block.NewLoad(val)
+		}
+
+		panic("undefined variable: " + v.Name)
 		break
 
 	case parser.CallNode:
