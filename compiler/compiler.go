@@ -59,18 +59,7 @@ func (c *compiler) addExternal() {
 }
 
 func (c *compiler) addGlobal() {
-	// TODO: Remove println method
-	percentD := c.module.NewGlobalDef(getNextStringName(), constantString("%d\n"))
-	percentD.IsConst = true
-
-	printlnFunc := c.module.NewFunction("println", types.Void, ir.NewParam("num", i64))
-	printlnFunc.Sig.Variadic = true
-
-	c.globalFuncs["println"] = printlnFunc
-	block := printlnFunc.NewBlock(getBlockName())
-
-	block.NewCall(c.externalFuncs["printf"], stringToi8Ptr(block, percentD), printlnFunc.Sig.Params[0])
-	block.NewRet(nil)
+	// TODO: Add builtin methods here.
 
 	// Expose printf
 	c.globalFuncs["printf"] = c.externalFuncs["printf"]
