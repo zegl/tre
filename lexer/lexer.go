@@ -30,9 +30,9 @@ var operations = map[string]struct{}{
 	">=": {},
 	"==": {},
 	"!=": {},
-	"=": {},
-	"!": {},
-	":": {}, // is not really a operation. Is only defined here so that := can be found.
+	"=":  {},
+	"!":  {},
+	":":  {}, // is not really a operation. Is only defined here so that := can be found.
 	":=": {},
 }
 
@@ -49,6 +49,16 @@ func Lex(input string) []Item {
 	i := 0
 
 	for i < len(input) {
+
+		// Comment, until end of line or end of file
+		if input[i] == '/' && input[i+1] == '/' {
+			for {
+				if input[i] == '\n' || input[i] == '\r' {
+					break
+				}
+				i++
+			}
+		}
 
 		if _, ok := operations[string(input[i])]; ok {
 			// Operators can be 1 or 2 characters
