@@ -1,0 +1,10 @@
+func otherfunc() i64 {
+    // in other func
+    printf("in other func\n")
+    return 0
+}
+
+func main() i64 {
+    otherfunc()
+    return 0
+}

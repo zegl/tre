@@ -1,0 +1,5 @@
+func main() i64 {
+    // hello world
+    printf("hello world\n")
+    return 0
+}
