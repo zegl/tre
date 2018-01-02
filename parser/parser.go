@@ -1,10 +1,11 @@
 package parser
 
 import (
-	"github.com/zegl/tre/lexer"
+	"fmt"
 	"log"
 	"strconv"
-	"fmt"
+
+	"github.com/zegl/tre/lexer"
 )
 
 type parser struct {
@@ -27,6 +28,9 @@ func (p *parser) parseOne() Node {
 	current := p.input[p.i]
 
 	switch current.Type {
+	// IDENTIFIERS are converted to either:
+	// - a CallNode if followed by an opening parenthesis (a function call), or
+	// - a NodeName (variables)
 	case lexer.IDENTIFIER:
 		next := p.lookAhead(1)
 		if next.Type == lexer.SEPARATOR && next.Val == "(" {
@@ -42,6 +46,8 @@ func (p *parser) parseOne() Node {
 		})
 		break
 
+		// NUMBER always returns a ConstantNode
+		// Convert string representation to int64
 	case lexer.NUMBER:
 		val, err := strconv.ParseInt(current.Val, 10, 64)
 		if err != nil {
@@ -54,6 +60,7 @@ func (p *parser) parseOne() Node {
 		})
 		break
 
+		// STRING is always a ConstantNode, the value is not modified
 	case lexer.STRING:
 		return p.aheadParse(ConstantNode{
 			Type:     STRING,
@@ -62,6 +69,13 @@ func (p *parser) parseOne() Node {
 		break
 
 	case lexer.KEYWORD:
+
+		// "if" gets converted to a ConditionNode
+		// the keyword "if" is followed by
+		// - a condition
+		// - an opening curly bracket ({)
+		// - a body
+		// - a closing bracket (})
 		if current.Val == "if" {
 			p.i++
 			condNodes := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
@@ -83,6 +97,16 @@ func (p *parser) parseOne() Node {
 			})
 		}
 
+		// "func" gets converted into a DefineFuncNode
+		// the keyword "func" is followed by
+		// - a IDENTIFIER (function name)
+		// - opening parenthesis
+		// - optional: arguments (name type, name2 type2, ...)
+		// - closing parenthesis
+		// - optional: return type
+		// - opening curly bracket ({)
+		// - function body
+		// - closing curly bracket (})
 		if current.Val == "func" {
 			name := p.lookAhead(1)
 			if name.Type != lexer.IDENTIFIER {
@@ -119,13 +143,14 @@ func (p *parser) parseOne() Node {
 			p.i++
 
 			return p.aheadParse(DefineFuncNode{
-				Name:      name.Val,
-				Arguments: arguments,
+				Name:         name.Val,
+				Arguments:    arguments,
 				ReturnValues: retTypesNodeNames,
-				Body:      p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"}),
+				Body:         p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"}),
 			})
 		}
 
+		// "return" creates a ReturnNode
 		if current.Val == "return" {
 			p.i++
 			return p.aheadParse(ReturnNode{
