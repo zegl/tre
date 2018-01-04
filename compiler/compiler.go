@@ -6,9 +6,9 @@ import (
 	"github.com/zegl/tre/parser"
 
 	"github.com/llir/llvm/ir"
+	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
-	"github.com/llir/llvm/ir/constant"
 )
 
 type compiler struct {
@@ -150,16 +150,22 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 		case parser.ReturnNode:
 			// Set value and jump to return block
-			block.NewStore(c.compileValue(v.Val), c.contextFuncRetVal)
+			block.NewStore(block.NewLoad(c.compileValue(v.Val)), c.contextFuncRetVal)
 			block.NewBr(c.contextFuncRetBlock)
 			break
 
 		case parser.AllocNode:
-			allocVal := c.compileValue(v.Val)
+			allocVal := block.NewLoad(c.compileValue(v.Val))
 			alloc := block.NewAlloca(allocVal.Type())
 			alloc.SetName(v.Name)
 			block.NewStore(allocVal, alloc)
 			c.contextBlockVariables[v.Name] = alloc
+			break
+
+		case parser.AssignNode:
+			allocVal := block.NewLoad(c.compileValue(v.Val))
+			dst := c.varByName(v.Name)
+			block.NewStore(allocVal, dst)
 			break
 
 		default:
@@ -177,6 +183,22 @@ func (c *compiler) funcByName(name string) *ir.Function {
 	panic("funcByName: no such func: " + name)
 }
 
+func (c *compiler) varByName(name string) value.Value {
+	// Any parameter?
+	for _, param := range c.contextBlock.Parent.Params() {
+		if param.Name == name {
+			return param
+		}
+	}
+
+	// Named variable in this block?
+	if val, ok := c.contextBlockVariables[name]; ok {
+		return val
+	}
+
+	panic("undefined variable: " + name)
+}
+
 func (c *compiler) compileValue(node parser.Node) value.Value {
 	block := c.contextBlock
 
@@ -185,7 +207,10 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 	case parser.ConstantNode:
 		switch v.Type {
 		case parser.NUMBER:
-			return constant.NewInt(v.Value, i64)
+			dst := block.NewAlloca(i64)
+			num := constant.NewInt(v.Value, i64)
+			block.NewStore(num, dst)
+			return dst
 			break
 
 		case parser.STRING:
@@ -197,49 +222,56 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		break
 
 	case parser.OperatorNode:
-		lPtr := block.NewAlloca(i64)
-		block.NewStore(c.compileValue(v.Left), lPtr)
+		left := c.compileValue(v.Left)
+		right := c.compileValue(v.Right)
 
-		rPtr := block.NewAlloca(i64)
-		block.NewStore(c.compileValue(v.Right), rPtr)
+		left = block.NewLoad(left)
+		right = block.NewLoad(right)
+
+		res := block.NewAlloca(i64)
 
 		switch v.Operator {
 		case parser.OP_ADD:
-			return block.NewAdd(block.NewLoad(lPtr), block.NewLoad(rPtr))
+			block.NewStore(block.NewAdd(left, right), res)
+			return res
 			break
 		case parser.OP_SUB:
-			return block.NewSub(block.NewLoad(lPtr), block.NewLoad(rPtr))
+			block.NewStore(block.NewSub(left, right), res)
+			return res
 			break
 		case parser.OP_MUL:
-			return block.NewMul(block.NewLoad(lPtr), block.NewLoad(rPtr))
+			block.NewStore(block.NewMul(left, right), res)
+			return res
 			break
 		case parser.OP_DIV:
-			return block.NewSDiv(block.NewLoad(lPtr), block.NewLoad(rPtr)) // SDiv == Signed Division
+			block.NewStore(block.NewSDiv(left, right), res) // SDiv == Signed Division
+			return res
 			break
 		}
 		break
 
 	case parser.NameNode:
-		// Any parameter?
-		for _, param := range block.Parent.Params() {
-			if param.Name == v.Name {
-				return param
-			}
-		}
-
-		// Named variable in this block?
-		if val, ok := c.contextBlockVariables[v.Name]; ok {
-			return block.NewLoad(val)
-		}
-
-		panic("undefined variable: " + v.Name)
+		return c.varByName(v.Name)
 		break
 
 	case parser.CallNode:
 		var args []value.Value
 
 		for _, vv := range v.Arguments {
-			args = append(args, c.compileValue(vv))
+			val := c.compileValue(vv)
+			_, valIsPtr := val.Type().(*types.PointerType)
+
+			if val.Type().Equal(types.NewPointer(types.I8)) {
+				// Strings
+				args = append(args, val)
+			} else if valIsPtr {
+				// Dereference value
+				args = append(args, block.NewLoad(val))
+			} else {
+				// Use as is
+				args = append(args, val)
+			}
+
 		}
 
 		return block.NewCall(c.funcByName(v.Function), args...)
