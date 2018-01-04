@@ -118,3 +118,12 @@ type AllocNode struct {
 func (an AllocNode) String() string {
 	return fmt.Sprintf("alloc %s = %v", an.Name, an.Val)
 }
+
+type AssignNode struct {
+	Name string
+	Val  Node
+}
+
+func (an AssignNode) String() string {
+	return fmt.Sprintf("assign %s = %v", an.Name, an.Val)
+}

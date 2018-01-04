@@ -169,14 +169,21 @@ func (p *parser) aheadParse(input Node) Node {
 	if next.Type == lexer.OPERATOR {
 		p.i += 2
 
-		if next.Val == ":=" {
+		if next.Val == ":=" || next.Val == "=" {
 			if nameNode, ok := input.(NameNode); ok {
-				return AllocNode{
-					Name: nameNode.Name,
-					Val:  p.parseOne(),
+				if next.Val == ":=" {
+					return AllocNode{
+						Name: nameNode.Name,
+						Val:  p.parseOne(),
+					}
+				} else {
+					return AssignNode{
+						Name: nameNode.Name,
+						Val:  p.parseOne(),
+					}
 				}
 			} else {
-				panic(":= can only be used after a name")
+				panic(next.Val + " can only be used after a name")
 			}
 		}
 
