@@ -74,10 +74,10 @@ func (c *compiler) compile(instructions []parser.Node) {
 		switch v := i.(type) {
 		case parser.ConditionNode:
 			xPtr := block.NewAlloca(i64)
-			block.NewStore(c.compileValue(v.Cond.Left), xPtr)
+			block.NewStore(block.NewLoad(c.compileValue(v.Cond.Left)), xPtr)
 
 			yPtr := block.NewAlloca(i64)
-			block.NewStore(c.compileValue(v.Cond.Right), yPtr)
+			block.NewStore(block.NewLoad(c.compileValue(v.Cond.Right)), yPtr)
 
 			cond := block.NewICmp(getConditionLLVMpred(v.Cond.Operator), block.NewLoad(xPtr), block.NewLoad(yPtr))
 
