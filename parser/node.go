@@ -127,3 +127,12 @@ type AssignNode struct {
 func (an AssignNode) String() string {
 	return fmt.Sprintf("assign %s = %v", an.Name, an.Val)
 }
+
+type TypeCastNode struct {
+	Type string
+	Val Node
+}
+
+func (tcn TypeCastNode) String() string {
+	return fmt.Sprintf("cast %s(%v)", tcn.Type, tcn.Val)
+}
