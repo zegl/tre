@@ -3,11 +3,11 @@ func otherfunc(num i32) i32 {
         return i32(500)
     }
 
-    return i32(1)
+    return i32(num)
 }
 
 func main() i64 {
-    // 1
+    // 20
     printf("%d\n", otherfunc(i32(20)))
     // 500
     printf("%d\n", otherfunc(i32(100)))
