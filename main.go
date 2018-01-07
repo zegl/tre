@@ -64,6 +64,7 @@ func main() {
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(string(output))
 		panic(err)
 	}
 
