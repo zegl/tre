@@ -1,0 +1,15 @@
+func otherfunc(num i32) i32 {
+    if num > i32(50) {
+        return i32(500)
+    }
+
+    return i32(1)
+}
+
+func main() i64 {
+    // 1
+    printf("%d\n", otherfunc(i32(20)))
+    // 500
+    printf("%d\n", otherfunc(i32(100)))
+    return 0
+}
