@@ -66,6 +66,13 @@ func (c *compiler) addGlobal() {
 	c.globalFuncs["printf"] = c.externalFuncs["printf"]
 }
 
+func ptrTypeType(val value.Value) types.Type {
+	if t, valIsPtr := val.Type().(*types.PointerType); valIsPtr {
+		return t.Elem
+	}
+	panic("ptrTypeType is not pointer type")
+}
+
 func (c *compiler) compile(instructions []parser.Node) {
 	for _, i := range instructions {
 		block := c.contextBlock
@@ -73,11 +80,13 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 		switch v := i.(type) {
 		case parser.ConditionNode:
-			xPtr := block.NewAlloca(i64)
-			block.NewStore(block.NewLoad(c.compileValue(v.Cond.Left)), xPtr)
+			xVal := c.compileValue(v.Cond.Left)
+			xPtr := block.NewAlloca(ptrTypeType(xVal))
+			block.NewStore(block.NewLoad(xVal), xPtr)
 
-			yPtr := block.NewAlloca(i64)
-			block.NewStore(block.NewLoad(c.compileValue(v.Cond.Right)), yPtr)
+			yVal := c.compileValue(v.Cond.Right)
+			yPtr := block.NewAlloca(ptrTypeType(yVal))
+			block.NewStore(block.NewLoad(yVal), yPtr)
 
 			cond := block.NewICmp(getConditionLLVMpred(v.Cond.Operator), block.NewLoad(xPtr), block.NewLoad(yPtr))
 
@@ -109,12 +118,12 @@ func (c *compiler) compile(instructions []parser.Node) {
 		case parser.DefineFuncNode:
 			params := make([]*types.Param, len(v.Arguments))
 			for k, par := range v.Arguments {
-				params[k] = ir.NewParam(par.Name + "-parameter", i64)
+				params[k] = ir.NewParam(par.Name + "-parameter", typeStringToLLVM(par.Type))
 			}
 
 			funcRetType := types.Type(types.Void)
 			if len(v.ReturnValues) == 1 {
-				funcRetType = convertTypes(v.ReturnValues[0].Type)
+				funcRetType = typeStringToLLVM(v.ReturnValues[0].Type)
 			}
 
 			// Create a new function, and add it to the list of global functions
@@ -144,7 +153,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 			// Allocate all parameters
 			for i, param := range params {
 				paramName := v.Arguments[i].Name
-				paramPtr := entry.NewAlloca(i64)
+				paramPtr := entry.NewAlloca(typeStringToLLVM(v.Arguments[i].Type))
 				paramPtr.SetName(paramName)
 				entry.NewStore(param, paramPtr)
 				c.contextBlockVariables[paramName] = paramPtr
@@ -166,7 +175,6 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 		case parser.AllocNode:
 			val := c.compileValue(v.Val)
-			log.Printf("%+v", val)
 			allocVal := block.NewLoad(val)
 			alloc := block.NewAlloca(allocVal.Type())
 			alloc.SetName(v.Name)
@@ -286,6 +294,37 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		// Call function and store results
 		block.NewStore(block.NewCall(fn, args...), retVal)
 		return retVal
+		break
+
+	case parser.TypeCastNode:
+		val := c.compileValue(v.Val)
+
+		currentType := ptrTypeType(val)
+
+		current, ok := currentType.(*types.IntType)
+		if !ok {
+			panic("TypeCast origin must be int type")
+		}
+
+		target, ok := typeStringToLLVM(v.Type).(*types.IntType)
+		if !ok {
+			panic("TypeCast target must be int type")
+		}
+
+		// Same size, nothing to do here
+		if current.Size == target.Size {
+			return val
+		}
+
+		res := block.NewAlloca(target)
+
+		if current.Size < target.Size {
+			block.NewStore(block.NewSExt(block.NewLoad(val), target), res)
+		} else {
+			block.NewStore(block.NewTrunc(block.NewLoad(val), target), res)
+		}
+
+		return res
 		break
 	}
 
