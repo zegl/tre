@@ -9,6 +9,7 @@ import (
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
+	"log"
 )
 
 type compiler struct {
@@ -108,7 +109,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 		case parser.DefineFuncNode:
 			params := make([]*types.Param, len(v.Arguments))
 			for k, par := range v.Arguments {
-				params[k] = ir.NewParam(par.Name, i64)
+				params[k] = ir.NewParam(par.Name + "-parameter", i64)
 			}
 
 			funcRetType := types.Type(types.Void)
@@ -140,6 +141,15 @@ func (c *compiler) compile(instructions []parser.Node) {
 			c.contextBlock = entry
 			c.contextBlockVariables = make(map[string]value.Value)
 
+			// Allocate all parameters
+			for i, param := range params {
+				paramName := v.Arguments[i].Name
+				paramPtr := entry.NewAlloca(i64)
+				paramPtr.SetName(paramName)
+				entry.NewStore(param, paramPtr)
+				c.contextBlockVariables[paramName] = paramPtr
+			}
+
 			c.compile(v.Body)
 
 			// Return void if there is no return type explicitly set
@@ -155,7 +165,9 @@ func (c *compiler) compile(instructions []parser.Node) {
 			break
 
 		case parser.AllocNode:
-			allocVal := block.NewLoad(c.compileValue(v.Val))
+			val := c.compileValue(v.Val)
+			log.Printf("%+v", val)
+			allocVal := block.NewLoad(val)
 			alloc := block.NewAlloca(allocVal.Type())
 			alloc.SetName(v.Name)
 			block.NewStore(allocVal, alloc)
@@ -184,13 +196,6 @@ func (c *compiler) funcByName(name string) *ir.Function {
 }
 
 func (c *compiler) varByName(name string) value.Value {
-	// Any parameter?
-	for _, param := range c.contextBlock.Parent.Params() {
-		if param.Name == name {
-			return param
-		}
-	}
-
 	// Named variable in this block?
 	if val, ok := c.contextBlockVariables[name]; ok {
 		return val
@@ -271,10 +276,16 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 				// Use as is
 				args = append(args, val)
 			}
-
 		}
 
-		return block.NewCall(c.funcByName(v.Function), args...)
+		fn := c.funcByName(v.Function)
+
+		// Create variable to save result in
+		retVal := block.NewAlloca(fn.Sig.Ret)
+
+		// Call function and store results
+		block.NewStore(block.NewCall(fn, args...), retVal)
+		return retVal
 		break
 	}
 
