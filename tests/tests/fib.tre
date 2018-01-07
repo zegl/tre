@@ -1,0 +1,13 @@
+func fib(num i64) i64 {
+    if num < 2 {
+        return num
+    }
+
+    return fib(num-2) + fib(num-1)
+}
+
+func main() i64 {
+    // fib = 5702887
+    printf("fib = %d\n", fib(34))
+    return 0
+}
