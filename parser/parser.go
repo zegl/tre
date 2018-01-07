@@ -35,6 +35,18 @@ func (p *parser) parseOne() Node {
 		next := p.lookAhead(1)
 		if next.Type == lexer.SEPARATOR && next.Val == "(" {
 			p.i += 2 // identifier and left paren
+
+			if _, ok := types[current.Val]; ok {
+				val := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"})
+				if len(val) != 1 {
+					panic("type conversion must take only one argument")
+				}
+				return p.aheadParse(TypeCastNode{
+					Type: current.Val,
+					Val: val[0],
+				})
+			}
+
 			return p.aheadParse(CallNode{
 				Function:  current.Val,
 				Arguments: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"}),
