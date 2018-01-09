@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/zegl/tre/lexer"
+	"errors"
 )
 
 type parser struct {
@@ -26,6 +27,8 @@ func Parse(input []lexer.Item) BlockNode {
 
 func (p *parser) parseOne() Node {
 	current := p.input[p.i]
+
+	fmt.Printf("parseOne: %d - %+v\n", p.i, current)
 
 	switch current.Type {
 	// IDENTIFIERS are converted to either:
@@ -120,12 +123,16 @@ func (p *parser) parseOne() Node {
 		// - function body
 		// - closing curly bracket (})
 		if current.Val == "func" {
+			log.Println("func start")
+
 			name := p.lookAhead(1)
 			if name.Type != lexer.IDENTIFIER {
 				panic("func must be followed by IDENTIFIER. Got " + name.Val)
 			}
 
 			p.i++
+
+			log.Println("func openparen")
 
 			openParen := p.lookAhead(1)
 			if openParen.Type != lexer.SEPARATOR || openParen.Val != "(" {
@@ -136,6 +143,8 @@ func (p *parser) parseOne() Node {
 			p.i++
 
 			arguments := p.parseFunctionArguments()
+
+			log.Println("arguments")
 
 			retTypes := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
 			// convert return types
@@ -169,9 +178,31 @@ func (p *parser) parseOne() Node {
 				Val: p.parseOne(),
 			})
 		}
+
+		if current.Val == "type" {
+			name := p.lookAhead(1)
+			if name.Type != lexer.IDENTIFIER {
+				panic("type must beb followed by IDENTIFIER")
+			}
+
+			p.i += 2
+
+			typeType, err := p.parseOneType()
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Printf("doneDefineTypeNode\n")
+
+			return p.aheadParse(DefineTypeNode{
+				Name: name.Val,
+				Type: typeType,
+			})
+		}
 	}
 
-	log.Panicf("unable to handle default: %+v", current)
+	p.printInput()
+	log.Panicf("unable to handle default: %d - %+v", p.i, current)
 	panic("")
 }
 
@@ -223,9 +254,12 @@ func (p *parser) lookAhead(steps int) lexer.Item {
 func (p *parser) parseUntil(until lexer.Item) []Node {
 	var res []Node
 
+	fmt.Printf("parseUntil: %+v\n", until)
+
 	for {
 		current := p.input[p.i]
 		if current.Type == until.Type && current.Val == until.Val {
+			fmt.Printf("parseUntil: %+v done\n", until)
 			return res
 		}
 
@@ -278,4 +312,53 @@ func (p *parser) parseFunctionArguments() []NameNode {
 		p.i += 2
 		i++
 	}
+}
+
+func (p *parser) parseOneType() (TypeNode, error) {
+	current := p.lookAhead(0)
+
+	// struct parsing
+	if current.Type == lexer.KEYWORD && current.Val == "struct" {
+		p.i++
+
+		res := &StructTypeNode{
+			Types: make([]TypeNode, 0),
+			Names: make(map[string]int),
+		}
+
+		current = p.lookAhead(0)
+		if current.Type != lexer.SEPARATOR || current.Val != "{" {
+			panic("struct must be followed by {")
+		}
+		p.i++
+
+		for current.Type != lexer.SEPARATOR || current.Val != "}" {
+			itemName := p.lookAhead(0)
+			if itemName.Type != lexer.IDENTIFIER {
+				panic("expected IDENTIFIER in struct{}, got " + fmt.Sprintf("%+v", itemName))
+			}
+			p.i++
+
+			itemType, err := p.parseOneType()
+			if err != nil {
+				panic("expected TYPE in struct{}, got: " + err.Error())
+			}
+
+			res.Types = append(res.Types, itemType)
+			res.Names[itemName.Val] = len(res.Types) - 1
+
+			current = p.lookAhead(0)
+		}
+
+		return res, nil
+	}
+
+	if current.Type == lexer.IDENTIFIER {
+		p.i++
+		return &SingleTypeNode{
+			TypeName: current.Val,
+		}, nil
+	}
+
+	return nil, errors.New("parseOneType failed: " + fmt.Sprintf("%+v", current))
 }

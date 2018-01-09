@@ -130,9 +130,35 @@ func (an AssignNode) String() string {
 
 type TypeCastNode struct {
 	Type string
-	Val Node
+	Val  Node
 }
 
 func (tcn TypeCastNode) String() string {
 	return fmt.Sprintf("cast %s(%v)", tcn.Type, tcn.Val)
+}
+
+type DefineTypeNode struct {
+	Name string
+	Type TypeNode
+}
+
+type TypeNode interface {
+	Type() string
+}
+
+type SingleTypeNode struct {
+	TypeName string
+}
+
+func (stn *SingleTypeNode) Type() string {
+	return stn.TypeName
+}
+
+type StructTypeNode struct {
+	Types []TypeNode
+	Names map[string]int
+}
+
+func (stn *StructTypeNode) Type() string {
+	return fmt.Sprintf("%+v", stn.Types)
 }
