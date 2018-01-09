@@ -110,10 +110,13 @@ func Lex(input string) []Item {
 
 		// NAME
 		// Consists of a-z, parse until the last allowed char
-		if input[i] >= 'a' && input[i] <= 'z' {
+		if (input[i] >= 'a' && input[i] <= 'z') || (input[i] >= 'A' && input[i] <= 'Z') {
 			name := ""
 
-			for i < len(input) && ((input[i] >= 'a' && input[i] <= 'z') || (input[i] >= '0' && input[i] <= '9')) {
+			for i < len(input) && ((input[i] >= 'a' && input[i] <= 'z') ||
+				(input[i] >= 'A' && input[i] <= 'Z') ||
+				(input[i] >= '0' && input[i] <= '9') ||
+				input[i] == '_') {
 				name += string(input[i])
 				i++
 			}

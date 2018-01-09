@@ -1,7 +1,9 @@
 package lexer
 
 var keywords = map[string]struct{}{
-	"if": {},
-	"func": {},
+	"if":     {},
+	"func":   {},
 	"return": {},
+	"type":   {},
+	"struct": {},
 }
