@@ -117,7 +117,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 		case parser.DefineFuncNode:
 			params := make([]*types.Param, len(v.Arguments))
 			for k, par := range v.Arguments {
-				params[k] = ir.NewParam(par.Name + "-parameter", typeStringToLLVM(par.Type))
+				params[k] = ir.NewParam(par.Name+"-parameter", typeStringToLLVM(par.Type))
 			}
 
 			funcRetType := types.Type(types.Void)
@@ -185,6 +185,27 @@ func (c *compiler) compile(instructions []parser.Node) {
 			allocVal := block.NewLoad(c.compileValue(v.Val))
 			dst := c.varByName(v.Name)
 			block.NewStore(allocVal, dst)
+			break
+
+		case parser.DefineTypeNode:
+
+			if structNode, ok := v.Type.(*parser.StructTypeNode); ok {
+
+				var structTypes []types.Type
+				for _, t := range structNode.Types {
+					if singleTypeNode, ok := t.(*parser.SingleTypeNode); ok {
+						structTypes = append(structTypes, convertTypes(singleTypeNode.TypeName))
+					} else {
+						panic("unable to define node Type. nested structs are not supported")
+					}
+				}
+
+				typeConvertMap[v.Name] = types.NewStruct(structTypes...)
+				// constant.NewStruct()
+				break
+			}
+
+			panic("unable to define node Type")
 			break
 
 		default:
