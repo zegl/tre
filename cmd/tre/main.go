@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/zegl/tre/compiler"
-	"github.com/zegl/tre/lexer"
-	"github.com/zegl/tre/parser"
+	"github.com/zegl/tre/compiler/compiler"
+	"github.com/zegl/tre/compiler/lexer"
+	"github.com/zegl/tre/compiler/parser"
 
 	"io/ioutil"
 	"log"
