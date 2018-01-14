@@ -2,25 +2,15 @@ version: 2
 jobs:
   go-tests:
     docker:
-      - image: circleci/golang:1.8
+      - image: zegl/goclang:1.9-3.9-small
     working_directory: /go/src/github.com/zegl/tre
     steps:
       - checkout
       - run: go get -v -t -d ./...
       - run: go test -v ./...
 
-  program-tests:
-    docker:
-      - image: zegl/goclang:1.9-3.9-small
-    working_directory: /go/src/github.com/zegl/tre
-    steps:
-      - checkout
-      - run: go get -v -t -d ./...
-      - run: go build -i github.com/zegl/tre/cmd/tre && go run tests/run.go `pwd` tests/tests
-
 workflows:
   version: 2
   build:
     jobs:
       - "go-tests"
-      - "program-tests"
