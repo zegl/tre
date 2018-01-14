@@ -1,40 +1,42 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
-	"log"
-	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
 	"strings"
+	"testing"
+	"go/build"
 )
 
-func main() {
-	all := true
+func TestAllPrograms(t *testing.T) {
+	bindir := build.Default.GOPATH + "/src/github.com/zegl/tre/tests"
+	testsdir := build.Default.GOPATH + "/src/github.com/zegl/tre/tests/tests"
 
-	// ./Test /path/to/bin /path/to/tests
-	bindir := os.Args[1]
-	testsdir := os.Args[2]
+	buildOutput, err := exec.Command("go", "build", "-i", "github.com/zegl/tre/cmd/tre").CombinedOutput()
+	if err != nil {
+		t.Error(err)
+		t.Error(string(buildOutput))
+		return
+	}
 
 	files, _ := ioutil.ReadDir(testsdir)
 
+	if len(files) == 0 {
+		t.Error("No test files found")
+	}
+
 	for _, file := range files {
-		if !test(bindir, testsdir+"/"+file.Name()) {
-			all = false
-		}
+		t.Run(file.Name(), func(t *testing.T) {
+			if !buildRunAndCheck(t, bindir, testsdir+"/"+file.Name()) {
+				t.Error("failed")
+			}
+		})
 	}
-
-	if all {
-		os.Exit(0)
-	}
-
-	os.Exit(1)
 }
 
-func test(bindir, path string) bool {
-
+func buildRunAndCheck(t *testing.T, bindir, path string) bool {
 	content, _ := ioutil.ReadFile(path)
 
 	expect := ""
@@ -61,7 +63,7 @@ func test(bindir, path string) bool {
 	if err != nil {
 		if err.Error() != "exit status 1" {
 			println(path, err.Error())
-			log.Println(string(stdout))
+			t.Log(string(stdout))
 			return false
 		}
 	}
@@ -72,7 +74,7 @@ func test(bindir, path string) bool {
 	if err != nil {
 		if err.Error() != "exit status 1" {
 			println(path, err.Error())
-			log.Println(string(stdout))
+			t.Log(string(stdout))
 			return false
 		}
 	}
@@ -80,12 +82,10 @@ func test(bindir, path string) bool {
 	output := strings.TrimSpace(string(stdout))
 
 	if expect == output {
-		fmt.Printf("OK: %s\n", path)
 		return true
 	}
 
-	fmt.Printf("FAIL: %s\n", path)
-	fmt.Printf("Expected:\n---\n'%s'\n---\nResult:\n---\n'%s'\n---\n", expect, output)
+	t.Logf("Expected:\n---\n'%s'\n---\nResult:\n---\n'%s'\n---\n", expect, output)
 
 	return false
 }
