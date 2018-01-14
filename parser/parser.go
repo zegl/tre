@@ -46,7 +46,7 @@ func (p *parser) parseOne() Node {
 				}
 				return p.aheadParse(TypeCastNode{
 					Type: current.Val,
-					Val: val[0],
+					Val:  val[0],
 				})
 			}
 
@@ -241,6 +241,31 @@ func (p *parser) aheadParse(input Node) Node {
 			} else {
 				panic(next.Val + " can only be used after a name")
 			}
+		}
+
+		if next.Val == "." {
+			nextNode := p.parseOne()
+
+			if name, ok := nextNode.(NameNode); ok {
+				return StructLoadElementNode{
+					Struct:      input,
+					ElementName: name.Name,
+				}
+			}
+
+			// TODO: Fix the parsing so that aaaa.bbbb = 123 automatically gets parsed from left to right.
+			// Currently it will be parsed into (aaaaa) . (bbbb = 123), which is why we have to do the flipping below.
+			if assign, ok := nextNode.(AssignNode); ok {
+				return AssignNode{
+					Target: StructLoadElementNode{
+						Struct:      input,
+						ElementName: assign.Name,
+					},
+					Val: assign.Val,
+				}
+			}
+
+			panic(fmt.Sprintf(". failed: Got %+v", nextNode))
 		}
 
 		res := OperatorNode{
