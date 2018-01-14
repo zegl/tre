@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 	"github.com/stretchr/testify/assert"
-	"github.com/zegl/tre/lexer"
+	"github.com/zegl/tre/src/lexer"
 )
 
 func TestCall(t *testing.T) {
