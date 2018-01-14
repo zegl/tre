@@ -1,0 +1,28 @@
+type Book struct {
+    book_id i64
+    book_id2 i64
+}
+
+func bookInfo(book Book) i64 {
+    // info id: 5000
+    printf("info id: %d\n", book.book_id)
+
+    book.book_id = 1000
+
+    // info id: 1000
+    printf("info id: %d\n", book.book_id)
+
+    return 0
+}
+
+func main() i64 {
+    bookiboy := new Book
+    bookiboy.book_id = 5000
+
+    bookInfo(bookiboy)
+
+    // main id: 5000
+    printf("main id: %d\n", bookiboy.book_id)
+
+    return 0
+}
