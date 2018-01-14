@@ -1,28 +1,45 @@
 type Book struct {
-    book_id i64
+    book_id1 i64
     book_id2 i64
 }
 
-func bookInfo(book Book) i64 {
-    // info id: 5000
-    printf("info id: %d\n", book.book_id)
+// main id1: 1111
+// main id2: 2222
+// info id1: 1111
+// info id2: 2222
+// info id1: 3333
+// main id1: 3333
+// info id1: 1111
+// info id2: 2222
+// info id1: 3333
+// res id1: 3333
+// res id2: 2222
 
-    book.book_id = 1000
+func bookInfo(book Book) Book {
+    printf("info id1: %d\n", book.book_id1)
+    printf("info id2: %d\n", book.book_id2)
 
-    // info id: 1000
-    printf("info id: %d\n", book.book_id)
+    book.book_id1 = 3333
 
-    return 0
+    printf("info id1: %d\n", book.book_id1)
+
+    return book
 }
 
 func main() i64 {
     bookiboy := new Book
-    bookiboy.book_id = 5000
+    bookiboy.book_id1 = 1111
+    bookiboy.book_id2 = 2222
 
-    bookInfo(bookiboy)
+    printf("main id1: %d\n", bookiboy.book_id1)
+    printf("main id2: %d\n", bookiboy.book_id2)
 
-    // main id: 5000
-    printf("main id: %d\n", bookiboy.book_id)
+
+    printf("main id1: %d\n", bookInfo(bookiboy).book_id1)
+    res := bookInfo(bookiboy)
+
+    printf("res id1: %d\n", res.book_id1)
+    printf("res id2: %d\n", res.book_id2)
 
     return 0
 }
