@@ -179,6 +179,7 @@ func (p *parser) parseOne() Node {
 			})
 		}
 
+		// Declare a new type
 		if current.Val == "type" {
 			name := p.lookAhead(1)
 			if name.Type != lexer.IDENTIFIER {
@@ -198,6 +199,18 @@ func (p *parser) parseOne() Node {
 				Name: name.Val,
 				Type: typeType,
 			})
+		}
+
+		// New instance of type
+		if current.Val == "new" {
+			p.i++
+
+			tp, err := p.parseOneType()
+			if err != nil {
+				panic(err)
+			}
+
+			return tp
 		}
 	}
 
@@ -343,6 +356,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 			if err != nil {
 				panic("expected TYPE in struct{}, got: " + err.Error())
 			}
+			p.i++
 
 			res.Types = append(res.Types, itemType)
 			res.Names[itemName.Val] = len(res.Types) - 1
@@ -354,7 +368,6 @@ func (p *parser) parseOneType() (TypeNode, error) {
 	}
 
 	if current.Type == lexer.IDENTIFIER {
-		p.i++
 		return &SingleTypeNode{
 			TypeName: current.Val,
 		}, nil
