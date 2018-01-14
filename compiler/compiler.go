@@ -173,12 +173,27 @@ func (c *compiler) compile(instructions []parser.Node) {
 			break
 
 		case parser.AllocNode:
+
+			// Allocate from type
+			if typeNode, ok := v.Val.(parser.TypeNode); ok {
+				if singleTypeNode, ok := typeNode.(*parser.SingleTypeNode); ok {
+					alloc := block.NewAlloca(typeStringToLLVM(singleTypeNode.TypeName))
+					alloc.SetName(v.Name)
+					c.contextBlockVariables[v.Name] = alloc
+					break
+				}
+
+				panic("AllocNode from non TypeNode is not allowed")
+			}
+
+			// Allocate from value
 			val := c.compileValue(v.Val)
 			allocVal := block.NewLoad(val)
 			alloc := block.NewAlloca(allocVal.Type())
 			alloc.SetName(v.Name)
 			block.NewStore(allocVal, alloc)
 			c.contextBlockVariables[v.Name] = alloc
+
 			break
 
 		case parser.AssignNode:
@@ -200,8 +215,13 @@ func (c *compiler) compile(instructions []parser.Node) {
 					}
 				}
 
-				typeConvertMap[v.Name] = types.NewStruct(structTypes...)
-				// constant.NewStruct()
+				structType := types.NewStruct(structTypes...)
+
+				// Add to tre mapping
+				typeConvertMap[v.Name] = structType
+
+				// Generate LLVM code
+				c.module.NewType(v.Name, structType)
 				break
 			}
 
