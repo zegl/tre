@@ -194,7 +194,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 				var structTypes []types.Type
 				for _, t := range structNode.Types {
 					if singleTypeNode, ok := t.(*parser.SingleTypeNode); ok {
-						structTypes = append(structTypes, convertTypes(singleTypeNode.TypeName))
+						structTypes = append(structTypes, typeStringToLLVM(singleTypeNode.TypeName))
 					} else {
 						panic("unable to define node Type. nested structs are not supported")
 					}
