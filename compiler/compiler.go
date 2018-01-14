@@ -198,7 +198,15 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 		case parser.AssignNode:
 			allocVal := block.NewLoad(c.compileValue(v.Val))
-			dst := c.varByName(v.Name)
+
+			// TODO: Remove AssignNode.Name
+			if len(v.Name) > 0 {
+				dst := c.varByName(v.Name)
+				block.NewStore(allocVal, dst)
+				break
+			}
+
+			dst := c.compileValue(v.Target)
 			block.NewStore(allocVal, dst)
 			break
 
@@ -219,6 +227,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 				// Add to tre mapping
 				typeConvertMap[v.Name] = structType
+				typeMapElementNameIndex[v.Name] = structNode.Names
 
 				// Generate LLVM code
 				c.module.NewType(v.Name, structType)
@@ -366,6 +375,28 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 		return res
 		break
+
+	case parser.StructLoadElementNode:
+		src := c.compileValue(v.Struct)
+
+		ptrType, ok := src.Type().(*types.PointerType)
+		if !ok {
+			panic("StructLoadElementNode: src is not of PointerType")
+		}
+
+		typeName := ptrType.Elem.String()[1:]
+
+		indexMapping, ok := typeMapElementNameIndex[typeName]
+		if !ok {
+			panic(fmt.Sprintf("%s internal error: no such type map indexing", typeName))
+		}
+
+		elementIndex, ok := indexMapping[v.ElementName]
+		if !ok {
+			panic(fmt.Sprintf("%s has no such element: ", v.ElementName))
+		}
+
+		return block.NewGetElementPtr(src, constant.NewInt(0, i32), constant.NewInt(int64(elementIndex), i32))
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%+v", node))
