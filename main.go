@@ -32,7 +32,7 @@ func main() {
 	lexed := lexer.Lex(string(fileContents))
 
 	// Run lexed source through the parser. A syntax tree is returned.
-	parsed := parser.Parse(lexed)
+	parsed := parser.Parse(lexed, debug)
 
 	if debug {
 		log.Println(parsed)

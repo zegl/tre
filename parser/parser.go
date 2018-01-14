@@ -12,12 +12,15 @@ import (
 type parser struct {
 	i     int
 	input []lexer.Item
+
+	debug bool
 }
 
-func Parse(input []lexer.Item) BlockNode {
+func Parse(input []lexer.Item, debug bool) BlockNode {
 	p := &parser{
 		i:     0,
 		input: input,
+		debug: debug,
 	}
 
 	return BlockNode{
@@ -28,7 +31,9 @@ func Parse(input []lexer.Item) BlockNode {
 func (p *parser) parseOne() Node {
 	current := p.input[p.i]
 
-	fmt.Printf("parseOne: %d - %+v\n", p.i, current)
+	if p.debug {
+		fmt.Printf("parseOne: %d - %+v\n", p.i, current)
+	}
 
 	switch current.Type {
 	// IDENTIFIERS are converted to either:
@@ -123,16 +128,12 @@ func (p *parser) parseOne() Node {
 		// - function body
 		// - closing curly bracket (})
 		if current.Val == "func" {
-			log.Println("func start")
-
 			name := p.lookAhead(1)
 			if name.Type != lexer.IDENTIFIER {
 				panic("func must be followed by IDENTIFIER. Got " + name.Val)
 			}
 
 			p.i++
-
-			log.Println("func openparen")
 
 			openParen := p.lookAhead(1)
 			if openParen.Type != lexer.SEPARATOR || openParen.Val != "(" {
@@ -143,8 +144,6 @@ func (p *parser) parseOne() Node {
 			p.i++
 
 			arguments := p.parseFunctionArguments()
-
-			log.Println("arguments")
 
 			retTypes := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
 			// convert return types
@@ -192,8 +191,6 @@ func (p *parser) parseOne() Node {
 			if err != nil {
 				panic(err)
 			}
-
-			fmt.Printf("doneDefineTypeNode\n")
 
 			return p.aheadParse(DefineTypeNode{
 				Name: name.Val,
@@ -292,12 +289,16 @@ func (p *parser) lookAhead(steps int) lexer.Item {
 func (p *parser) parseUntil(until lexer.Item) []Node {
 	var res []Node
 
-	fmt.Printf("parseUntil: %+v\n", until)
+	if p.debug {
+		fmt.Printf("parseUntil: %+v\n", until)
+	}
 
 	for {
 		current := p.input[p.i]
 		if current.Type == until.Type && current.Val == until.Val {
-			fmt.Printf("parseUntil: %+v done\n", until)
+			if p.debug {
+				fmt.Printf("parseUntil: %+v done\n", until)
+			}
 			return res
 		}
 
