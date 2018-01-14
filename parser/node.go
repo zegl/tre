@@ -1,6 +1,9 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Node interface {
 }
@@ -21,7 +24,13 @@ type BlockNode struct {
 }
 
 func (bn BlockNode) String() string {
-	return fmt.Sprintf("BlockNode: %+v", bn.Instructions)
+	var res []string
+
+	for _, i := range bn.Instructions {
+		res = append(res, fmt.Sprintf("%+v", i))
+	}
+
+	return fmt.Sprintf("BlockNode: \n\t%s", strings.Join(res, "\n\t"))
 }
 
 // Math operations
@@ -96,10 +105,24 @@ type DefineFuncNode struct {
 	Body         []Node
 }
 
+func (dfn DefineFuncNode) String() string {
+	var body []string
+
+	for _, b := range dfn.Body {
+		body = append(body, fmt.Sprintf("%+v", b))
+	}
+
+	return fmt.Sprintf("func %s(%+v) %+v {\n\t%s\n}", dfn.Name, dfn.Arguments, dfn.ReturnValues, strings.Join(body, "\n\t"))
+}
+
 // Variables, etc.
 type NameNode struct {
 	Name string
 	Type string
+}
+
+func (nn NameNode) String() string {
+	return fmt.Sprintf("variable(%s)", nn.Name)
 }
 
 type ReturnNode struct {
@@ -120,12 +143,17 @@ func (an AllocNode) String() string {
 }
 
 type AssignNode struct {
-	Name string
-	Val  Node
+	Name   string // TODO: Removes
+	Target Node
+	Val    Node
 }
 
 func (an AssignNode) String() string {
-	return fmt.Sprintf("assign %s = %v", an.Name, an.Val)
+	if len(an.Name) > 0 {
+		return fmt.Sprintf("assign %s = %v", an.Name, an.Val)
+	}
+
+	return fmt.Sprintf("assign %+v = %v", an.Target, an.Val)
 }
 
 type TypeCastNode struct {
@@ -140,6 +168,10 @@ func (tcn TypeCastNode) String() string {
 type DefineTypeNode struct {
 	Name string
 	Type TypeNode
+}
+
+func (dtn DefineTypeNode) String() string {
+	return fmt.Sprintf("defineType %s = %+v", dtn.Name, dtn.Type)
 }
 
 type TypeNode interface {
@@ -161,4 +193,13 @@ type StructTypeNode struct {
 
 func (stn *StructTypeNode) Type() string {
 	return fmt.Sprintf("%+v", stn.Types)
+}
+
+type StructLoadElementNode struct {
+	Struct      Node
+	ElementName string
+}
+
+func (slen StructLoadElementNode) String() string {
+	return fmt.Sprintf("load %+v . %+v", slen.Struct, slen.ElementName)
 }
