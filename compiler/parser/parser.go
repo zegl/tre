@@ -5,7 +5,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/zegl/tre/src/lexer"
+	"github.com/zegl/tre/compiler/lexer"
 	"errors"
 )
 

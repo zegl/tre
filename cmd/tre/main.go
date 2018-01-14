@@ -1,12 +1,12 @@
-package tre
+package main
 
 import (
 	"fmt"
 	"os/exec"
 
-	"github.com/zegl/tre/src/compiler"
-	"github.com/zegl/tre/src/lexer"
-	"github.com/zegl/tre/src/parser"
+	"github.com/zegl/tre/compiler/compiler"
+	"github.com/zegl/tre/compiler/lexer"
+	"github.com/zegl/tre/compiler/parser"
 
 	"io/ioutil"
 	"log"

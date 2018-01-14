@@ -3,7 +3,7 @@ package compiler
 import (
 	"fmt"
 
-	"github.com/zegl/tre/src/parser"
+	"github.com/zegl/tre/compiler/parser"
 
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"

@@ -16,7 +16,7 @@ jobs:
     steps:
       - checkout
       - run: go get -v -t -d ./...
-      - run: go build -i && go run tests/run.go `pwd` tests/tests
+      - run: go build -i github.com/zegl/tre/cmd/tre && go run tests/run.go `pwd` tests/tests
 
 workflows:
   version: 2

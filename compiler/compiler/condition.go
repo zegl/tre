@@ -2,7 +2,7 @@ package compiler
 
 import (
 	"github.com/llir/llvm/ir"
-	"github.com/zegl/tre/src/parser"
+	"github.com/zegl/tre/compiler/parser"
 )
 
 func getConditionLLVMpred(operator parser.Operator) ir.IntPred {
