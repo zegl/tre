@@ -24,7 +24,7 @@ func TestCall(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, expected, Parse(input))
+	assert.Equal(t, expected, Parse(input, false))
 }
 
 func TestAdd(t *testing.T) {
@@ -51,7 +51,7 @@ func TestAdd(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, expected, Parse(input))
+	assert.Equal(t, expected, Parse(input, false))
 }
 
 func TestInfixPriority(t *testing.T) {
@@ -87,7 +87,7 @@ func TestInfixPriority(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, expected, Parse(input))
+	assert.Equal(t, expected, Parse(input, false))
 }
 
 func TestInfixPriority2(t *testing.T) {
@@ -123,5 +123,5 @@ func TestInfixPriority2(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, expected, Parse(input))
+	assert.Equal(t, expected, Parse(input, false))
 }
