@@ -262,7 +262,7 @@ func (p *parser) aheadParse(input Node) Node {
 				}
 			}
 
-			panic(fmt.Sprintf(". failed: Got %+v", nextNode))
+			panic(fmt.Sprintf("Get struct element failed: Got %+v", nextNode))
 		}
 
 		res := OperatorNode{

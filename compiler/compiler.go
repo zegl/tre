@@ -393,7 +393,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 		elementIndex, ok := indexMapping[v.ElementName]
 		if !ok {
-			panic(fmt.Sprintf("%s has no such element: ", v.ElementName))
+			panic(fmt.Sprintf("%s has no such element: %s", src.Type(), v.ElementName))
 		}
 
 		return block.NewGetElementPtr(src, constant.NewInt(0, i32), constant.NewInt(int64(elementIndex), i32))
