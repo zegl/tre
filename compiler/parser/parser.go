@@ -220,9 +220,26 @@ func (p *parser) aheadParse(input Node) Node {
 	next := p.lookAhead(1)
 
 	if next.Type == lexer.OPERATOR {
-		p.i += 2
+
+		if next.Val == "." {
+			p.i++
+
+			next = p.lookAhead(1)
+			if next.Type != lexer.IDENTIFIER {
+				panic(fmt.Sprintf("Expected IDENTFIER after . Got: %+v", next))
+			}
+
+			p.i++
+
+			return p.aheadParse(StructLoadElementNode{
+				Struct:      input,
+				ElementName: next.Val,
+			})
+		}
 
 		if next.Val == ":=" || next.Val == "=" {
+			p.i += 2
+
 			if nameNode, ok := input.(NameNode); ok {
 				if next.Val == ":=" {
 					return AllocNode{
@@ -235,36 +252,21 @@ func (p *parser) aheadParse(input Node) Node {
 						Val:  p.parseOne(),
 					}
 				}
-			} else {
-				panic(next.Val + " can only be used after a name")
 			}
-		}
 
-		if next.Val == "." {
-			nextNode := p.parseOne()
-
-			if name, ok := nextNode.(NameNode); ok {
-				return StructLoadElementNode{
-					Struct:      input,
-					ElementName: name.Name,
+			if next.Val == "=" {
+				if loadNode, ok := input.(StructLoadElementNode); ok {
+					return AssignNode{
+						Target: loadNode,
+						Val:    p.parseOne(),
+					}
 				}
 			}
 
-			// TODO: Fix the parsing so that aaaa.bbbb = 123 automatically gets parsed from left to right.
-			// Currently it will be parsed into (aaaaa) . (bbbb = 123), which is why we have to do the flipping below.
-			if assign, ok := nextNode.(AssignNode); ok {
-				return AssignNode{
-					Target: StructLoadElementNode{
-						Struct:      input,
-						ElementName: assign.Name,
-					},
-					Val: assign.Val,
-				}
-			}
-
-			panic(fmt.Sprintf("Get struct element failed: Got %+v", nextNode))
+			panic(fmt.Sprintf("%s can only be used after a name. Got: %+v", next.Val, input))
 		}
 
+		p.i += 2
 		res := OperatorNode{
 			Operator: opsCharToOp[next.Val],
 			Left:     input,
