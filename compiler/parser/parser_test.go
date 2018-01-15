@@ -8,11 +8,11 @@ import (
 
 func TestCall(t *testing.T) {
 	input := []lexer.Item{
-		{lexer.IDENTIFIER, "printf"},
-		{lexer.SEPARATOR, "("},
-		{lexer.NUMBER, "1"},
-		{lexer.SEPARATOR, ")"},
-		{lexer.EOF, ""},
+		{Type: lexer.IDENTIFIER, Val: "printf"},
+		{Type: lexer.SEPARATOR, Val: "("},
+		{Type: lexer.NUMBER, Val: "1"},
+		{Type: lexer.SEPARATOR, Val: ")"},
+		{Type: lexer.EOF, Val: ""},
 	}
 
 	expected := BlockNode{
@@ -29,10 +29,10 @@ func TestCall(t *testing.T) {
 
 func TestAdd(t *testing.T) {
 	input := []lexer.Item{
-		{lexer.NUMBER, "1"},
-		{lexer.OPERATOR, "+"},
-		{lexer.NUMBER, "2"},
-		{lexer.EOF, ""},
+		{Type: lexer.NUMBER, Val: "1"},
+		{Type: lexer.OPERATOR, Val: "+"},
+		{Type: lexer.NUMBER, Val: "2"},
+		{Type: lexer.EOF, Val: ""},
 	}
 
 	expected := BlockNode{
@@ -56,12 +56,12 @@ func TestAdd(t *testing.T) {
 
 func TestInfixPriority(t *testing.T) {
 	input := []lexer.Item{
-		{lexer.NUMBER, "1"},
-		{lexer.OPERATOR, "+"},
-		{lexer.NUMBER, "2"},
-		{lexer.OPERATOR, "*"},
-		{lexer.NUMBER, "3"},
-		{lexer.EOF, ""},
+		{Type: lexer.NUMBER, Val: "1"},
+		{Type: lexer.OPERATOR, Val: "+"},
+		{Type: lexer.NUMBER, Val: "2"},
+		{Type: lexer.OPERATOR, Val: "*"},
+		{Type: lexer.NUMBER, Val: "3"},
+		{Type: lexer.EOF, Val: ""},
 	}
 
 	expected := BlockNode{
@@ -92,12 +92,12 @@ func TestInfixPriority(t *testing.T) {
 
 func TestInfixPriority2(t *testing.T) {
 	input := []lexer.Item{
-		{lexer.NUMBER, "1"},
-		{lexer.OPERATOR, "*"},
-		{lexer.NUMBER, "2"},
-		{lexer.OPERATOR, "+"},
-		{lexer.NUMBER, "3"},
-		{lexer.EOF, ""},
+		{Type: lexer.NUMBER, Val: "1"},
+		{Type: lexer.OPERATOR, Val: "*"},
+		{Type: lexer.NUMBER, Val: "2"},
+		{Type: lexer.OPERATOR, Val: "+"},
+		{Type: lexer.NUMBER, Val: "3"},
+		{Type: lexer.EOF, Val: ""},
 	}
 
 	expected := BlockNode{
