@@ -197,16 +197,28 @@ func (c *compiler) compile(instructions []parser.Node) {
 			break
 
 		case parser.AssignNode:
-			allocVal := block.NewLoad(c.compileValue(v.Val))
+			var dst value.Value
 
 			// TODO: Remove AssignNode.Name
 			if len(v.Name) > 0 {
-				dst := c.varByName(v.Name)
-				block.NewStore(allocVal, dst)
-				break
+				dst = c.varByName(v.Name)
+			} else {
+				dst = c.compileValue(v.Target)
 			}
 
-			dst := c.compileValue(v.Target)
+			// Allocate from type
+			if typeNode, ok := v.Val.(parser.TypeNode); ok {
+				if singleTypeNode, ok := typeNode.(*parser.SingleTypeNode); ok {
+					alloc := block.NewAlloca(typeStringToLLVM(singleTypeNode.TypeName))
+					block.NewStore(block.NewLoad(alloc), dst)
+					break
+				}
+
+				panic("AssignNode from non TypeNode is not allowed")
+			}
+
+			// Allocate from value
+			allocVal := block.NewLoad(c.compileValue(v.Val))
 			block.NewStore(allocVal, dst)
 			break
 
