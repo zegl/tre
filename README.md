@@ -6,7 +6,7 @@ An experimental programming language backed by LLVM.
 
 ```bash
 # Build tre and run a test program
-go build -i && ./tre tests/printf.tre > tmp.ll && clang tmp.ll && ./a.out
+go build -i github.com/zegl/tre/cmd/tre && ./tre tests/tests/fib.tre && ./output-binary
 ```
 
 ## Example
