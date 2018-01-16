@@ -23,8 +23,6 @@ type compiler struct {
 	contextFunc           *ir.Function
 	contextBlock          *ir.BasicBlock
 	contextBlockVariables map[string]value.Value
-	contextFuncRetBlock   *ir.BasicBlock
-	contextFuncRetVal     *ir.InstAlloca
 }
 
 var (
@@ -151,21 +149,6 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 			entry := fn.NewBlock(getBlockName())
 
-			// There can only be one ret statement per function
-			if len(v.ReturnValues) == 1 {
-				// Allocate variable to return, allocated in the entry block
-				c.contextFuncRetVal = entry.NewAlloca(funcRetType)
-				c.contextFuncRetVal.SetName("return-value")
-
-				// The return block contains only load + return instruction
-				c.contextFuncRetBlock = fn.NewBlock(getBlockName() + "-return")
-				c.contextFuncRetBlock.NewRet(c.contextFuncRetBlock.NewLoad(c.contextFuncRetVal))
-			} else {
-				// Unset to make sure that they are not accidentally used
-				c.contextFuncRetBlock = nil
-				c.contextFuncRetVal = nil
-			}
-
 			c.contextFunc = fn
 			c.contextBlock = entry
 			c.contextBlockVariables = make(map[string]value.Value)
@@ -201,8 +184,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 				val = block.NewLoad(val)
 			}
 
-			block.NewStore(val, c.contextFuncRetVal)
-			block.NewBr(c.contextFuncRetBlock)
+			block.NewRet(val)
 			break
 
 		case parser.AllocNode:
