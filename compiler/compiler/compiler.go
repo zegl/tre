@@ -173,6 +173,15 @@ func (c *compiler) compile(instructions []parser.Node) {
 			// Save all parameters in the block mapping
 			for i, param := range params {
 				paramName := v.Arguments[i].Name
+
+				// Structs needs to be pointer-allocated
+				if _, ok := param.Type().(*types.StructType); ok {
+					paramPtr := entry.NewAlloca(typeStringToLLVM(v.Arguments[i].Type))
+					entry.NewStore(param, paramPtr)
+					c.contextBlockVariables[paramName] = paramPtr
+					continue
+				}
+
 				c.contextBlockVariables[paramName] = param
 			}
 
