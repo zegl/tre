@@ -339,24 +339,18 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			right = block.NewLoad(right)
 		}
 
-		res := block.NewAlloca(i64)
-
 		switch v.Operator {
 		case parser.OP_ADD:
-			block.NewStore(block.NewAdd(left, right), res)
-			return res
+			return block.NewAdd(left, right)
 			break
 		case parser.OP_SUB:
-			block.NewStore(block.NewSub(left, right), res)
-			return res
+			return block.NewSub(left, right)
 			break
 		case parser.OP_MUL:
-			block.NewStore(block.NewMul(left, right), res)
-			return res
+			return block.NewMul(left, right)
 			break
 		case parser.OP_DIV:
-			block.NewStore(block.NewSDiv(left, right), res) // SDiv == Signed Division
-			return res
+			return block.NewSDiv(left, right) // SDiv == Signed Division
 			break
 		}
 		break
