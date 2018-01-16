@@ -105,7 +105,11 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 			afterBlock := function.NewBlock(getBlockName() + "-after")
 			trueBlock := function.NewBlock(getBlockName() + "-true")
-			falseBlock := function.NewBlock(getBlockName() + "-false")
+			falseBlock := afterBlock
+
+			if len(v.False) > 0 {
+				falseBlock = function.NewBlock(getBlockName() + "-false")
+			}
 
 			block.NewCondBr(cond, trueBlock, falseBlock)
 
@@ -117,12 +121,14 @@ func (c *compiler) compile(instructions []parser.Node) {
 				trueBlock.NewBr(afterBlock)
 			}
 
-			c.contextBlock = falseBlock
-			c.compile(v.False)
+			if len(v.False) > 0 {
+				c.contextBlock = falseBlock
+				c.compile(v.False)
 
-			// Jump to after-block if no terminator has been set (such as a return statement)
-			if falseBlock.Term == nil {
-				falseBlock.NewBr(afterBlock)
+				// Jump to after-block if no terminator has been set (such as a return statement)
+				if falseBlock.Term == nil {
+					falseBlock.NewBr(afterBlock)
+				}
 			}
 
 			c.contextBlock = afterBlock
