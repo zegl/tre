@@ -137,7 +137,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 		case parser.DefineFuncNode:
 			params := make([]*types.Param, len(v.Arguments))
 			for k, par := range v.Arguments {
-				params[k] = ir.NewParam(par.Name+"-parameter", typeStringToLLVM(par.Type))
+				params[k] = ir.NewParam(par.Name, typeStringToLLVM(par.Type))
 			}
 
 			funcRetType := types.Type(types.Void)
@@ -155,6 +155,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 			if len(v.ReturnValues) == 1 {
 				// Allocate variable to return, allocated in the entry block
 				c.contextFuncRetVal = entry.NewAlloca(funcRetType)
+				c.contextFuncRetVal.SetName("return-value")
 
 				// The return block contains only load + return instruction
 				c.contextFuncRetBlock = fn.NewBlock(getBlockName() + "-return")
@@ -169,13 +170,10 @@ func (c *compiler) compile(instructions []parser.Node) {
 			c.contextBlock = entry
 			c.contextBlockVariables = make(map[string]value.Value)
 
-			// Allocate all parameters
+			// Save all parameters in the block mapping
 			for i, param := range params {
 				paramName := v.Arguments[i].Name
-				paramPtr := entry.NewAlloca(typeStringToLLVM(v.Arguments[i].Type))
-				paramPtr.SetName(paramName)
-				entry.NewStore(param, paramPtr)
-				c.contextBlockVariables[paramName] = paramPtr
+				c.contextBlockVariables[paramName] = param
 			}
 
 			c.compile(v.Body)
