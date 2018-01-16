@@ -79,36 +79,29 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 		switch v := i.(type) {
 		case parser.ConditionNode:
-			xVal := c.compileValue(v.Cond.Left)
-			yVal := c.compileValue(v.Cond.Right)
+			leftVal := c.compileValue(v.Cond.Left)
+			rightVal := c.compileValue(v.Cond.Right)
 
-			var xPtr *ir.InstAlloca
-			var yPtr *ir.InstAlloca
+			for _, val := range []*value.Value{&leftVal, &rightVal} {
+				if !loadNeeded(*val) {
+					continue
+				}
 
-			if t, valIsPtr := xVal.Type().(*types.PointerType); valIsPtr {
-				xPtr = block.NewAlloca(t.Elem)
-			 } else {
-				xPtr = block.NewAlloca(xVal.Type())
+				// Allocate new variable
+				// TODO: Is this step needed?
+				var newVal *ir.InstAlloca
+
+				if t, valIsPtr := (*val).Type().(*types.PointerType); valIsPtr {
+					newVal = block.NewAlloca(t.Elem)
+				} else {
+					newVal = block.NewAlloca((*val).Type())
+				}
+
+				block.NewStore(block.NewLoad(*val), newVal)
+				*val = block.NewLoad(newVal)
 			}
 
-			if t, valIsPtr := yVal.Type().(*types.PointerType); valIsPtr {
-				yPtr = block.NewAlloca(t.Elem)
-			} else {
-				yPtr = block.NewAlloca(yVal.Type())
-			}
-
-			if loadNeeded(xVal) {
-				xVal = block.NewLoad(xVal)
-			}
-
-			if loadNeeded(yVal) {
-				yVal = block.NewLoad(yVal)
-			}
-
-			block.NewStore(xVal, xPtr)
-			block.NewStore(yVal, yPtr)
-
-			cond := block.NewICmp(getConditionLLVMpred(v.Cond.Operator), block.NewLoad(xPtr), block.NewLoad(yPtr))
+			cond := block.NewICmp(getConditionLLVMpred(v.Cond.Operator), leftVal, rightVal)
 
 			afterBlock := function.NewBlock(getBlockName() + "-after")
 			trueBlock := function.NewBlock(getBlockName() + "-true")
