@@ -434,12 +434,21 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 	case parser.StructLoadElementNode:
 		src := c.compileValue(v.Struct)
 
-		ptrType, ok := src.Type().(*types.PointerType)
-		if !ok {
-			panic("StructLoadElementNode: src is not of PointerType")
+		typeName := src.Type().String()
+
+		if ptrType, ok := src.Type().(*types.PointerType); ok {
+			// Get type behind pointer
+			typeName = ptrType.Elem.String()
+		} else {
+			// GetElementPtr only works on pointer types, and we don't have a pointer to our object. Allocate it and
+			// use the pointer instead
+			dst := block.NewAlloca(src.Type())
+			block.NewStore(src, dst)
+			src = dst
 		}
 
-		typeName := ptrType.Elem.String()[1:]
+		// Remove % from the name
+		typeName = typeName[1:]
 
 		indexMapping, ok := typeMapElementNameIndex[typeName]
 		if !ok {
