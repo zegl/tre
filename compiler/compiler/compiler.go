@@ -80,12 +80,33 @@ func (c *compiler) compile(instructions []parser.Node) {
 		switch v := i.(type) {
 		case parser.ConditionNode:
 			xVal := c.compileValue(v.Cond.Left)
-			xPtr := block.NewAlloca(ptrTypeType(xVal))
-			block.NewStore(block.NewLoad(xVal), xPtr)
-
 			yVal := c.compileValue(v.Cond.Right)
-			yPtr := block.NewAlloca(ptrTypeType(yVal))
-			block.NewStore(block.NewLoad(yVal), yPtr)
+
+			var xPtr *ir.InstAlloca
+			var yPtr *ir.InstAlloca
+
+			if t, valIsPtr := xVal.Type().(*types.PointerType); valIsPtr {
+				xPtr = block.NewAlloca(t.Elem)
+			 } else {
+				xPtr = block.NewAlloca(xVal.Type())
+			}
+
+			if t, valIsPtr := yVal.Type().(*types.PointerType); valIsPtr {
+				yPtr = block.NewAlloca(t.Elem)
+			} else {
+				yPtr = block.NewAlloca(yVal.Type())
+			}
+
+			if loadNeeded(xVal) {
+				xVal = block.NewLoad(xVal)
+			}
+
+			if loadNeeded(yVal) {
+				yVal = block.NewLoad(yVal)
+			}
+
+			block.NewStore(xVal, xPtr)
+			block.NewStore(yVal, yPtr)
 
 			cond := block.NewICmp(getConditionLLVMpred(v.Cond.Operator), block.NewLoad(xPtr), block.NewLoad(yPtr))
 
@@ -168,7 +189,13 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 		case parser.ReturnNode:
 			// Set value and jump to return block
-			block.NewStore(block.NewLoad(c.compileValue(v.Val)), c.contextFuncRetVal)
+			val := c.compileValue(v.Val)
+
+			if loadNeeded(val) {
+				val = block.NewLoad(val)
+			}
+
+			block.NewStore(val, c.contextFuncRetVal)
 			block.NewBr(c.contextFuncRetBlock)
 			break
 
@@ -188,10 +215,14 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 			// Allocate from value
 			val := c.compileValue(v.Val)
-			allocVal := block.NewLoad(val)
-			alloc := block.NewAlloca(allocVal.Type())
+
+			if loadNeeded(val) {
+				val = block.NewLoad(val)
+			}
+
+			alloc := block.NewAlloca(val.Type())
 			alloc.SetName(v.Name)
-			block.NewStore(allocVal, alloc)
+			block.NewStore(val, alloc)
 			c.contextBlockVariables[v.Name] = alloc
 
 			break
@@ -218,8 +249,13 @@ func (c *compiler) compile(instructions []parser.Node) {
 			}
 
 			// Allocate from value
-			allocVal := block.NewLoad(c.compileValue(v.Val))
-			block.NewStore(allocVal, dst)
+			val := c.compileValue(v.Val)
+
+			if loadNeeded(val) {
+				val = block.NewLoad(val)
+			}
+
+			block.NewStore(val, dst)
 			break
 
 		case parser.DefineTypeNode:
@@ -281,10 +317,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 	case parser.ConstantNode:
 		switch v.Type {
 		case parser.NUMBER:
-			dst := block.NewAlloca(i64)
-			num := constant.NewInt(v.Value, i64)
-			block.NewStore(num, dst)
-			return dst
+			return constant.NewInt(v.Value, i64)
 			break
 
 		case parser.STRING:
@@ -299,8 +332,13 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		left := c.compileValue(v.Left)
 		right := c.compileValue(v.Right)
 
-		left = block.NewLoad(left)
-		right = block.NewLoad(right)
+		if loadNeeded(left) {
+			left = block.NewLoad(left)
+		}
+
+		if loadNeeded(right) {
+			right = block.NewLoad(right)
+		}
 
 		res := block.NewAlloca(i64)
 
@@ -360,16 +398,29 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 	case parser.TypeCastNode:
 		val := c.compileValue(v.Val)
 
-		currentType := ptrTypeType(val)
+		var current *types.IntType
+		var ok bool
 
-		current, ok := currentType.(*types.IntType)
-		if !ok {
-			panic("TypeCast origin must be int type")
+		if loadNeeded(val) {
+			currentType := ptrTypeType(val)
+			current, ok = currentType.(*types.IntType)
+			if !ok {
+				panic("TypeCast origin must be int type")
+			}
+		} else {
+			current, ok = val.Type().(*types.IntType)
+			if !ok {
+				panic("TypeCast origin must be int type")
+			}
 		}
 
 		target, ok := typeStringToLLVM(v.Type).(*types.IntType)
 		if !ok {
 			panic("TypeCast target must be int type")
+		}
+
+		if loadNeeded(val) {
+			val = block.NewLoad(val)
 		}
 
 		// Same size, nothing to do here
@@ -379,12 +430,15 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 		res := block.NewAlloca(target)
 
+		var changedSize value.Value
+
 		if current.Size < target.Size {
-			block.NewStore(block.NewSExt(block.NewLoad(val), target), res)
+			changedSize = block.NewSExt(val, target)
 		} else {
-			block.NewStore(block.NewTrunc(block.NewLoad(val), target), res)
+			changedSize = block.NewTrunc(val, target)
 		}
 
+		block.NewStore(changedSize, res)
 		return res
 		break
 
@@ -412,4 +466,12 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%+v", node))
+}
+
+func loadNeeded(val value.Value) bool {
+	t := val.Type()
+	if _, ok := t.(*types.PointerType); ok {
+		return true
+	}
+	return false
 }
