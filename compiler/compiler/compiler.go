@@ -386,12 +386,8 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 		fn := c.funcByName(v.Function)
 
-		// Create variable to save result in
-		retVal := block.NewAlloca(fn.Sig.Ret)
-
-		// Call function and store results
-		block.NewStore(block.NewCall(fn, args...), retVal)
-		return retVal
+		// Call function and return the result
+		return block.NewCall(fn, args...)
 		break
 
 	case parser.TypeCastNode:
