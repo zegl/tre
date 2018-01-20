@@ -63,6 +63,11 @@ func (c *compiler) addGlobal() {
 	// printf := internal.Printf(typeConvertMap["string"], c.externalFuncs["printf"])
 	// c.module.AppendFunction(printf)
 	c.globalFuncs["printf"] = c.externalFuncs["printf"]
+
+	// String function
+	strLen := internal.StringLen(typeConvertMap["string"])
+	c.module.AppendFunction(strLen)
+	c.globalFuncs["len_string"] = strLen
 }
 
 func ptrTypeType(val value.Value) types.Type {
@@ -362,6 +367,17 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 	case parser.CallNode:
 		var args []value.Value
+
+		// len() functions
+		if v.Function == "len" {
+			arg := c.compileValue(v.Arguments[0])
+			if arg.Type().String() == "%string*" || arg.Type().String() == "%string" {
+				if arg.Type().String() == "%string*" {
+					arg = block.NewLoad(arg)
+				}
+				return block.NewCall(c.funcByName("len_string"), arg)
+			}
+		}
 
 		_, isExternal := c.externalFuncs[v.Function]
 
