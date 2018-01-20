@@ -3,6 +3,7 @@ package compiler
 import (
 	"fmt"
 
+	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/parser"
 
 	"github.com/llir/llvm/ir"
@@ -57,9 +58,10 @@ func (c *compiler) addExternal() {
 }
 
 func (c *compiler) addGlobal() {
-	// TODO: Add builtin methods here.
+	typeConvertMap["string"] = c.module.NewType("string", internal.String())
 
-	// Expose printf
+	// printf := internal.Printf(typeConvertMap["string"], c.externalFuncs["printf"])
+	// c.module.AppendFunction(printf)
 	c.globalFuncs["printf"] = c.externalFuncs["printf"]
 }
 
@@ -309,9 +311,19 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			break
 
 		case parser.STRING:
-			res := c.module.NewGlobalDef(getNextStringName(), constantString(v.ValueStr))
-			res.IsConst = true
-			return stringToi8Ptr(block, res)
+			constString := c.module.NewGlobalDef(getNextStringName(), constantString(v.ValueStr))
+			constString.IsConst = true
+
+			alloc := block.NewAlloca(typeConvertMap["string"])
+
+			// Save length of the string
+			lenItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
+			block.NewStore(constant.NewInt(int64(len(v.ValueStr)), i32), lenItem)
+
+			// Save i8* version of string
+			strItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
+			block.NewStore(stringToi8Ptr(block, constString), strItem)
+			return block.NewLoad(alloc)
 			break
 		}
 		break
@@ -351,20 +363,27 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 	case parser.CallNode:
 		var args []value.Value
 
+		_, isExternal := c.externalFuncs[v.Function]
+
 		for _, vv := range v.Arguments {
 			val := c.compileValue(vv)
-			_, valIsPtr := val.Type().(*types.PointerType)
 
-			if val.Type().Equal(types.NewPointer(types.I8)) {
-				// Strings
-				args = append(args, val)
-			} else if valIsPtr {
-				// Dereference value
-				args = append(args, block.NewLoad(val))
-			} else {
-				// Use as is
-				args = append(args, val)
+			// Convert %string* to i8* when calling external functions
+			if isExternal {
+				if val.Type().String() == "%string*" {
+					val = block.NewLoad(val)
+				}
+				if val.Type().String() == "%string" {
+					args = append(args, block.NewExtractValue(val, []int64{1}))
+					continue
+				}
 			}
+
+			if loadNeeded(val) {
+				val = block.NewLoad(val)
+			}
+
+			args = append(args, val)
 		}
 
 		fn := c.funcByName(v.Function)
