@@ -55,6 +55,16 @@ func (c *compiler) addExternal() {
 	printfFunc := c.module.NewFunction("printf", i32, ir.NewParam("", types.NewPointer(i8)))
 	printfFunc.Sig.Variadic = true
 	c.externalFuncs["printf"] = printfFunc
+
+	c.externalFuncs["strcat"] = c.module.NewFunction("strcat",
+		types.NewPointer(i8),
+		ir.NewParam("", types.NewPointer(i8)),
+		ir.NewParam("", types.NewPointer(i8)))
+
+	c.externalFuncs["strcpy"] = c.module.NewFunction("strcpy",
+		types.NewPointer(i8),
+		ir.NewParam("", types.NewPointer(i8)),
+		ir.NewParam("", types.NewPointer(i8)))
 }
 
 func (c *compiler) addGlobal() {
@@ -343,6 +353,41 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 		if loadNeeded(right) {
 			right = block.NewLoad(right)
+		}
+
+		if !left.Type().Equal(right.Type()) {
+			panic(fmt.Sprintf("Different types in operation: %T and %T", left, right))
+		}
+
+		switch left.Type().GetName() {
+		case "string":
+			if v.Operator == parser.OP_ADD {
+				leftLen := block.NewExtractValue(left, []int64{0})
+				rightLen := block.NewExtractValue(right, []int64{0})
+				sumLen := block.NewAdd(leftLen, rightLen)
+
+				backingArray := block.NewAlloca(i8)
+				backingArray.NElems = sumLen
+
+				// Copy left to new backing array
+				block.NewCall(c.externalFuncs["strcpy"], backingArray, block.NewExtractValue(left, []int64{1}))
+
+				// Append right to backing array
+				block.NewCall(c.externalFuncs["strcat"], backingArray, block.NewExtractValue(right, []int64{1}))
+
+				alloc := block.NewAlloca(typeConvertMap["string"])
+
+				// Save length of the string
+				lenItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
+				block.NewStore(sumLen, lenItem)
+
+				// Save i8* version of string
+				strItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
+				block.NewStore(backingArray, strItem)
+				return block.NewLoad(alloc)
+			}
+
+			panic("string does not implement operation " + v.Operator)
 		}
 
 		switch v.Operator {
