@@ -1,12 +1,19 @@
-// baryboy
+// a
+// 1
+// bb
+// 2
+// ccc
+// 3
 
 func myfunc(yolo string) i64 {
     printf("%s\n", yolo)
+    printf("%d\n", len(yolo))
     return 0
 }
 
 func main() i64 {
-    foo := "baryboy"
-    myfunc(foo)
+    myfunc("a")
+    myfunc("bb")
+    myfunc("ccc")
     return 0
 }
