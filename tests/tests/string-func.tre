@@ -1,0 +1,12 @@
+// baryboy
+
+func myfunc(yolo string) i64 {
+    printf("%s\n", yolo)
+    return 0
+}
+
+func main() i64 {
+    foo := "baryboy"
+    myfunc(foo)
+    return 0
+}
