@@ -203,3 +203,13 @@ type StructLoadElementNode struct {
 func (slen StructLoadElementNode) String() string {
 	return fmt.Sprintf("load %+v . %+v", slen.Struct, slen.ElementName)
 }
+
+type SliceArrayNode struct {
+	Val   Node
+	Start Node
+	End   Node
+}
+
+func (san SliceArrayNode) String() string {
+	return fmt.Sprintf("%+v[%d:%d]", san.Val, san.Start, san.End)
+}
