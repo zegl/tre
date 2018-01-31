@@ -36,6 +36,8 @@ var operations = map[string]struct{}{
 	":":  {}, // is not really a operation. Is only defined here so that := can be found.
 	":=": {},
 	".":  {},
+	"[":  {},
+	"]":  {},
 }
 
 var separators = map[string]struct{}{
