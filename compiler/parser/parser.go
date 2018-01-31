@@ -266,19 +266,47 @@ func (p *parser) aheadParse(input Node) Node {
 			panic(fmt.Sprintf("%s can only be used after a name. Got: %+v", next.Val, input))
 		}
 
-		p.i += 2
-		res := OperatorNode{
-			Operator: opsCharToOp[next.Val],
-			Left:     input,
-			Right:    p.parseOne(),
+		// Array slicing
+		if next.Val == "[" {
+			p.i += 2
+
+			res := SliceArrayNode{
+				Val:   input,
+				Start: p.parseOne(),
+			}
+
+			checkIfColon := p.lookAhead(1)
+			if checkIfColon.Type == lexer.OPERATOR && checkIfColon.Val == ":" {
+				p.i += 2
+				res.End = p.parseOne()
+				p.i++
+			}
+
+			expectEndBracket := p.lookAhead(0)
+			if expectEndBracket.Type == lexer.OPERATOR && expectEndBracket.Val == "]" {
+				return res
+			}
+
+			panic(fmt.Sprintf("Unexpected %+v, expected ]", expectEndBracket))
 		}
 
-		// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
-		if right, ok := res.Right.(OperatorNode); ok {
-			return sortInfix(res, right)
+		if _, ok := opsCharToOp[next.Val]; ok {
+			p.i += 2
+			res := OperatorNode{
+				Operator: opsCharToOp[next.Val],
+				Left:     input,
+				Right:    p.parseOne(),
+			}
+
+			// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
+			if right, ok := res.Right.(OperatorNode); ok {
+				return sortInfix(res, right)
+			}
+
+			return res
 		}
 
-		return res
+		log.Printf("parse ahead do nothing on: %+v", next)
 	}
 
 	return input
