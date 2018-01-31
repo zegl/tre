@@ -65,6 +65,19 @@ func (c *compiler) addExternal() {
 		types.NewPointer(i8),
 		ir.NewParam("", types.NewPointer(i8)),
 		ir.NewParam("", types.NewPointer(i8)))
+
+	c.externalFuncs["strncpy"] = c.module.NewFunction("strncpy",
+		types.NewPointer(i8),
+		ir.NewParam("", types.NewPointer(i8)),
+		ir.NewParam("", types.NewPointer(i8)),
+		ir.NewParam("", i64),
+	)
+
+	c.externalFuncs["strndup"] = c.module.NewFunction("strndup",
+		types.NewPointer(i8),
+		ir.NewParam("", types.NewPointer(i8)),
+		ir.NewParam("", i64),
+	)
 }
 
 func (c *compiler) addGlobal() {
@@ -530,9 +543,36 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		}
 
 		return block.NewGetElementPtr(src, constant.NewInt(0, i32), constant.NewInt(int64(elementIndex), i32))
+
+	case parser.SliceArrayNode:
+		src := c.compileValue(v.Val)
+
+		// Get backing array from string type
+		if src.Type().String() == "%string*" {
+			src = block.NewLoad(src)
+		}
+		if src.Type().String() == "%string" {
+			src = block.NewExtractValue(src, []int64{1})
+		}
+
+		// startAt := c.compileValue(v.Start)
+
+		dst := block.NewCall(c.externalFuncs["strndup"], src, constant.NewInt(3, i64))
+
+		// Convert *i8 to %string
+		alloc := block.NewAlloca(typeConvertMap["string"])
+
+		// Save length of the string
+		lenItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
+		block.NewStore(constant.NewInt(100, i32), lenItem) // TODO
+
+		// Save i8* version of string
+		strItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
+		block.NewStore(dst, strItem)
+		return block.NewLoad(alloc)
 	}
 
-	panic("compileValue fail: " + fmt.Sprintf("%+v", node))
+	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))
 }
 
 func loadNeeded(val value.Value) bool {
