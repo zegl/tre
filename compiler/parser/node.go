@@ -205,9 +205,10 @@ func (slen StructLoadElementNode) String() string {
 }
 
 type SliceArrayNode struct {
-	Val   Node
-	Start Node
-	End   Node
+	Val    Node
+	Start  Node
+	HasEnd bool
+	End    Node
 }
 
 func (san SliceArrayNode) String() string {
