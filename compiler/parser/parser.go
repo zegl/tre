@@ -5,8 +5,9 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/zegl/tre/compiler/lexer"
 	"errors"
+
+	"github.com/zegl/tre/compiler/lexer"
 )
 
 type parser struct {
@@ -278,6 +279,7 @@ func (p *parser) aheadParse(input Node) Node {
 			checkIfColon := p.lookAhead(1)
 			if checkIfColon.Type == lexer.OPERATOR && checkIfColon.Val == ":" {
 				p.i += 2
+				res.HasEnd = true
 				res.End = p.parseOne()
 				p.i++
 			}
