@@ -1,0 +1,14 @@
+func main() i64 {
+    mystr := "hello"
+
+    // h
+    printf("%s\n", mystr[0])
+
+    // o
+    printf("%s\n", mystr[4])
+
+    // runtime panic: Substring start larger than len
+    printf("%s\n", mystr[5])
+
+    return 0
+}
