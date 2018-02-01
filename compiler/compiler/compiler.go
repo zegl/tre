@@ -555,9 +555,16 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			src = block.NewExtractValue(src, []int64{1})
 		}
 
-		// startAt := c.compileValue(v.Start)
+		offset := block.NewGetElementPtr(src, c.compileValue(v.Start))
 
-		dst := block.NewCall(c.externalFuncs["strndup"], src, constant.NewInt(3, i64))
+		var length value.Value
+		if v.HasEnd {
+			length = c.compileValue(v.End)
+		} else {
+			length = constant.NewInt(1, i64)
+		}
+
+		dst := block.NewCall(c.externalFuncs["strndup"], offset, length)
 
 		// Convert *i8 to %string
 		alloc := block.NewAlloca(typeConvertMap["string"])
