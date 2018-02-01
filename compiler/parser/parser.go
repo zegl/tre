@@ -281,8 +281,9 @@ func (p *parser) aheadParse(input Node) Node {
 				p.i += 2
 				res.HasEnd = true
 				res.End = p.parseOne()
-				p.i++
 			}
+
+			p.i++
 
 			expectEndBracket := p.lookAhead(0)
 			if expectEndBracket.Type == lexer.OPERATOR && expectEndBracket.Val == "]" {

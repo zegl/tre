@@ -78,6 +78,11 @@ func (c *compiler) addExternal() {
 		ir.NewParam("", types.NewPointer(i8)),
 		ir.NewParam("", i64),
 	)
+
+	c.externalFuncs["exit"] = c.module.NewFunction("exit",
+		types.Void,
+		ir.NewParam("", i32),
+	)
 }
 
 func (c *compiler) addGlobal() {
@@ -328,8 +333,6 @@ func (c *compiler) varByName(name string) value.Value {
 }
 
 func (c *compiler) compileValue(node parser.Node) value.Value {
-	block := c.contextBlock
-
 	switch v := node.(type) {
 
 	case parser.ConstantNode:
@@ -342,16 +345,16 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			constString := c.module.NewGlobalDef(getNextStringName(), constantString(v.ValueStr))
 			constString.IsConst = true
 
-			alloc := block.NewAlloca(typeConvertMap["string"])
+			alloc := c.contextBlock.NewAlloca(typeConvertMap["string"])
 
 			// Save length of the string
-			lenItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
-			block.NewStore(constant.NewInt(int64(len(v.ValueStr)), i32), lenItem)
+			lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
+			c.contextBlock.NewStore(constant.NewInt(int64(len(v.ValueStr)), i64), lenItem)
 
 			// Save i8* version of string
-			strItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
-			block.NewStore(stringToi8Ptr(block, constString), strItem)
-			return block.NewLoad(alloc)
+			strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
+			c.contextBlock.NewStore(stringToi8Ptr(c.contextBlock, constString), strItem)
+			return c.contextBlock.NewLoad(alloc)
 			break
 		}
 		break
@@ -361,11 +364,11 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		right := c.compileValue(v.Right)
 
 		if loadNeeded(left) {
-			left = block.NewLoad(left)
+			left = c.contextBlock.NewLoad(left)
 		}
 
 		if loadNeeded(right) {
-			right = block.NewLoad(right)
+			right = c.contextBlock.NewLoad(right)
 		}
 
 		if !left.Type().Equal(right.Type()) {
@@ -375,29 +378,29 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		switch left.Type().GetName() {
 		case "string":
 			if v.Operator == parser.OP_ADD {
-				leftLen := block.NewExtractValue(left, []int64{0})
-				rightLen := block.NewExtractValue(right, []int64{0})
-				sumLen := block.NewAdd(leftLen, rightLen)
+				leftLen := c.contextBlock.NewExtractValue(left, []int64{0})
+				rightLen := c.contextBlock.NewExtractValue(right, []int64{0})
+				sumLen := c.contextBlock.NewAdd(leftLen, rightLen)
 
-				backingArray := block.NewAlloca(i8)
+				backingArray := c.contextBlock.NewAlloca(i8)
 				backingArray.NElems = sumLen
 
 				// Copy left to new backing array
-				block.NewCall(c.externalFuncs["strcpy"], backingArray, block.NewExtractValue(left, []int64{1}))
+				c.contextBlock.NewCall(c.externalFuncs["strcpy"], backingArray, c.contextBlock.NewExtractValue(left, []int64{1}))
 
 				// Append right to backing array
-				block.NewCall(c.externalFuncs["strcat"], backingArray, block.NewExtractValue(right, []int64{1}))
+				c.contextBlock.NewCall(c.externalFuncs["strcat"], backingArray, c.contextBlock.NewExtractValue(right, []int64{1}))
 
-				alloc := block.NewAlloca(typeConvertMap["string"])
+				alloc := c.contextBlock.NewAlloca(typeConvertMap["string"])
 
 				// Save length of the string
-				lenItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
-				block.NewStore(sumLen, lenItem)
+				lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
+				c.contextBlock.NewStore(sumLen, lenItem)
 
 				// Save i8* version of string
-				strItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
-				block.NewStore(backingArray, strItem)
-				return block.NewLoad(alloc)
+				strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
+				c.contextBlock.NewStore(backingArray, strItem)
+				return c.contextBlock.NewLoad(alloc)
 			}
 
 			panic("string does not implement operation " + v.Operator)
@@ -405,16 +408,16 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 		switch v.Operator {
 		case parser.OP_ADD:
-			return block.NewAdd(left, right)
+			return c.contextBlock.NewAdd(left, right)
 			break
 		case parser.OP_SUB:
-			return block.NewSub(left, right)
+			return c.contextBlock.NewSub(left, right)
 			break
 		case parser.OP_MUL:
-			return block.NewMul(left, right)
+			return c.contextBlock.NewMul(left, right)
 			break
 		case parser.OP_DIV:
-			return block.NewSDiv(left, right) // SDiv == Signed Division
+			return c.contextBlock.NewSDiv(left, right) // SDiv == Signed Division
 			break
 		}
 		break
@@ -431,9 +434,9 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			arg := c.compileValue(v.Arguments[0])
 			if arg.Type().String() == "%string*" || arg.Type().String() == "%string" {
 				if arg.Type().String() == "%string*" {
-					arg = block.NewLoad(arg)
+					arg = c.contextBlock.NewLoad(arg)
 				}
-				return block.NewCall(c.funcByName("len_string"), arg)
+				return c.contextBlock.NewCall(c.funcByName("len_string"), arg)
 			}
 		}
 
@@ -445,16 +448,16 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			// Convert %string* to i8* when calling external functions
 			if isExternal {
 				if val.Type().String() == "%string*" {
-					val = block.NewLoad(val)
+					val = c.contextBlock.NewLoad(val)
 				}
 				if val.Type().String() == "%string" {
-					args = append(args, block.NewExtractValue(val, []int64{1}))
+					args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
 					continue
 				}
 			}
 
 			if loadNeeded(val) {
-				val = block.NewLoad(val)
+				val = c.contextBlock.NewLoad(val)
 			}
 
 			args = append(args, val)
@@ -463,7 +466,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		fn := c.funcByName(v.Function)
 
 		// Call function and return the result
-		return block.NewCall(fn, args...)
+		return c.contextBlock.NewCall(fn, args...)
 		break
 
 	case parser.TypeCastNode:
@@ -491,7 +494,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		}
 
 		if loadNeeded(val) {
-			val = block.NewLoad(val)
+			val = c.contextBlock.NewLoad(val)
 		}
 
 		// Same size, nothing to do here
@@ -499,17 +502,17 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			return val
 		}
 
-		res := block.NewAlloca(target)
+		res := c.contextBlock.NewAlloca(target)
 
 		var changedSize value.Value
 
 		if current.Size < target.Size {
-			changedSize = block.NewSExt(val, target)
+			changedSize = c.contextBlock.NewSExt(val, target)
 		} else {
-			changedSize = block.NewTrunc(val, target)
+			changedSize = c.contextBlock.NewTrunc(val, target)
 		}
 
-		block.NewStore(changedSize, res)
+		c.contextBlock.NewStore(changedSize, res)
 		return res
 		break
 
@@ -524,8 +527,8 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		} else {
 			// GetElementPtr only works on pointer types, and we don't have a pointer to our object. Allocate it and
 			// use the pointer instead
-			dst := block.NewAlloca(src.Type())
-			block.NewStore(src, dst)
+			dst := c.contextBlock.NewAlloca(src.Type())
+			c.contextBlock.NewStore(src, dst)
 			src = dst
 		}
 
@@ -542,20 +545,37 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			panic(fmt.Sprintf("%s has no such element: %s", src.Type(), v.ElementName))
 		}
 
-		return block.NewGetElementPtr(src, constant.NewInt(0, i32), constant.NewInt(int64(elementIndex), i32))
+		return c.contextBlock.NewGetElementPtr(src, constant.NewInt(0, i32), constant.NewInt(int64(elementIndex), i32))
 
 	case parser.SliceArrayNode:
 		src := c.compileValue(v.Val)
 
+		var originalLength *ir.InstExtractValue
+
 		// Get backing array from string type
 		if src.Type().String() == "%string*" {
-			src = block.NewLoad(src)
+			src = c.contextBlock.NewLoad(src)
 		}
 		if src.Type().String() == "%string" {
-			src = block.NewExtractValue(src, []int64{1})
+			originalLength = c.contextBlock.NewExtractValue(src, []int64{0})
+			src = c.contextBlock.NewExtractValue(src, []int64{1})
 		}
 
-		offset := block.NewGetElementPtr(src, c.compileValue(v.Start))
+		start := c.compileValue(v.Start)
+
+		outsideOfLengthBr := c.contextBlock.Parent.NewBlock(getBlockName())
+		c.panic(outsideOfLengthBr, "Substring start larger than len")
+		outsideOfLengthBr.NewUnreachable()
+
+		safeBlock := c.contextBlock.Parent.NewBlock(getBlockName())
+
+		// Make sure that the offset is within the string length
+		cmp := c.contextBlock.NewICmp(ir.IntUGE, start, originalLength)
+		c.contextBlock.NewCondBr(cmp, outsideOfLengthBr, safeBlock)
+
+		c.contextBlock = safeBlock
+
+		offset := safeBlock.NewGetElementPtr(src, start)
 
 		var length value.Value
 		if v.HasEnd {
@@ -564,19 +584,19 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			length = constant.NewInt(1, i64)
 		}
 
-		dst := block.NewCall(c.externalFuncs["strndup"], offset, length)
+		dst := safeBlock.NewCall(c.externalFuncs["strndup"], offset, length)
 
 		// Convert *i8 to %string
-		alloc := block.NewAlloca(typeConvertMap["string"])
+		alloc := safeBlock.NewAlloca(typeConvertMap["string"])
 
 		// Save length of the string
-		lenItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
-		block.NewStore(constant.NewInt(100, i32), lenItem) // TODO
+		lenItem := safeBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
+		safeBlock.NewStore(constant.NewInt(100, i64), lenItem) // TODO
 
 		// Save i8* version of string
-		strItem := block.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
-		block.NewStore(dst, strItem)
-		return block.NewLoad(alloc)
+		strItem := safeBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
+		safeBlock.NewStore(dst, strItem)
+		return safeBlock.NewLoad(alloc)
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))
@@ -588,4 +608,11 @@ func loadNeeded(val value.Value) bool {
 		return true
 	}
 	return false
+}
+
+func (c *compiler) panic(block *ir.BasicBlock, message string) {
+	globMsg := c.module.NewGlobalDef(getNextStringName(), constantString("runtime panic: "+message+"\n"))
+	globMsg.IsConst = true
+	block.NewCall(c.externalFuncs["printf"], stringToi8Ptr(block, globMsg))
+	block.NewCall(c.externalFuncs["exit"], constant.NewInt(1, i32))
 }
