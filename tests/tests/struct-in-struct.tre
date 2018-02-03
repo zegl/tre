@@ -9,9 +9,11 @@ type Bookshelf struct {
     book1 Book
 }
 
-func main() i64 {
+func main() {
     var shelf Bookshelf
-    shelf.book0 = new Book
+    var b0 Book
+
+    shelf.book0 = b0
     shelf.book0.book_id = 1000
 
     shelf.book1.book_id = 2000
@@ -21,6 +23,4 @@ func main() i64 {
 
     // 2000
     printf("%d\n", shelf.book1.book_id)
-
-    return 0
 }
