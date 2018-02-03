@@ -308,6 +308,10 @@ func (c *compiler) compile(instructions []parser.Node) {
 			panic("unable to define node Type")
 			break
 
+		case parser.DeclarePackageNode:
+			// TODO: Make use of it
+			break
+
 		default:
 			c.compileValue(v)
 			break

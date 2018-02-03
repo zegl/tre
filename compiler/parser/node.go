@@ -214,3 +214,7 @@ type SliceArrayNode struct {
 func (san SliceArrayNode) String() string {
 	return fmt.Sprintf("%+v[%d:%d]", san.Val, san.Start, san.End)
 }
+
+type DeclarePackageNode struct {
+	PackageName string
+}
