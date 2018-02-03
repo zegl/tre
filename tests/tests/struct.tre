@@ -1,3 +1,5 @@
+package main
+
 type Book struct {
     book_id1 i64
     book_id2 i64
@@ -26,8 +28,8 @@ func bookInfo(book Book) Book {
     return book
 }
 
-func main() i64 {
-    bookiboy := new Book
+func main() {
+    var bookiboy Book
     bookiboy.book_id1 = 1111
     bookiboy.book_id2 = 2222
 
@@ -40,6 +42,4 @@ func main() i64 {
 
     printf("res id1: %d\n", res.book_id1)
     printf("res id2: %d\n", res.book_id2)
-
-    return 0
 }

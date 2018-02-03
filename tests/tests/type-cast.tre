@@ -1,15 +1,16 @@
-func otherfunc(num i32) i32 {
-    if num > i32(50) {
-        return i32(500)
+package main
+
+func otherfunc(num int32) int32 {
+    if num > int32(50) {
+        return int32(500)
     }
 
-    return i32(num)
+    return int32(num)
 }
 
-func main() i64 {
+func main() {
     // 20
-    printf("%d\n", otherfunc(i32(20)))
+    printf("%d\n", otherfunc(int32(20)))
     // 500
-    printf("%d\n", otherfunc(i32(100)))
-    return 0
+    printf("%d\n", otherfunc(int32(100)))
 }

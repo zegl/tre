@@ -1,4 +1,6 @@
-func main() i64 {
+package main
+
+func main() {
     mystr := "hello"
 
     // hel
@@ -11,6 +13,4 @@ func main() i64 {
     printf("%s\n", mystr[3:3])
     // o
     printf("%s\n", mystr[4:3])
-
-    return 0
 }

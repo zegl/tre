@@ -1,4 +1,6 @@
-func fib(num i64) i64 {
+package main
+
+func fib(num int) int {
     if num < 2 {
         return num
     }
@@ -6,8 +8,7 @@ func fib(num i64) i64 {
     return fib(num-2) + fib(num-1)
 }
 
-func main() i64 {
+func main() {
     // fib = 5702887
     printf("fib = %d\n", fib(34))
-    return 0
 }
