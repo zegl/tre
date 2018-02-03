@@ -186,6 +186,14 @@ func (c *compiler) compile(instructions []parser.Node) {
 				funcRetType = typeStringToLLVM(v.ReturnValues[0].Type)
 			}
 
+			// TODO: Only do this in the main package
+			if v.Name == "main" {
+				if len(v.ReturnValues) != 0 {
+					panic("main func can not have a return type")
+				}
+				funcRetType = typeStringToLLVM("int32")
+			}
+
 			// Create a new function, and add it to the list of global functions
 			fn := c.module.NewFunction(v.Name, funcRetType, params...)
 			c.globalFuncs[v.Name] = fn
@@ -215,8 +223,14 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 			// Return void if there is no return type explicitly set
 			if len(v.ReturnValues) == 0 {
-				entry.NewRet(nil)
+				c.contextBlock.NewRet(nil)
 			}
+
+			// Return 0 by default in main func
+			if v.Name == "main" {
+				c.contextBlock.NewRet(constant.NewInt(0, typeStringToLLVM("int32")))
+			}
+
 			break
 
 		case parser.ReturnNode:
