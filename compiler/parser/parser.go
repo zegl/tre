@@ -205,7 +205,14 @@ func (p *parser) parseOne() Node {
 		}
 
 		// New instance of type
-		if current.Val == "new" {
+		if current.Val == "var" {
+			p.i++
+
+			name := p.lookAhead(0)
+			if name.Type != lexer.IDENTIFIER {
+				panic("expected IDENTIFIER after var")
+			}
+
 			p.i++
 
 			tp, err := p.parseOneType()
@@ -213,7 +220,10 @@ func (p *parser) parseOne() Node {
 				panic(err)
 			}
 
-			return tp
+			return AllocNode{
+				Name: name.Val,
+				Val:  tp,
+			}
 		}
 
 		if current.Val == "package" {
