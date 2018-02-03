@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/zegl/tre/compiler/compiler/internal"
+	"github.com/zegl/tre/compiler/compiler/strings"
 	"github.com/zegl/tre/compiler/parser"
 
 	"github.com/llir/llvm/ir"
@@ -91,6 +92,13 @@ func (c *compiler) addGlobal() {
 	// printf := internal.Printf(typeConvertMap["string"], c.externalFuncs["printf"])
 	// c.module.AppendFunction(printf)
 	c.globalFuncs["printf"] = c.externalFuncs["printf"]
+
+	c.globalFuncs["println"] = internal.Println(
+		typeConvertMap["string"],
+		c.externalFuncs["printf"],
+		c.module,
+	)
+	c.module.AppendFunction(c.globalFuncs["println"])
 
 	// String function
 	strLen := internal.StringLen(typeConvertMap["string"])
@@ -346,7 +354,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			break
 
 		case parser.STRING:
-			constString := c.module.NewGlobalDef(getNextStringName(), constantString(v.ValueStr))
+			constString := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant(v.ValueStr))
 			constString.IsConst = true
 
 			alloc := c.contextBlock.NewAlloca(typeConvertMap["string"])
@@ -357,7 +365,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 			// Save i8* version of string
 			strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
-			c.contextBlock.NewStore(stringToi8Ptr(c.contextBlock, constString), strItem)
+			c.contextBlock.NewStore(strings.Toi8Ptr(c.contextBlock, constString), strItem)
 			return c.contextBlock.NewLoad(alloc)
 			break
 		}
@@ -615,8 +623,8 @@ func loadNeeded(val value.Value) bool {
 }
 
 func (c *compiler) panic(block *ir.BasicBlock, message string) {
-	globMsg := c.module.NewGlobalDef(getNextStringName(), constantString("runtime panic: "+message+"\n"))
+	globMsg := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant("runtime panic: "+message+"\n"))
 	globMsg.IsConst = true
-	block.NewCall(c.externalFuncs["printf"], stringToi8Ptr(block, globMsg))
+	block.NewCall(c.externalFuncs["printf"], strings.Toi8Ptr(block, globMsg))
 	block.NewCall(c.externalFuncs["exit"], constant.NewInt(1, i32))
 }
