@@ -3,9 +3,10 @@ package compiler
 import "github.com/llir/llvm/ir/types"
 
 var typeConvertMap = map[string]types.Type{
-	"i8":  types.I8,
-	"i32": types.I32,
-	"i64": types.I64,
+	"int":   types.I64, // TODO: Size based on arch
+	"int8":  types.I8,
+	"int32": types.I32,
+	"int64": types.I64,
 }
 
 // Type Name : Element Name : Index

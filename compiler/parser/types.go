@@ -1,7 +1,8 @@
 package parser
 
 var types = map[string]struct{}{
-	"i8":  {},
-	"i32": {},
-	"i64": {},
+	"int":   {},
+	"int8":  {},
+	"int32": {},
+	"int64": {},
 }
