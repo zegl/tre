@@ -210,6 +210,20 @@ func (p *parser) parseOne() Node {
 
 			return tp
 		}
+
+		if current.Val == "package" {
+			packageName := p.lookAhead(1)
+
+			if packageName.Type != lexer.IDENTIFIER {
+				panic("package must be followed by a IDENTIFIER")
+			}
+
+			p.i += 2
+
+			return DeclarePackageNode{
+				PackageName: packageName.Val,
+			}
+		}
 	}
 
 	p.printInput()
