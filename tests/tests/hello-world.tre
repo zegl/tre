@@ -1,5 +1,6 @@
-func main() i64 {
+package main
+
+func main() {
     // hello world
-    printf("hello world\n")
-    return 0
+    println("hello world")
 }

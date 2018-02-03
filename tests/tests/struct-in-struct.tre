@@ -1,5 +1,7 @@
+package main
+
 type Book struct {
-    book_id i64
+    book_id int
 }
 
 type Bookshelf struct {
@@ -8,7 +10,7 @@ type Bookshelf struct {
 }
 
 func main() i64 {
-    shelf := new Bookshelf
+    var shelf Bookshelf
     shelf.book0 = new Book
     shelf.book0.book_id = 1000
 

@@ -1,10 +1,10 @@
-func otherfunc() i64 {
+package main
+
+func otherfunc() {
     // in other func
     printf("in other func\n")
-    return 0
 }
 
-func main() i64 {
+func main() {
     otherfunc()
-    return 0
 }

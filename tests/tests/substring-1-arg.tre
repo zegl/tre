@@ -1,4 +1,6 @@
-func main() i64 {
+package main
+
+func main() {
     mystr := "hello"
 
     // h
@@ -9,6 +11,4 @@ func main() i64 {
 
     // runtime panic: Substring start larger than len
     printf("%s\n", mystr[5])
-
-    return 0
 }

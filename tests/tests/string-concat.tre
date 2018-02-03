@@ -1,4 +1,6 @@
-func main() i64 {
+package main
+
+func main() {
     // 3 - foo
     foo := "foo"
     printf("%d - %s\n", len(foo), foo)
@@ -13,6 +15,4 @@ func main() i64 {
 
     // abbcccdddd
     printf("%s\n", "a" + "bb" + "ccc" + "dddd")
-
-    return 0
 }
