@@ -1,8 +1,8 @@
 package main
 
 type Book struct {
-    book_id1 i64
-    book_id2 i64
+    book_id1 int
+    book_id2 int
 }
 
 // main id1: 1111
