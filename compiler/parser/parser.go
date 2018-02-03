@@ -146,14 +146,19 @@ func (p *parser) parseOne() Node {
 
 			arguments := p.parseFunctionArguments()
 
-			retTypes := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
-			// convert return types
 			var retTypesNodeNames []NameNode
-			for _, r := range retTypes {
-				rr := r.(NameNode)
-				retTypesNodeNames = append(retTypesNodeNames, NameNode{
-					Type: rr.Name,
-				})
+
+			checkIfOpeningCurly := p.lookAhead(0)
+			if checkIfOpeningCurly.Type != lexer.SEPARATOR || checkIfOpeningCurly.Val != "{" {
+				retTypes := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
+
+				// convert return types
+				for _, r := range retTypes {
+					rr := r.(NameNode)
+					retTypesNodeNames = append(retTypesNodeNames, NameNode{
+						Type: rr.Name,
+					})
+				}
 			}
 
 			openBracket := p.lookAhead(0)
@@ -218,7 +223,7 @@ func (p *parser) parseOne() Node {
 				panic("package must be followed by a IDENTIFIER")
 			}
 
-			p.i += 2
+			p.i += 1
 
 			return DeclarePackageNode{
 				PackageName: packageName.Val,
