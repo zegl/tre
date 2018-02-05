@@ -46,6 +46,7 @@ var separators = map[string]struct{}{
 	"}": {},
 	"{": {},
 	",": {},
+	";": {},
 }
 
 func Lex(inputFullSource string) []Item {

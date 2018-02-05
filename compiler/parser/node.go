@@ -218,3 +218,10 @@ func (san SliceArrayNode) String() string {
 type DeclarePackageNode struct {
 	PackageName string
 }
+
+type ForNode struct {
+	BeforeLoop     Node
+	Condition      OperatorNode
+	AfterIteration Node
+	Block          []Node
+}
