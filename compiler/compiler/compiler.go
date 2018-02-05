@@ -25,6 +25,10 @@ type compiler struct {
 	contextFunc           *ir.Function
 	contextBlock          *ir.BasicBlock
 	contextBlockVariables map[string]value.Value
+
+	// What a break or continue should resolve to
+	contextLoopBreak    []*ir.BasicBlock
+	contextLoopContinue []*ir.BasicBlock
 }
 
 var (
@@ -38,6 +42,9 @@ func Compile(root parser.BlockNode) string {
 		module:        ir.NewModule(),
 		externalFuncs: make(map[string]*ir.Function),
 		globalFuncs:   make(map[string]*ir.Function),
+
+		contextLoopBreak:    make([]*ir.BasicBlock, 0),
+		contextLoopContinue: make([]*ir.BasicBlock, 0),
 	}
 
 	c.addExternal()
@@ -314,6 +321,14 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 		case parser.ForNode:
 			c.compileForNode(v)
+			break
+
+		case parser.BreakNode:
+			c.compileBreakNode(v)
+			break
+
+		case parser.ContinueNode:
+			c.compileContinueNode(v)
 			break
 
 		default:

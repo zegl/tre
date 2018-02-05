@@ -37,6 +37,11 @@ func (p *parser) parseOne() Node {
 	}
 
 	switch current.Type {
+
+	case lexer.EOF:
+		panic("unexpected EOF")
+		break
+
 	// IDENTIFIERS are converted to either:
 	// - a CallNode if followed by an opening parenthesis (a function call), or
 	// - a NodeName (variables)
@@ -243,6 +248,14 @@ func (p *parser) parseOne() Node {
 		if current.Val == "for" {
 			return p.parseFor()
 		}
+
+		if current.Val == "break" {
+			return BreakNode{}
+		}
+
+		if current.Val == "continue" {
+			return ContinueNode{}
+		}
 	}
 
 	p.printInput()
@@ -360,6 +373,10 @@ func (p *parser) parseUntil(until lexer.Item) []Node {
 	}
 
 	for {
+		if p.debug {
+			fmt.Printf("in parseUntil: %+v\n", until)
+		}
+
 		current := p.input[p.i]
 		if current.Type == until.Type && current.Val == until.Val {
 			if p.debug {

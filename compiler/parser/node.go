@@ -225,3 +225,15 @@ type ForNode struct {
 	AfterIteration Node
 	Block          []Node
 }
+
+type BreakNode struct{}
+
+func (n BreakNode) String() string {
+	return "break"
+}
+
+type ContinueNode struct{}
+
+func (n ContinueNode) String() string {
+	return "continue"
+}
