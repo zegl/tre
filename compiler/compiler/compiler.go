@@ -120,29 +120,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 		switch v := i.(type) {
 		case parser.ConditionNode:
-			leftVal := c.compileValue(v.Cond.Left)
-			rightVal := c.compileValue(v.Cond.Right)
-
-			for _, val := range []*value.Value{&leftVal, &rightVal} {
-				if !loadNeeded(*val) {
-					continue
-				}
-
-				// Allocate new variable
-				// TODO: Is this step needed?
-				var newVal *ir.InstAlloca
-
-				if t, valIsPtr := (*val).Type().(*types.PointerType); valIsPtr {
-					newVal = block.NewAlloca(t.Elem)
-				} else {
-					newVal = block.NewAlloca((*val).Type())
-				}
-
-				block.NewStore(block.NewLoad(*val), newVal)
-				*val = block.NewLoad(newVal)
-			}
-
-			cond := block.NewICmp(getConditionLLVMpred(v.Cond.Operator), leftVal, rightVal)
+			cond := c.compileCondition(v.Cond)
 
 			afterBlock := function.NewBlock(getBlockName() + "-after")
 			trueBlock := function.NewBlock(getBlockName() + "-true")
@@ -332,6 +310,10 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 		case parser.DeclarePackageNode:
 			// TODO: Make use of it
+			break
+
+		case parser.ForNode:
+			c.compileForNode(v)
 			break
 
 		default:

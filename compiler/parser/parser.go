@@ -239,6 +239,10 @@ func (p *parser) parseOne() Node {
 				PackageName: packageName.Val,
 			}
 		}
+
+		if current.Val == "for" {
+			return p.parseFor()
+		}
 	}
 
 	p.printInput()
@@ -462,4 +466,15 @@ func (p *parser) parseOneType() (TypeNode, error) {
 	}
 
 	return nil, errors.New("parseOneType failed: " + fmt.Sprintf("%+v", current))
+}
+
+// panics if check fails
+func (p *parser) expect(input lexer.Item, expected lexer.Item) {
+	if expected.Type != input.Type {
+		panic(fmt.Sprintf("Expected %+v got %+v", expected, input))
+	}
+
+	if expected.Val != "" && expected.Val != input.Val {
+		panic(fmt.Sprintf("Expected %+v got %+v", expected, input))
+	}
 }

@@ -8,4 +8,5 @@ var keywords = map[string]struct{}{
 	"struct":  {},
 	"var":     {},
 	"package": {},
+	"for":     {},
 }
