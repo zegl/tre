@@ -3,6 +3,7 @@ package compiler
 import (
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/strings"
@@ -51,8 +52,28 @@ func Compile(root parser.BlockNode) string {
 	c.addExternal()
 	c.addGlobal()
 
-	// TODO: Set automatically
-	c.module.TargetTriple = "x86_64-apple-macosx10.13.0"
+	// Triple examples:
+	// x86_64-apple-macosx10.13.0
+	// x86_64-pc-linux-gnu
+	var targetTriple [2]string
+
+	switch runtime.GOARCH {
+	case "amd64":
+		targetTriple[0] = "x86_64"
+	default:
+		panic("unsupported GOARCH: " + runtime.GOARCH)
+	}
+
+	switch runtime.GOOS {
+	case "darwin":
+		targetTriple[1] = "apple-macosx10.13.0"
+	case "linux":
+		targetTriple[1] = "pc-linux-gnu"
+	default:
+		panic("unsupported GOOS: " + runtime.GOOS)
+	}
+
+	c.module.TargetTriple = fmt.Sprintf("%s-%s", targetTriple[0], targetTriple[1])
 
 	c.compile(root.Instructions)
 
