@@ -226,6 +226,15 @@ func (slen StructLoadElementNode) String() string {
 	return fmt.Sprintf("load %+v . %+v", slen.Struct, slen.ElementName)
 }
 
+// LoadArrayElement loads a single element from an array
+// On the form arr[1]
+type LoadArrayElement struct {
+	baseNode
+
+	Array Node
+	Pos   Node
+}
+
 // SliceArrayNode slices an array or string
 // Can be on the forms arr[1], arr[1:], or arr[1:3]
 type SliceArrayNode struct {

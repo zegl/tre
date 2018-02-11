@@ -308,6 +308,13 @@ func (p *parser) aheadParse(input Node) Node {
 						Val:    p.parseOne(),
 					}
 				}
+
+				if arrayNode, ok := input.(LoadArrayElement); ok {
+					return AssignNode{
+						Target: arrayNode,
+						Val:    p.parseOne(),
+					}
+				}
 			}
 
 			panic(fmt.Sprintf("%s can only be used after a name. Got: %+v", next.Val, input))
@@ -317,23 +324,31 @@ func (p *parser) aheadParse(input Node) Node {
 		if next.Val == "[" {
 			p.i += 2
 
-			res := SliceArrayNode{
-				Val:   input,
-				Start: p.parseOne(),
-			}
+			index := p.parseOne()
+
+			var res Node
 
 			checkIfColon := p.lookAhead(1)
 			if checkIfColon.Type == lexer.OPERATOR && checkIfColon.Val == ":" {
 				p.i += 2
-				res.HasEnd = true
-				res.End = p.parseOne()
+				res = SliceArrayNode{
+					Val:    input,
+					Start:  index,
+					HasEnd: true,
+					End:    p.parseOne(),
+				}
+			} else {
+				res = LoadArrayElement{
+					Array: input,
+					Pos:   index,
+				}
 			}
 
 			p.i++
 
 			expectEndBracket := p.lookAhead(0)
 			if expectEndBracket.Type == lexer.OPERATOR && expectEndBracket.Val == "]" {
-				return res
+				return p.aheadParse(res)
 			}
 
 			panic(fmt.Sprintf("Unexpected %+v, expected ]", expectEndBracket))

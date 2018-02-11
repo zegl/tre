@@ -616,6 +616,13 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		strItem := safeBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
 		safeBlock.NewStore(dst, strItem)
 		return safeBlock.NewLoad(alloc)
+
+	case parser.LoadArrayElement:
+		return c.contextBlock.NewGetElementPtr(
+			c.compileValue(v.Array),
+			constant.NewInt(0, i32),
+			c.compileValue(v.Pos),
+		)
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))
