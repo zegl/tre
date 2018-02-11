@@ -5,11 +5,22 @@ import (
 	"strings"
 )
 
+// Node is the base node. A node consists of something that the compiler or language can do
 type Node interface {
+	Node()
 }
 
-// Function calls
+// baseNode implements the Node interface, to recuce code duplication
+type baseNode struct{}
+
+func (n baseNode) Node() {
+
+}
+
+// CallNode is a function call. Function is the name of the function to execute.
 type CallNode struct {
+	baseNode
+
 	Function  string
 	Arguments []Node
 }
@@ -18,8 +29,10 @@ func (cn CallNode) String() string {
 	return fmt.Sprintf("CallNode: %s(%+v)", cn.Function, cn.Arguments)
 }
 
-// A block, consists only of other instructions
+// BlockNode is a list of other nodes
 type BlockNode struct {
+	baseNode
+
 	Instructions []Node
 }
 
@@ -33,8 +46,10 @@ func (bn BlockNode) String() string {
 	return fmt.Sprintf("BlockNode: \n\t%s", strings.Join(res, "\n\t"))
 }
 
-// Math operations
+// OperatorNode is mathematical operations and comparisions
 type OperatorNode struct {
+	baseNode
+
 	Operator Operator
 	Left     Node
 	Right    Node
@@ -73,8 +88,10 @@ func (on OperatorNode) String() string {
 	return fmt.Sprintf("(%v %s %v)", on.Left, string(on.Operator), on.Right)
 }
 
-// Constants, strings and numbers
+// ConstantNode is a raw string or number
 type ConstantNode struct {
+	baseNode
+
 	Type     DataType
 	Value    int64
 	ValueStr string
@@ -91,14 +108,20 @@ func (cn ConstantNode) String() string {
 	return fmt.Sprintf("%d", cn.Value)
 }
 
-// If conditions
+// ConditionNode creates a new if condition
+// False is optional
 type ConditionNode struct {
+	baseNode
+
 	Cond  OperatorNode
 	True  []Node
 	False []Node
 }
 
+// DefineFuncNode creates a new named function
 type DefineFuncNode struct {
+	baseNode
+
 	Name         string
 	Arguments    []NameNode
 	ReturnValues []NameNode
@@ -115,8 +138,10 @@ func (dfn DefineFuncNode) String() string {
 	return fmt.Sprintf("func %s(%+v) %+v {\n\t%s\n}", dfn.Name, dfn.Arguments, dfn.ReturnValues, strings.Join(body, "\n\t"))
 }
 
-// Variables, etc.
+// NameNode retreives a named variable
 type NameNode struct {
+	baseNode
+
 	Name string
 	Type string
 }
@@ -125,7 +150,10 @@ func (nn NameNode) String() string {
 	return fmt.Sprintf("variable(%s)", nn.Name)
 }
 
+// ReturnNode returns Val from within the current function
 type ReturnNode struct {
+	baseNode
+
 	Val Node
 }
 
@@ -133,7 +161,10 @@ func (rn ReturnNode) String() string {
 	return fmt.Sprintf("return %v", rn.Val)
 }
 
+// AllocNode creates a new variable Name with the value Val
 type AllocNode struct {
+	baseNode
+
 	Name string
 	Val  Node
 }
@@ -142,7 +173,10 @@ func (an AllocNode) String() string {
 	return fmt.Sprintf("alloc %s = %v", an.Name, an.Val)
 }
 
+// AssignNode assign Val to Target (or Name)
 type AssignNode struct {
+	baseNode
+
 	Name   string // TODO: Removes
 	Target Node
 	Val    Node
@@ -156,7 +190,10 @@ func (an AssignNode) String() string {
 	return fmt.Sprintf("assign %+v = %v", an.Target, an.Val)
 }
 
+// TypeCastNode tries to cast Val to Type
 type TypeCastNode struct {
+	baseNode
+
 	Type string
 	Val  Node
 }
@@ -165,7 +202,10 @@ func (tcn TypeCastNode) String() string {
 	return fmt.Sprintf("cast %s(%v)", tcn.Type, tcn.Val)
 }
 
+// DefineTypeNode creates a new named type
 type DefineTypeNode struct {
+	baseNode
+
 	Name string
 	Type TypeNode
 }
@@ -174,28 +214,10 @@ func (dtn DefineTypeNode) String() string {
 	return fmt.Sprintf("defineType %s = %+v", dtn.Name, dtn.Type)
 }
 
-type TypeNode interface {
-	Type() string
-}
-
-type SingleTypeNode struct {
-	TypeName string
-}
-
-func (stn *SingleTypeNode) Type() string {
-	return stn.TypeName
-}
-
-type StructTypeNode struct {
-	Types []TypeNode
-	Names map[string]int
-}
-
-func (stn *StructTypeNode) Type() string {
-	return fmt.Sprintf("%+v", stn.Types)
-}
-
+// StructLoadElementNode retreives a value by key from a struct
 type StructLoadElementNode struct {
+	baseNode
+
 	Struct      Node
 	ElementName string
 }
@@ -204,7 +226,11 @@ func (slen StructLoadElementNode) String() string {
 	return fmt.Sprintf("load %+v . %+v", slen.Struct, slen.ElementName)
 }
 
+// SliceArrayNode slices an array or string
+// Can be on the forms arr[1], arr[1:], or arr[1:3]
 type SliceArrayNode struct {
+	baseNode
+
 	Val    Node
 	Start  Node
 	HasEnd bool
@@ -215,24 +241,36 @@ func (san SliceArrayNode) String() string {
 	return fmt.Sprintf("%+v[%d:%d]", san.Val, san.Start, san.End)
 }
 
+// DeclarePackageNode declares the package that we're in
 type DeclarePackageNode struct {
+	baseNode
+
 	PackageName string
 }
 
+// ForNode creates a new for-loop
 type ForNode struct {
+	baseNode
+
 	BeforeLoop     Node
 	Condition      OperatorNode
 	AfterIteration Node
 	Block          []Node
 }
 
-type BreakNode struct{}
+// BreakNode breaks out of the current for loop
+type BreakNode struct {
+	baseNode
+}
 
 func (n BreakNode) String() string {
 	return "break"
 }
 
-type ContinueNode struct{}
+// ContinueNode skips the current iteration of the current for loop
+type ContinueNode struct {
+	baseNode
+}
 
 func (n ContinueNode) String() string {
 	return "continue"
