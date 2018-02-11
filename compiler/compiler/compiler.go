@@ -331,7 +331,6 @@ func (c *compiler) compile(instructions []parser.Node) {
 			}
 
 			panic("unable to define node Type")
-			break
 
 		case parser.DeclarePackageNode:
 			// TODO: Make use of it
@@ -380,7 +379,6 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		switch v.Type {
 		case parser.NUMBER:
 			return constant.NewInt(v.Value, i64)
-			break
 
 		case parser.STRING:
 			constString := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant(v.ValueStr))
@@ -396,7 +394,6 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
 			c.contextBlock.NewStore(strings.Toi8Ptr(c.contextBlock, constString), strItem)
 			return c.contextBlock.NewLoad(alloc)
-			break
 		}
 		break
 
@@ -450,22 +447,17 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		switch v.Operator {
 		case parser.OP_ADD:
 			return c.contextBlock.NewAdd(left, right)
-			break
 		case parser.OP_SUB:
 			return c.contextBlock.NewSub(left, right)
-			break
 		case parser.OP_MUL:
 			return c.contextBlock.NewMul(left, right)
-			break
 		case parser.OP_DIV:
 			return c.contextBlock.NewSDiv(left, right) // SDiv == Signed Division
-			break
 		}
 		break
 
 	case parser.NameNode:
 		return c.varByName(v.Name)
-		break
 
 	case parser.CallNode:
 		var args []value.Value
@@ -514,7 +506,6 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 		// Call function and return the result
 		return c.contextBlock.NewCall(fn, args...)
-		break
 
 	case parser.TypeCastNode:
 		val := c.compileValue(v.Val)
@@ -561,7 +552,6 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 		c.contextBlock.NewStore(changedSize, res)
 		return res
-		break
 
 	case parser.StructLoadElementNode:
 		src := c.compileValue(v.Struct)

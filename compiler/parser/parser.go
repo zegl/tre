@@ -40,7 +40,6 @@ func (p *parser) parseOne() Node {
 
 	case lexer.EOF:
 		panic("unexpected EOF")
-		break
 
 	// IDENTIFIERS are converted to either:
 	// - a CallNode if followed by an opening parenthesis (a function call), or
@@ -70,7 +69,6 @@ func (p *parser) parseOne() Node {
 		return p.aheadParse(NameNode{
 			Name: current.Val,
 		})
-		break
 
 		// NUMBER always returns a ConstantNode
 		// Convert string representation to int64
@@ -84,7 +82,6 @@ func (p *parser) parseOne() Node {
 			Type:  NUMBER,
 			Value: val,
 		})
-		break
 
 		// STRING is always a ConstantNode, the value is not modified
 	case lexer.STRING:
@@ -92,7 +89,6 @@ func (p *parser) parseOne() Node {
 			Type:     STRING,
 			ValueStr: current.Val,
 		})
-		break
 
 	case lexer.KEYWORD:
 
