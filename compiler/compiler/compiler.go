@@ -624,10 +624,79 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		return safeBlock.NewLoad(alloc)
 
 	case parser.LoadArrayElement:
+		arr := c.compileValue(v.Array)
+		index := c.compileValue(v.Pos)
+
+		var runtimeLength value.Value
+		var compileTimeLenght int64
+		lengthKnownAtCompileTime := false
+		lengthKnownAtRunTime := false
+
+		// Length of array
+		if ptrType, ok := arr.Type().(*types.PointerType); ok {
+			if arrayType, ok := ptrType.Elem.(*types.ArrayType); ok {
+				compileTimeLenght = arrayType.Len
+				lengthKnownAtCompileTime = true
+			}
+		}
+
+		// Length of string
+		if !lengthKnownAtCompileTime {
+			// Get backing array from string type
+			if arr.Type().String() == "%string*" {
+				arr = c.contextBlock.NewLoad(arr)
+			}
+			if arr.Type().String() == "%string" {
+				runtimeLength = c.contextBlock.NewExtractValue(arr, []int64{0})
+				// Get backing array
+				arr = c.contextBlock.NewExtractValue(arr, []int64{1})
+				lengthKnownAtRunTime = true
+			}
+		}
+
+		if !lengthKnownAtCompileTime && !lengthKnownAtRunTime {
+			panic("unable to LoadArrayElement: could not calculate max length")
+		}
+
+		isCheckedAtCompileTime := false
+
+		if lengthKnownAtCompileTime {
+			if compileTimeLenght < 0 {
+				panic("index out of range")
+			}
+
+			if intType, ok := index.(*constant.Int); ok {
+				if intType.X.IsInt64() {
+					isCheckedAtCompileTime = true
+
+					if intType.X.Int64() > compileTimeLenght {
+						panic("index out of range")
+					}
+				}
+			}
+		}
+
+		if !isCheckedAtCompileTime {
+			outsideOfLengthBlock := c.contextBlock.Parent.NewBlock(getBlockName())
+			c.panic(outsideOfLengthBlock, "index out of range")
+			outsideOfLengthBlock.NewUnreachable()
+
+			safeBlock := c.contextBlock.Parent.NewBlock(getBlockName())
+
+			outOfRangeCmp := c.contextBlock.NewOr(
+				c.contextBlock.NewICmp(ir.IntSLT, index, constant.NewInt(0, i64)),
+				c.contextBlock.NewICmp(ir.IntSGE, index, runtimeLength),
+			)
+
+			c.contextBlock.NewCondBr(outOfRangeCmp, outsideOfLengthBlock, safeBlock)
+
+			c.contextBlock = safeBlock
+		}
+
 		return c.contextBlock.NewGetElementPtr(
-			c.compileValue(v.Array),
+			arr,
 			constant.NewInt(0, i32),
-			c.compileValue(v.Pos),
+			index,
 		)
 	}
 
