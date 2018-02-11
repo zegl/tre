@@ -724,6 +724,6 @@ func (c *compiler) panic(block *ir.BasicBlock, message string) {
 }
 
 func compilePanic(message string) {
-	fmt.Fprintf(os.Stderr, "compile panic: %s", message)
+	fmt.Fprintf(os.Stderr, "compile panic: %s\n", message)
 	os.Exit(1)
 }
