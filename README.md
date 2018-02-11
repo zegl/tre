@@ -36,10 +36,10 @@ Currently implemented:
 * int (all signed types)
 * string
 * struct
+* array
 
 TODO:
 
-* Arrays
 * Slices
 * Maps
 * Bool
@@ -49,15 +49,17 @@ TODO:
 * Functions
 * * TODO: More than 1 return variable
 * * TODO: Assign a function to a variable, functions as arguments etc.
-* Basic string usage: `str[1]`, `str[1:5]`, `len(str)`
+* String features: `str[1]`, `str[1:5]`, `len(str)`
+* Array features: `arr[1] = 123`, `arr[1]`, `len(arr)`
 * Builtin methods
 * * println (currently only works on strings)
 * * printf (should be removed)
-* * exit (shoould be remove
+* * exit (shoould be removed)
 * * len
-
 
 TODO:
 
 * Packages
 * Interfaces
+* Methods
+* Pointers
