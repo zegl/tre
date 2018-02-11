@@ -46,7 +46,7 @@ func (bn BlockNode) String() string {
 	return fmt.Sprintf("BlockNode: \n\t%s", strings.Join(res, "\n\t"))
 }
 
-// OperatorNode is mathematical operations and comparisions
+// OperatorNode is mathematical operations and comparisons
 type OperatorNode struct {
 	baseNode
 
