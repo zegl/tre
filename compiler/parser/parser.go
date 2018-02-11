@@ -482,6 +482,35 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		}, nil
 	}
 
+	// Array parsing
+	if current.Type == lexer.OPERATOR && current.Val == "[" {
+		arrayLenght := p.lookAhead(1)
+		if arrayLenght.Type != lexer.NUMBER {
+			return nil, errors.New("parseArray failed: Expected number after [")
+		}
+		arrayLengthInt, err := strconv.Atoi(arrayLenght.Val)
+		if err != nil {
+			return nil, err
+		}
+
+		expectEndBracket := p.lookAhead(2)
+		if expectEndBracket.Type != lexer.OPERATOR || expectEndBracket.Val != "]" {
+			return nil, errors.New("parseArray failed: Expected ] in array type")
+		}
+
+		p.i += 3
+
+		arrayItemType, err := p.parseOneType()
+		if err != nil {
+			return nil, errors.New("arrayParse failed: " + err.Error())
+		}
+
+		return &ArrayTypeNode{
+			ItemType: arrayItemType,
+			Len:      int64(arrayLengthInt),
+		}, nil
+	}
+
 	return nil, errors.New("parseOneType failed: " + fmt.Sprintf("%+v", current))
 }
 

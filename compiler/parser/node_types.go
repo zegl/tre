@@ -30,3 +30,15 @@ type StructTypeNode struct {
 func (stn *StructTypeNode) Type() string {
 	return fmt.Sprintf("%+v", stn.Types)
 }
+
+// ArrayTypeNode refers to an array
+type ArrayTypeNode struct {
+	baseNode
+
+	ItemType TypeNode
+	Len      int64
+}
+
+func (atn *ArrayTypeNode) Type() string {
+	return fmt.Sprintf("[%d]%+v", atn.Len, atn.ItemType)
+}
