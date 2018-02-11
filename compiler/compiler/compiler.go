@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/strings"
@@ -631,6 +632,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		var compileTimeLenght int64
 		lengthKnownAtCompileTime := false
 		lengthKnownAtRunTime := false
+		arrIsString := false
 
 		// Length of array
 		if ptrType, ok := arr.Type().(*types.PointerType); ok {
@@ -651,6 +653,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 				// Get backing array
 				arr = c.contextBlock.NewExtractValue(arr, []int64{1})
 				lengthKnownAtRunTime = true
+				arrIsString = true
 			}
 		}
 
@@ -662,7 +665,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 		if lengthKnownAtCompileTime {
 			if compileTimeLenght < 0 {
-				panic("index out of range")
+				compilePanic("index out of range")
 			}
 
 			if intType, ok := index.(*constant.Int); ok {
@@ -670,7 +673,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 					isCheckedAtCompileTime = true
 
 					if intType.X.Int64() > compileTimeLenght {
-						panic("index out of range")
+						compilePanic("index out of range")
 					}
 				}
 			}
@@ -693,11 +696,13 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			c.contextBlock = safeBlock
 		}
 
-		return c.contextBlock.NewGetElementPtr(
-			arr,
-			constant.NewInt(0, i32),
-			index,
-		)
+		var indicies []value.Value
+		if !arrIsString {
+			indicies = append(indicies, constant.NewInt(0, i64))
+		}
+		indicies = append(indicies, index)
+
+		return c.contextBlock.NewGetElementPtr(arr, indicies...)
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))
@@ -716,4 +721,9 @@ func (c *compiler) panic(block *ir.BasicBlock, message string) {
 	globMsg.IsConst = true
 	block.NewCall(c.externalFuncs["printf"], strings.Toi8Ptr(block, globMsg))
 	block.NewCall(c.externalFuncs["exit"], constant.NewInt(1, i32))
+}
+
+func compilePanic(message string) {
+	fmt.Fprintf(os.Stderr, "compile panic: %s", message)
+	os.Exit(1)
 }
