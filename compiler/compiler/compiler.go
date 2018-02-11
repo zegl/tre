@@ -457,6 +457,12 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 				}
 				return c.contextBlock.NewCall(c.funcByName("len_string"), arg)
 			}
+
+			if ptrType, ok := arg.Type().(*types.PointerType); ok {
+				if arrayType, ok := ptrType.Elem.(*types.ArrayType); ok {
+					return constant.NewInt(arrayType.Len, i64)
+				}
+			}
 		}
 
 		_, isExternal := c.externalFuncs[v.Function]
