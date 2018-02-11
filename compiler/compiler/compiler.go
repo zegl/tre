@@ -233,14 +233,10 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 			// Allocate from type
 			if typeNode, ok := v.Val.(parser.TypeNode); ok {
-				if singleTypeNode, ok := typeNode.(*parser.SingleTypeNode); ok {
-					alloc := block.NewAlloca(typeStringToLLVM(singleTypeNode.TypeName))
-					alloc.SetName(v.Name)
-					c.contextBlockVariables[v.Name] = alloc
-					break
-				}
-
-				panic("AllocNode from non TypeNode is not allowed")
+				alloc := block.NewAlloca(typeNodeToLLVMType(typeNode))
+				alloc.SetName(v.Name)
+				c.contextBlockVariables[v.Name] = alloc
+				break
 			}
 
 			// Allocate from value

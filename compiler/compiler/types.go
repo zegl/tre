@@ -1,6 +1,11 @@
 package compiler
 
-import "github.com/llir/llvm/ir/types"
+import (
+	"fmt"
+
+	"github.com/llir/llvm/ir/types"
+	"github.com/zegl/tre/compiler/parser"
+)
 
 var typeConvertMap = map[string]types.Type{
 	"int":   types.I64, // TODO: Size based on arch
@@ -18,4 +23,16 @@ func typeStringToLLVM(sourceName string) types.Type {
 	}
 
 	panic("unknown type: " + sourceName)
+}
+
+func typeNodeToLLVMType(typeNode parser.TypeNode) types.Type {
+	switch t := typeNode.(type) {
+	case *parser.SingleTypeNode:
+		return typeStringToLLVM(t.TypeName)
+
+	case *parser.ArrayTypeNode:
+		return types.NewArray(typeNodeToLLVMType(t.ItemType), t.Len)
+	}
+
+	panic(fmt.Sprintf("unknown typeNode: %T", typeNode))
 }
