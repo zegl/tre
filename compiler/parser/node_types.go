@@ -2,7 +2,7 @@ package parser
 
 import "fmt"
 
-// TypeNode is an interface for different ways of creating new types or refering to existing ones
+// TypeNode is an interface for different ways of creating new types or referring to existing ones
 type TypeNode interface {
 	Node() // must also implement the Node interface
 	Type() string
