@@ -19,7 +19,4 @@ func main() {
 
     // len = 4
     printf("len = %d\n", len(array))
-
-    // runtime panic: index out of range
-    printf("%d\n", array[10])
 }

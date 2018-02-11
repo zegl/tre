@@ -4,11 +4,11 @@ func main() {
     mystr := "hello"
 
     // h
-    printf("%s\n", mystr[0])
+    printf("%c\n", mystr[0])
 
     // o
-    printf("%s\n", mystr[4])
+    printf("%c\n", mystr[4])
 
-    // runtime panic: Substring start larger than len
+    // runtime panic: index out of range
     printf("%s\n", mystr[5])
 }
