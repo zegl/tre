@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/zegl/tre/compiler/lexer"
+	"testing"
 )
 
 func TestCall(t *testing.T) {
