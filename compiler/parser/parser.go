@@ -369,8 +369,6 @@ func (p *parser) aheadParse(input Node) Node {
 
 			return res
 		}
-
-		log.Printf("parse ahead do nothing on: %+v", next)
 	}
 
 	return input
