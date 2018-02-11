@@ -1,8 +1,8 @@
 package lexer
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestLexerSimpleAdd(t *testing.T) {
