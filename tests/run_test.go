@@ -1,13 +1,13 @@
 package main
 
 import (
+	"go/build"
 	"io/ioutil"
 	"os/exec"
 	"regexp"
 	"runtime"
 	"strings"
 	"testing"
-	"go/build"
 )
 
 func TestAllPrograms(t *testing.T) {
@@ -58,6 +58,8 @@ func buildRunAndCheck(t *testing.T, bindir, path string) bool {
 		cmd = exec.Command(bindir+"/tre", path)
 	}
 
+	runProgram := true
+
 	// Compile output
 	stdout, err := cmd.CombinedOutput()
 	if err != nil {
@@ -66,20 +68,27 @@ func buildRunAndCheck(t *testing.T, bindir, path string) bool {
 			t.Log(string(stdout))
 			return false
 		}
-	}
 
-	// Run program output
-	cmd = exec.Command(bindir + "/output-binary")
-	stdout, err = cmd.CombinedOutput()
-	if err != nil {
-		if err.Error() != "exit status 1" {
-			println(path, err.Error())
-			t.Log(string(stdout))
-			return false
-		}
+		// Don't execute the program, but check compier message
+		runProgram = false
 	}
 
 	output := strings.TrimSpace(string(stdout))
+
+	// Run program output
+	if runProgram {
+		cmd = exec.Command(bindir + "/output-binary")
+		stdout, err = cmd.CombinedOutput()
+		if err != nil {
+			if err.Error() != "exit status 1" {
+				println(path, err.Error())
+				t.Log(string(stdout))
+				return false
+			}
+		}
+
+		output = output + strings.TrimSpace(string(stdout))
+	}
 
 	if expect == output {
 		return true
