@@ -122,7 +122,12 @@ type ConditionNode struct {
 type DefineFuncNode struct {
 	baseNode
 
-	Name         string
+	Name string
+
+	IsMethod     bool
+	MethodOnType SingleTypeNode
+	InstanceName string
+
 	Arguments    []NameNode
 	ReturnValues []NameNode
 	Body         []Node
@@ -143,7 +148,7 @@ type NameNode struct {
 	baseNode
 
 	Name string
-	Type string
+	Type SingleTypeNode
 }
 
 func (nn NameNode) String() string {

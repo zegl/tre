@@ -15,7 +15,7 @@ type SingleTypeNode struct {
 	TypeName string
 }
 
-func (stn *SingleTypeNode) Type() string {
+func (stn SingleTypeNode) Type() string {
 	return stn.TypeName
 }
 
@@ -27,7 +27,7 @@ type StructTypeNode struct {
 	Names map[string]int
 }
 
-func (stn *StructTypeNode) Type() string {
+func (stn StructTypeNode) Type() string {
 	return fmt.Sprintf("%+v", stn.Types)
 }
 
@@ -39,6 +39,6 @@ type ArrayTypeNode struct {
 	Len      int64
 }
 
-func (atn *ArrayTypeNode) Type() string {
+func (atn ArrayTypeNode) Type() string {
 	return fmt.Sprintf("[%d]%+v", atn.Len, atn.ItemType)
 }

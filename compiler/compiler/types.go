@@ -3,9 +3,13 @@ package compiler
 import (
 	"fmt"
 
+	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/types"
+
 	"github.com/zegl/tre/compiler/parser"
 )
+
+var typeMethods = map[string]map[string]*ir.Function{}
 
 var typeConvertMap = map[string]types.Type{
 	"int":   types.I64, // TODO: Size based on arch
@@ -27,11 +31,18 @@ func typeStringToLLVM(sourceName string) types.Type {
 
 func typeNodeToLLVMType(typeNode parser.TypeNode) types.Type {
 	switch t := typeNode.(type) {
-	case *parser.SingleTypeNode:
+	case parser.SingleTypeNode:
 		return typeStringToLLVM(t.TypeName)
 
-	case *parser.ArrayTypeNode:
+	case parser.ArrayTypeNode:
 		return types.NewArray(typeNodeToLLVMType(t.ItemType), t.Len)
+
+	case parser.StructTypeNode:
+		var structTypes []types.Type
+		for _, tt := range t.Types {
+			structTypes = append(structTypes, typeNodeToLLVMType(tt))
+		}
+		return types.NewStruct(structTypes...)
 	}
 
 	panic(fmt.Sprintf("unknown typeNode: %T", typeNode))
