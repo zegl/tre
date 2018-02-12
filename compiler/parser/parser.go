@@ -130,37 +130,81 @@ func (p *parser) parseOne() Node {
 		// - function body
 		// - closing curly bracket (})
 		if current.Val == "func" {
-			name := p.lookAhead(1)
+			defineFunc := DefineFuncNode{}
+			p.i++
+
+			// Check if next is IDENTIFIER (named function), or an opening parenthesis (method).
+			checkIfOpeningParen := p.lookAhead(0)
+
+			// Method Parsning
+			if checkIfOpeningParen.Type == lexer.SEPARATOR && checkIfOpeningParen.Val == "(" {
+				p.i++
+
+				expectIdentifier := p.lookAhead(0)
+				if expectIdentifier.Type != lexer.IDENTIFIER {
+					panic("could not find type identifier in method definition")
+				}
+
+				defineFunc.IsMethod = true
+				defineFunc.InstanceName = expectIdentifier.Val
+
+				p.i++
+
+				methodOnType, err := p.parseOneType()
+				if err != nil {
+					panic(err)
+				}
+
+				if singleTypeNode, ok := methodOnType.(SingleTypeNode); ok {
+					defineFunc.MethodOnType = singleTypeNode
+				} else {
+					panic("could not find type in method defitition")
+				}
+
+				p.i++
+
+				// Expect closing paren
+				expectCloseParen := p.lookAhead(0)
+				if expectCloseParen.Type != lexer.SEPARATOR || expectCloseParen.Val != ")" {
+					panic("expected ) after method type in method definition")
+				}
+
+				p.i++
+			}
+
+			name := p.lookAhead(0)
 			if name.Type != lexer.IDENTIFIER {
 				panic("func must be followed by IDENTIFIER. Got " + name.Val)
 			}
+			defineFunc.Name = name.Val
 
 			p.i++
 
-			openParen := p.lookAhead(1)
+			openParen := p.lookAhead(0)
 			if openParen.Type != lexer.SEPARATOR || openParen.Val != "(" {
 				panic("func identifier must be followed by (. Got " + openParen.Val)
 			}
 
 			p.i++
-			p.i++
 
-			arguments := p.parseFunctionArguments()
+			// Parse argument list
+			defineFunc.Arguments = p.parseFunctionArguments()
 
+			// Parse return types
 			var retTypesNodeNames []NameNode
 
 			checkIfOpeningCurly := p.lookAhead(0)
 			if checkIfOpeningCurly.Type != lexer.SEPARATOR || checkIfOpeningCurly.Val != "{" {
-				retTypes := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
-
-				// convert return types
-				for _, r := range retTypes {
-					rr := r.(NameNode)
-					retTypesNodeNames = append(retTypesNodeNames, NameNode{
-						Type: rr.Name,
-					})
+				retType, err := p.parseOneType()
+				if err != nil {
+					panic(err)
 				}
+				retTypesNodeNames = append(retTypesNodeNames, NameNode{
+					Type: retType.(SingleTypeNode),
+				})
+				p.i++
 			}
+			defineFunc.ReturnValues = retTypesNodeNames
 
 			openBracket := p.lookAhead(0)
 			if openBracket.Type != lexer.SEPARATOR || openBracket.Val != "{" {
@@ -169,12 +213,9 @@ func (p *parser) parseOne() Node {
 
 			p.i++
 
-			return p.aheadParse(DefineFuncNode{
-				Name:         name.Val,
-				Arguments:    arguments,
-				ReturnValues: retTypesNodeNames,
-				Body:         p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"}),
-			})
+			defineFunc.Body = p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+
+			return p.aheadParse(defineFunc)
 		}
 
 		// "return" creates a ReturnNode
@@ -429,18 +470,19 @@ func (p *parser) parseFunctionArguments() []NameNode {
 		if name.Type != lexer.IDENTIFIER {
 			panic("function arguments: variable name must be identifier. Got: " + fmt.Sprintf("%+v", name))
 		}
+		p.i++
 
-		typeNode := p.lookAhead(1)
-		if typeNode.Type != lexer.IDENTIFIER {
-			panic("function arguments: variable type must be identifier. Got: " + fmt.Sprintf("%+v", typeNode))
+		argType, err := p.parseOneType()
+		if err != nil {
+			panic(err)
 		}
+		p.i++
 
 		res = append(res, NameNode{
 			Name: name.Val,
-			Type: typeNode.Val,
+			Type: argType.(SingleTypeNode),
 		})
 
-		p.i += 2
 		i++
 	}
 }
@@ -452,7 +494,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 	if current.Type == lexer.KEYWORD && current.Val == "struct" {
 		p.i++
 
-		res := &StructTypeNode{
+		res := StructTypeNode{
 			Types: make([]TypeNode, 0),
 			Names: make(map[string]int),
 		}
@@ -486,7 +528,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 	}
 
 	if current.Type == lexer.IDENTIFIER {
-		return &SingleTypeNode{
+		return SingleTypeNode{
 			TypeName: current.Val,
 		}, nil
 	}
@@ -514,7 +556,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 			return nil, errors.New("arrayParse failed: " + err.Error())
 		}
 
-		return &ArrayTypeNode{
+		return ArrayTypeNode{
 			ItemType: arrayItemType,
 			Len:      int64(arrayLengthInt),
 		}, nil

@@ -183,14 +183,26 @@ func (c *compiler) compile(instructions []parser.Node) {
 			break
 
 		case parser.DefineFuncNode:
+
+			if v.IsMethod {
+				// Add the type that we're a method on as the first argument
+				v.Arguments = append(v.Arguments, parser.NameNode{
+					Name: v.InstanceName,
+					Type: v.MethodOnType,
+				})
+
+				// Change the name of our function
+				v.Name = "method_" + v.MethodOnType.TypeName + "_" + v.Name
+			}
+
 			params := make([]*types.Param, len(v.Arguments))
 			for k, par := range v.Arguments {
-				params[k] = ir.NewParam(par.Name, typeStringToLLVM(par.Type))
+				params[k] = ir.NewParam(par.Name, typeNodeToLLVMType(par.Type))
 			}
 
 			funcRetType := types.Type(types.Void)
 			if len(v.ReturnValues) == 1 {
-				funcRetType = typeStringToLLVM(v.ReturnValues[0].Type)
+				funcRetType = typeNodeToLLVMType(v.ReturnValues[0].Type)
 			}
 
 			// TODO: Only do this in the main package
@@ -217,7 +229,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 				// Structs needs to be pointer-allocated
 				if _, ok := param.Type().(*types.StructType); ok {
-					paramPtr := entry.NewAlloca(typeStringToLLVM(v.Arguments[i].Type))
+					paramPtr := entry.NewAlloca(typeNodeToLLVMType(v.Arguments[i].Type))
 					entry.NewStore(param, paramPtr)
 					c.contextBlockVariables[paramName] = paramPtr
 					continue
@@ -287,7 +299,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 			// Allocate from type
 			if typeNode, ok := v.Val.(parser.TypeNode); ok {
-				if singleTypeNode, ok := typeNode.(*parser.SingleTypeNode); ok {
+				if singleTypeNode, ok := typeNode.(parser.SingleTypeNode); ok {
 					alloc := block.NewAlloca(typeStringToLLVM(singleTypeNode.TypeName))
 					block.NewStore(block.NewLoad(alloc), dst)
 					break
@@ -307,30 +319,20 @@ func (c *compiler) compile(instructions []parser.Node) {
 			break
 
 		case parser.DefineTypeNode:
+			t := typeNodeToLLVMType(v.Type)
 
-			if structNode, ok := v.Type.(*parser.StructTypeNode); ok {
+			// Add to tre mapping
+			typeConvertMap[v.Name] = t
 
-				var structTypes []types.Type
-				for _, t := range structNode.Types {
-					if singleTypeNode, ok := t.(*parser.SingleTypeNode); ok {
-						structTypes = append(structTypes, typeStringToLLVM(singleTypeNode.TypeName))
-					} else {
-						panic("unable to define node Type. nested structs are not supported")
-					}
-				}
-
-				structType := types.NewStruct(structTypes...)
-
-				// Add to tre mapping
-				typeConvertMap[v.Name] = structType
+			// Save struct definition
+			// TODO: Does this work with nested structs?
+			if structNode, ok := v.Type.(parser.StructTypeNode); ok {
+				// Save struct name mapping
 				typeMapElementNameIndex[v.Name] = structNode.Names
 
-				// Generate LLVM code
-				c.module.NewType(v.Name, structType)
-				break
+				// Generate LLVM code for structs
+				c.module.NewType(v.Name, t)
 			}
-
-			panic("unable to define node Type")
 
 		case parser.DeclarePackageNode:
 			// TODO: Make use of it
