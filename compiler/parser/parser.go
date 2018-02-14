@@ -45,27 +45,6 @@ func (p *parser) parseOne() Node {
 	// - a CallNode if followed by an opening parenthesis (a function call), or
 	// - a NodeName (variables)
 	case lexer.IDENTIFIER:
-		next := p.lookAhead(1)
-		if next.Type == lexer.SEPARATOR && next.Val == "(" {
-			p.i += 2 // identifier and left paren
-
-			if _, ok := types[current.Val]; ok {
-				val := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"})
-				if len(val) != 1 {
-					panic("type conversion must take only one argument")
-				}
-				return p.aheadParse(TypeCastNode{
-					Type: current.Val,
-					Val:  val[0],
-				})
-			}
-
-			return p.aheadParse(CallNode{
-				Function:  current.Val,
-				Arguments: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"}),
-			})
-		}
-
 		return p.aheadParse(NameNode{
 			Name: current.Val,
 		})
@@ -301,7 +280,12 @@ func (p *parser) parseOne() Node {
 }
 
 func (p *parser) aheadParse(input Node) Node {
+
 	next := p.lookAhead(1)
+
+	if p.debug {
+		fmt.Printf("aheadParse: %+v - %+v\n", next, input)
+	}
 
 	if next.Type == lexer.OPERATOR {
 
@@ -404,8 +388,31 @@ func (p *parser) aheadParse(input Node) Node {
 				return sortInfix(res, right)
 			}
 
-			return res
+			return p.aheadParse(res)
 		}
+	}
+
+	if next.Type == lexer.SEPARATOR && next.Val == "(" {
+
+		current := p.lookAhead(0)
+
+		p.i += 2 // identifier and left paren
+
+		if _, ok := types[current.Val]; ok {
+			val := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"})
+			if len(val) != 1 {
+				panic("type conversion must take only one argument")
+			}
+			return p.aheadParse(TypeCastNode{
+				Type: current.Val,
+				Val:  val[0],
+			})
+		}
+
+		return p.aheadParse(CallNode{
+			Function:  input,
+			Arguments: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"}),
+		})
 	}
 
 	return input

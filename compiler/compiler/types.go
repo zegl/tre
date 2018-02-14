@@ -5,6 +5,7 @@ import (
 
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/types"
+	"github.com/llir/llvm/ir/value"
 
 	"github.com/zegl/tre/compiler/parser"
 )
@@ -20,6 +21,23 @@ var typeConvertMap = map[string]types.Type{
 
 // Type Name : Element Name : Index
 var typeMapElementNameIndex = map[string]map[string]int{}
+
+// Type Name : Method Name : Function
+var typeMapMethodNameFunction = map[string]map[string]method{}
+
+type method struct {
+	Func *ir.Function
+	// TODO: Implement case where this is true
+	PointerReceiver bool
+}
+
+// methodCall represents a method call
+// method is the method to be called
+// Value is a instance of the type that has the method
+type methodCall struct {
+	value.Value
+	method method
+}
 
 func typeStringToLLVM(sourceName string) types.Type {
 	if t, ok := typeConvertMap[sourceName]; ok {

@@ -184,6 +184,8 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 		case parser.DefineFuncNode:
 
+			var compiledName string
+
 			if v.IsMethod {
 				// Add the type that we're a method on as the first argument
 				v.Arguments = append(v.Arguments, parser.NameNode{
@@ -192,7 +194,9 @@ func (c *compiler) compile(instructions []parser.Node) {
 				})
 
 				// Change the name of our function
-				v.Name = "method_" + v.MethodOnType.TypeName + "_" + v.Name
+				compiledName = "method_" + v.MethodOnType.TypeName + "_" + v.Name
+			} else {
+				compiledName = v.Name
 			}
 
 			params := make([]*types.Param, len(v.Arguments))
@@ -214,8 +218,20 @@ func (c *compiler) compile(instructions []parser.Node) {
 			}
 
 			// Create a new function, and add it to the list of global functions
-			fn := c.module.NewFunction(v.Name, funcRetType, params...)
+			fn := c.module.NewFunction(compiledName, funcRetType, params...)
 			c.globalFuncs[v.Name] = fn
+
+			// Save as a method on the type
+			if v.IsMethod {
+				if _, ok := typeMapMethodNameFunction[v.MethodOnType.TypeName]; !ok {
+					typeMapMethodNameFunction[v.MethodOnType.TypeName] = make(map[string]method)
+				}
+
+				typeMapMethodNameFunction[v.MethodOnType.TypeName][v.Name] = method{
+					Func:            fn,
+					PointerReceiver: false,
+				}
+			}
 
 			entry := fn.NewBlock(getBlockName())
 
@@ -464,8 +480,10 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 	case parser.CallNode:
 		var args []value.Value
 
+		name, isNameNode := v.Function.(parser.NameNode)
+
 		// len() functions
-		if v.Function == "len" {
+		if isNameNode && name.Name == "len" {
 			arg := c.compileValue(v.Arguments[0])
 			if arg.Type().String() == "%string*" || arg.Type().String() == "%string" {
 				if arg.Type().String() == "%string*" {
@@ -481,7 +499,10 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			}
 		}
 
-		_, isExternal := c.externalFuncs[v.Function]
+		isExternal := false
+		if isNameNode {
+			_, isExternal = c.externalFuncs[name.Name]
+		}
 
 		for _, vv := range v.Arguments {
 			val := c.compileValue(vv)
@@ -504,7 +525,31 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			args = append(args, val)
 		}
 
-		fn := c.funcByName(v.Function)
+		var fn *ir.Function
+
+		if isNameNode {
+			fn = c.funcByName(name.Name)
+		} else {
+			funcByVal := c.compileValue(v.Function)
+			if checkIfFunc, ok := funcByVal.(*ir.Function); ok {
+				fn = checkIfFunc
+			} else if checkIfMethod, ok := funcByVal.(methodCall); ok {
+				fn = checkIfMethod.method.Func
+				var methodCallArgs []value.Value
+
+				instance := checkIfMethod.Value
+				if !checkIfMethod.method.PointerReceiver {
+					instance = c.contextBlock.NewLoad(instance)
+				}
+
+				// Add instance as the first argument
+				methodCallArgs = append(methodCallArgs, instance)
+				methodCallArgs = append(methodCallArgs, args...)
+				args = methodCallArgs
+			} else {
+				panic("expected function or method, got something else")
+			}
+		}
 
 		// Call function and return the result
 		return c.contextBlock.NewCall(fn, args...)
@@ -574,17 +619,24 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		// Remove % from the name
 		typeName = typeName[1:]
 
-		indexMapping, ok := typeMapElementNameIndex[typeName]
-		if !ok {
-			panic(fmt.Sprintf("%s internal error: no such type map indexing", typeName))
+		// Check if it's a member
+		if indexMapping, ok := typeMapElementNameIndex[typeName]; ok {
+			if elementIndex, ok := indexMapping[v.ElementName]; ok {
+				return c.contextBlock.NewGetElementPtr(src, constant.NewInt(0, i32), constant.NewInt(int64(elementIndex), i32))
+			}
 		}
 
-		elementIndex, ok := indexMapping[v.ElementName]
-		if !ok {
-			panic(fmt.Sprintf("%s has no such element: %s", src.Type(), v.ElementName))
+		// Check if it's a method
+		if methodMapping, ok := typeMapMethodNameFunction[typeName]; ok {
+			if function, ok := methodMapping[v.ElementName]; ok {
+				return methodCall{
+					Value:  src,
+					method: function,
+				}
+			}
 		}
 
-		return c.contextBlock.NewGetElementPtr(src, constant.NewInt(0, i32), constant.NewInt(int64(elementIndex), i32))
+		panic(fmt.Sprintf("%s internal error: no such type map indexing: %s", typeName, v.ElementName))
 
 	case parser.SliceArrayNode:
 		src := c.compileValue(v.Val)
