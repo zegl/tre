@@ -10,8 +10,6 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-var typeMethods = map[string]map[string]*ir.Function{}
-
 var typeConvertMap = map[string]types.Type{
 	"int":   types.I64, // TODO: Size based on arch
 	"int8":  types.I8,
@@ -25,8 +23,13 @@ var typeMapElementNameIndex = map[string]map[string]int{}
 // Type Name : Method Name : Function
 var typeMapMethodNameFunction = map[string]map[string]method{}
 
+type function struct {
+	*ir.Function
+	retType datatype
+}
+
 type method struct {
-	Func *ir.Function
+	Func function
 	// TODO: Implement case where this is true
 	PointerReceiver bool
 }
@@ -37,6 +40,32 @@ type method struct {
 type methodCall struct {
 	value.Value
 	method method
+}
+
+type variable struct {
+	value.Value
+	datatype datatype
+}
+
+type datatype struct {
+	baseType     string
+	llvmDataType types.Type
+
+	// keeping track of how many levels deep in pointers we are
+	// *int = 1
+	// **int = 2
+	pointerLevel uint
+}
+
+func valueToVariable(val value.Value, pointerLevel uint) variable {
+
+	return variable{
+		Value: val,
+		datatype: datatype{
+			baseType:     val.Type().String(),
+			pointerLevel: pointerLevel,
+		},
+	}
 }
 
 func typeStringToLLVM(sourceName string) types.Type {

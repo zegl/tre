@@ -22,11 +22,11 @@ type compiler struct {
 	externalFuncs map[string]*ir.Function
 
 	// functions provided by the language, such as println
-	globalFuncs map[string]*ir.Function
+	globalFuncs map[string]function
 
 	contextFunc           *ir.Function
 	contextBlock          *ir.BasicBlock
-	contextBlockVariables map[string]value.Value
+	contextBlockVariables map[string]variable
 
 	// What a break or continue should resolve to
 	contextLoopBreak    []*ir.BasicBlock
@@ -43,7 +43,7 @@ func Compile(root parser.BlockNode) string {
 	c := &compiler{
 		module:        ir.NewModule(),
 		externalFuncs: make(map[string]*ir.Function),
-		globalFuncs:   make(map[string]*ir.Function),
+		globalFuncs:   make(map[string]function),
 
 		contextLoopBreak:    make([]*ir.BasicBlock, 0),
 		contextLoopContinue: make([]*ir.BasicBlock, 0),
@@ -118,21 +118,34 @@ func (c *compiler) addExternal() {
 func (c *compiler) addGlobal() {
 	typeConvertMap["string"] = c.module.NewType("string", internal.String())
 
-	// printf := internal.Printf(typeConvertMap["string"], c.externalFuncs["printf"])
-	// c.module.AppendFunction(printf)
-	c.globalFuncs["printf"] = c.externalFuncs["printf"]
+	voidDataType := datatype{
+		baseType:     "void",
+		llvmDataType: types.Type(types.Void),
+	}
 
-	c.globalFuncs["println"] = internal.Println(
-		typeConvertMap["string"],
-		c.externalFuncs["printf"],
-		c.module,
-	)
-	c.module.AppendFunction(c.globalFuncs["println"])
+	// printf
+	c.globalFuncs["printf"] = function{
+		Function: c.externalFuncs["printf"],
+		retType:  voidDataType,
+	}
 
-	// String function
+	// println
+	c.globalFuncs["println"] = function{
+		Function: internal.Println(typeConvertMap["string"], c.externalFuncs["printf"], c.module),
+		retType:  voidDataType,
+	}
+	c.module.AppendFunction(c.globalFuncs["println"].Function)
+
+	// len_string
 	strLen := internal.StringLen(typeConvertMap["string"])
+	c.globalFuncs["len_string"] = function{
+		Function: strLen,
+		retType: datatype{
+			baseType:     "i64",
+			llvmDataType: i64,
+		},
+	}
 	c.module.AppendFunction(strLen)
-	c.globalFuncs["len_string"] = strLen
 }
 
 func ptrTypeType(val value.Value) types.Type {
@@ -145,18 +158,17 @@ func ptrTypeType(val value.Value) types.Type {
 func (c *compiler) compile(instructions []parser.Node) {
 	for _, i := range instructions {
 		block := c.contextBlock
-		function := c.contextFunc
 
 		switch v := i.(type) {
 		case parser.ConditionNode:
 			cond := c.compileCondition(v.Cond)
 
-			afterBlock := function.NewBlock(getBlockName() + "-after")
-			trueBlock := function.NewBlock(getBlockName() + "-true")
+			afterBlock := c.contextFunc.NewBlock(getBlockName() + "-after")
+			trueBlock := c.contextFunc.NewBlock(getBlockName() + "-true")
 			falseBlock := afterBlock
 
 			if len(v.False) > 0 {
-				falseBlock = function.NewBlock(getBlockName() + "-false")
+				falseBlock = c.contextFunc.NewBlock(getBlockName() + "-false")
 			}
 
 			block.NewCondBr(cond, trueBlock, falseBlock)
@@ -204,9 +216,15 @@ func (c *compiler) compile(instructions []parser.Node) {
 				params[k] = ir.NewParam(par.Name, typeNodeToLLVMType(par.Type))
 			}
 
-			funcRetType := types.Type(types.Void)
+			funcRetType := datatype{
+				baseType:     "void",
+				llvmDataType: types.Type(types.Void),
+			}
+
 			if len(v.ReturnValues) == 1 {
-				funcRetType = typeNodeToLLVMType(v.ReturnValues[0].Type)
+				funcRetType.baseType = v.ReturnValues[0].Type.TypeName
+				funcRetType.llvmDataType = typeNodeToLLVMType(v.ReturnValues[0].Type)
+				// TODO: Alseo set pointerlevel
 			}
 
 			// TODO: Only do this in the main package
@@ -214,12 +232,17 @@ func (c *compiler) compile(instructions []parser.Node) {
 				if len(v.ReturnValues) != 0 {
 					panic("main func can not have a return type")
 				}
-				funcRetType = typeStringToLLVM("int32")
+
+				funcRetType.baseType = "int32"
+				funcRetType.llvmDataType = i32
 			}
 
 			// Create a new function, and add it to the list of global functions
-			fn := c.module.NewFunction(compiledName, funcRetType, params...)
-			c.globalFuncs[v.Name] = fn
+			fn := c.module.NewFunction(compiledName, funcRetType.llvmDataType, params...)
+			c.globalFuncs[v.Name] = function{
+				Function: fn,
+				retType:  funcRetType,
+			}
 
 			// Save as a method on the type
 			if v.IsMethod {
@@ -228,7 +251,10 @@ func (c *compiler) compile(instructions []parser.Node) {
 				}
 
 				typeMapMethodNameFunction[v.MethodOnType.TypeName][v.Name] = method{
-					Func:            fn,
+					Func: function{
+						Function: fn,
+						retType:  funcRetType,
+					},
 					PointerReceiver: false,
 				}
 			}
@@ -237,7 +263,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 			c.contextFunc = fn
 			c.contextBlock = entry
-			c.contextBlockVariables = make(map[string]value.Value)
+			c.contextBlockVariables = make(map[string]variable)
 
 			// Save all parameters in the block mapping
 			for i, param := range params {
@@ -247,11 +273,20 @@ func (c *compiler) compile(instructions []parser.Node) {
 				if _, ok := param.Type().(*types.StructType); ok {
 					paramPtr := entry.NewAlloca(typeNodeToLLVMType(v.Arguments[i].Type))
 					entry.NewStore(param, paramPtr)
-					c.contextBlockVariables[paramName] = paramPtr
+
+					c.contextBlockVariables[paramName] = variable{
+						Value: paramPtr,
+						datatype: datatype{
+							baseType:     v.Arguments[i].Type.TypeName,
+							pointerLevel: 1,
+						},
+					}
+
 					continue
 				}
 
-				c.contextBlockVariables[paramName] = param
+				// TODO: Using 0 as the pointer level here might not be correct
+				c.contextBlockVariables[paramName] = valueToVariable(param, 0)
 			}
 
 			c.compile(v.Body)
@@ -285,7 +320,13 @@ func (c *compiler) compile(instructions []parser.Node) {
 			if typeNode, ok := v.Val.(parser.TypeNode); ok {
 				alloc := block.NewAlloca(typeNodeToLLVMType(typeNode))
 				alloc.SetName(v.Name)
-				c.contextBlockVariables[v.Name] = alloc
+				c.contextBlockVariables[v.Name] = variable{
+					Value: alloc,
+					datatype: datatype{
+						baseType:     typeNode.Type(),
+						pointerLevel: 1,
+					},
+				}
 				break
 			}
 
@@ -299,7 +340,26 @@ func (c *compiler) compile(instructions []parser.Node) {
 			alloc := block.NewAlloca(val.Type())
 			alloc.SetName(v.Name)
 			block.NewStore(val, alloc)
-			c.contextBlockVariables[v.Name] = alloc
+
+			var dt datatype
+
+			if isVariable, ok := val.(variable); ok {
+				dt = datatype{
+					baseType:     isVariable.datatype.baseType,
+					pointerLevel: isVariable.datatype.pointerLevel + 1,
+				}
+			} else {
+				dt = datatype{
+					baseType:     val.Type().String(),
+					llvmDataType: val.Type(),
+					pointerLevel: 1, // TODO: This is not always correct
+				}
+			}
+
+			c.contextBlockVariables[v.Name] = variable{
+				Value:    alloc,
+				datatype: dt,
+			}
 
 			break
 
@@ -373,7 +433,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 	}
 }
 
-func (c *compiler) funcByName(name string) *ir.Function {
+func (c *compiler) funcByName(name string) function {
 	if f, ok := c.globalFuncs[name]; ok {
 		return f
 	}
@@ -525,13 +585,13 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			args = append(args, val)
 		}
 
-		var fn *ir.Function
+		var fn function
 
 		if isNameNode {
 			fn = c.funcByName(name.Name)
 		} else {
 			funcByVal := c.compileValue(v.Function)
-			if checkIfFunc, ok := funcByVal.(*ir.Function); ok {
+			if checkIfFunc, ok := funcByVal.(function); ok {
 				fn = checkIfFunc
 			} else if checkIfMethod, ok := funcByVal.(methodCall); ok {
 				fn = checkIfMethod.method.Func
@@ -552,7 +612,10 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		}
 
 		// Call function and return the result
-		return c.contextBlock.NewCall(fn, args...)
+		return variable{
+			Value:    c.contextBlock.NewCall(fn, args...),
+			datatype: fn.retType,
+		}
 
 	case parser.TypeCastNode:
 		val := c.compileValue(v.Val)
@@ -601,23 +664,26 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		return res
 
 	case parser.StructLoadElementNode:
-		src := c.compileValue(v.Struct)
-
-		typeName := src.Type().String()
-
-		if ptrType, ok := src.Type().(*types.PointerType); ok {
-			// Get type behind pointer
-			typeName = ptrType.Elem.String()
-		} else {
-			// GetElementPtr only works on pointer types, and we don't have a pointer to our object. Allocate it and
-			// use the pointer instead
-			dst := c.contextBlock.NewAlloca(src.Type())
-			c.contextBlock.NewStore(src, dst)
-			src = dst
+		srcCheckIfVar := c.compileValue(v.Struct)
+		src, ok := srcCheckIfVar.(variable)
+		if !ok {
+			panic(fmt.Sprintf("Expected variable in StructLoadElementNode. Got %T", srcCheckIfVar))
 		}
 
-		// Remove % from the name
-		typeName = typeName[1:]
+		typeName := src.datatype.baseType
+
+		if src.datatype.pointerLevel == 0 {
+			// GetElementPtr only works on pointer types, and we don't have a pointer to our object.
+			// Allocate it and use the pointer instead
+			dst := c.contextBlock.NewAlloca(src.Type())
+			c.contextBlock.NewStore(src, dst)
+			src = variable{
+				Value:    dst,
+				datatype: src.datatype,
+			}
+			// increase pointer level
+			src.datatype.pointerLevel++
+		}
 
 		// Check if it's a member
 		if indexMapping, ok := typeMapElementNameIndex[typeName]; ok {
