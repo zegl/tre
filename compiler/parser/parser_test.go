@@ -1,9 +1,10 @@
 package parser
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/zegl/tre/compiler/lexer"
-	"testing"
 )
 
 func TestCall(t *testing.T) {
@@ -18,7 +19,7 @@ func TestCall(t *testing.T) {
 	expected := BlockNode{
 		Instructions: []Node{
 			CallNode{
-				Function:  "printf",
+				Function:  NameNode{Name: "printf"},
 				Arguments: []Node{ConstantNode{Type: NUMBER, Value: 1}},
 			},
 		},
