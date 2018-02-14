@@ -21,7 +21,7 @@ func (n baseNode) Node() {
 type CallNode struct {
 	baseNode
 
-	Function  string
+	Function  Node
 	Arguments []Node
 }
 
