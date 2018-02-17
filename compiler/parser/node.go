@@ -163,7 +163,7 @@ type ReturnNode struct {
 }
 
 func (rn ReturnNode) String() string {
-	return fmt.Sprintf("return %v", rn.Val)
+	return fmt.Sprintf("return(%v)", rn.Val)
 }
 
 // AllocNode creates a new variable Name with the value Val
@@ -175,7 +175,7 @@ type AllocNode struct {
 }
 
 func (an AllocNode) String() string {
-	return fmt.Sprintf("alloc %s = %v", an.Name, an.Val)
+	return fmt.Sprintf("alloc(%s = %v(", an.Name, an.Val)
 }
 
 // AssignNode assign Val to Target (or Name)
@@ -189,17 +189,17 @@ type AssignNode struct {
 
 func (an AssignNode) String() string {
 	if len(an.Name) > 0 {
-		return fmt.Sprintf("assign %s = %v", an.Name, an.Val)
+		return fmt.Sprintf("assign(%s = %v)", an.Name, an.Val)
 	}
 
-	return fmt.Sprintf("assign %+v = %v", an.Target, an.Val)
+	return fmt.Sprintf("assign(%+v = %v)", an.Target, an.Val)
 }
 
 // TypeCastNode tries to cast Val to Type
 type TypeCastNode struct {
 	baseNode
 
-	Type string
+	Type TypeNode
 	Val  Node
 }
 
@@ -228,7 +228,7 @@ type StructLoadElementNode struct {
 }
 
 func (slen StructLoadElementNode) String() string {
-	return fmt.Sprintf("load %+v . %+v", slen.Struct, slen.ElementName)
+	return fmt.Sprintf("load(%+v . %+v)", slen.Struct, slen.ElementName)
 }
 
 // LoadArrayElement loads a single element from an array

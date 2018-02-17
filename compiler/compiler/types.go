@@ -3,25 +3,39 @@ package compiler
 import (
 	"fmt"
 
-	"github.com/llir/llvm/ir"
-	"github.com/llir/llvm/ir/types"
-	"github.com/llir/llvm/ir/value"
-
+	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/parser"
+
+	llvmTypes "github.com/llir/llvm/ir/types"
 )
 
 var typeConvertMap = map[string]types.Type{
-	"int":   types.I64, // TODO: Size based on arch
-	"int8":  types.I8,
-	"int32": types.I32,
-	"int64": types.I64,
+	"int":    types.I64, // TODO: Size based on arch
+	"int8":   types.I8,
+	"int16":  types.I16,
+	"int32":  types.I32,
+	"int64":  types.I64,
+	"string": types.String,
 }
 
 // Type Name : Element Name : Index
-var typeMapElementNameIndex = map[string]map[string]int{}
+// var typeMapElementNameIndex = map[string]map[string]int{}
+/*var typeStructMaps = map[string]treStruct{}
 
 // Type Name : Method Name : Function
 var typeMapMethodNameFunction = map[string]map[string]method{}
+
+var structMap = map[string]treStruct{}
+
+type treStruct struct {
+	elements map[string]structElement
+	methods  map[string]method
+}
+
+type structElement struct {
+	datatype datatype
+	index    int
+}
 
 type function struct {
 	*ir.Function
@@ -48,20 +62,25 @@ type variable struct {
 }
 
 type datatype struct {
-	baseType     string
-	llvmDataType types.Type
+	types.Type
+
+	baseType string
 
 	// keeping track of how many levels deep in pointers we are
 	// *int = 1
 	// **int = 2
 	pointerLevel uint
+
+	// TODO: It should be possible to design this in a much nicer way
+	isStruct   bool
+	structType treStruct
 }
 
 func valueToVariable(val value.Value, pointerLevel uint) variable {
-
 	return variable{
 		Value: val,
 		datatype: datatype{
+			Type:         val.Type(),
 			baseType:     val.Type().String(),
 			pointerLevel: pointerLevel,
 		},
@@ -75,21 +94,71 @@ func typeStringToLLVM(sourceName string) types.Type {
 
 	panic("unknown type: " + sourceName)
 }
+*/
 
-func typeNodeToLLVMType(typeNode parser.TypeNode) types.Type {
+func parserTypeToType(typeNode parser.TypeNode) types.Type {
 	switch t := typeNode.(type) {
 	case parser.SingleTypeNode:
-		return typeStringToLLVM(t.TypeName)
+		// return datatype{
+		// 	Type:         typeStringToLLVM(t.TypeName),
+		// 	baseType:     t.TypeName,
+		// 	pointerLevel: 0,
+		// }
+		if res, ok := typeConvertMap[t.TypeName]; ok {
+			return res
+		}
+
+		panic("unknown type: " + t.TypeName)
 
 	case parser.ArrayTypeNode:
-		return types.NewArray(typeNodeToLLVMType(t.ItemType), t.Len)
+		itemType := parserTypeToType(t.ItemType)
+		return &types.Array{
+			Type:     itemType,
+			LlvmType: llvmTypes.NewArray(itemType.LLVM(), t.Len),
+		}
 
 	case parser.StructTypeNode:
-		var structTypes []types.Type
-		for _, tt := range t.Types {
-			structTypes = append(structTypes, typeNodeToLLVMType(tt))
+		var structTypes []llvmTypes.Type
+		members := make(map[string]types.Type)
+		memberIndexes := t.Names
+
+		inverseNamesIndex := make(map[int]string)
+		for name, index := range memberIndexes {
+			inverseNamesIndex[index] = name
 		}
-		return types.NewStruct(structTypes...)
+
+		for i, tt := range t.Types {
+			ty := parserTypeToType(tt)
+
+			members[inverseNamesIndex[i]] = ty
+			structTypes = append(structTypes, ty.LLVM())
+
+			// memberIndexes[]
+
+			// llvmType := typeNodeToLLVMType(tt)
+			// structTypes = append(structTypes, llvmType)
+
+			// elements = append(elements, structElement{
+			// 	datatype: datatype{},
+			// 	index:    i,
+			// })
+
+			// elements[inverseNamesIndex[i]] = structElement{
+			// 	index: i,
+			// 	datatype: datatype{
+			// 		Type:         llvmType,
+			// 		baseType:     tt.Type(),
+			// 		pointerLevel: 0,
+			// 	},
+			// }
+		}
+
+		return &types.Struct{
+			SourceName:    t.Type(),
+			Members:       members,
+			MemberIndexes: memberIndexes,
+			Type:          llvmTypes.NewStruct(structTypes...),
+		}
 	}
 
 	panic(fmt.Sprintf("unknown typeNode: %T", typeNode))

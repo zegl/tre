@@ -7,12 +7,14 @@ import (
 
 	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/strings"
+	"github.com/zegl/tre/compiler/compiler/types"
+	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
 
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
-	"github.com/llir/llvm/ir/types"
-	"github.com/llir/llvm/ir/value"
+	llvmTypes "github.com/llir/llvm/ir/types"
+	llvmValue "github.com/llir/llvm/ir/value"
 )
 
 type compiler struct {
@@ -22,11 +24,11 @@ type compiler struct {
 	externalFuncs map[string]*ir.Function
 
 	// functions provided by the language, such as println
-	globalFuncs map[string]function
+	globalFuncs map[string]*types.Function
 
 	contextFunc           *ir.Function
 	contextBlock          *ir.BasicBlock
-	contextBlockVariables map[string]variable
+	contextBlockVariables map[string]value.Value
 
 	// What a break or continue should resolve to
 	contextLoopBreak    []*ir.BasicBlock
@@ -43,7 +45,7 @@ func Compile(root parser.BlockNode) string {
 	c := &compiler{
 		module:        ir.NewModule(),
 		externalFuncs: make(map[string]*ir.Function),
-		globalFuncs:   make(map[string]function),
+		globalFuncs:   make(map[string]*types.Function),
 
 		contextLoopBreak:    make([]*ir.BasicBlock, 0),
 		contextLoopContinue: make([]*ir.BasicBlock, 0),
@@ -82,77 +84,62 @@ func Compile(root parser.BlockNode) string {
 }
 
 func (c *compiler) addExternal() {
-	printfFunc := c.module.NewFunction("printf", i32, ir.NewParam("", types.NewPointer(i8)))
+	printfFunc := c.module.NewFunction("printf", i32.LLVM(), ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())))
 	printfFunc.Sig.Variadic = true
 	c.externalFuncs["printf"] = printfFunc
 
 	c.externalFuncs["strcat"] = c.module.NewFunction("strcat",
-		types.NewPointer(i8),
-		ir.NewParam("", types.NewPointer(i8)),
-		ir.NewParam("", types.NewPointer(i8)))
+		llvmTypes.NewPointer(i8.LLVM()),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())))
 
 	c.externalFuncs["strcpy"] = c.module.NewFunction("strcpy",
-		types.NewPointer(i8),
-		ir.NewParam("", types.NewPointer(i8)),
-		ir.NewParam("", types.NewPointer(i8)))
+		llvmTypes.NewPointer(i8.LLVM()),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())))
 
 	c.externalFuncs["strncpy"] = c.module.NewFunction("strncpy",
-		types.NewPointer(i8),
-		ir.NewParam("", types.NewPointer(i8)),
-		ir.NewParam("", types.NewPointer(i8)),
-		ir.NewParam("", i64),
+		llvmTypes.NewPointer(i8.LLVM()),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("", i64.LLVM()),
 	)
 
 	c.externalFuncs["strndup"] = c.module.NewFunction("strndup",
-		types.NewPointer(i8),
-		ir.NewParam("", types.NewPointer(i8)),
-		ir.NewParam("", i64),
+		llvmTypes.NewPointer(i8.LLVM()),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("", i64.LLVM()),
 	)
 
 	c.externalFuncs["exit"] = c.module.NewFunction("exit",
-		types.Void,
-		ir.NewParam("", i32),
+		llvmTypes.Void,
+		ir.NewParam("", i32.LLVM()),
 	)
 }
 
 func (c *compiler) addGlobal() {
-	typeConvertMap["string"] = c.module.NewType("string", internal.String())
-
-	voidDataType := datatype{
-		baseType:     "void",
-		llvmDataType: types.Type(types.Void),
-	}
+	types.ModuleStringType = c.module.NewType("string", internal.String())
 
 	// printf
-	c.globalFuncs["printf"] = function{
-		Function: c.externalFuncs["printf"],
-		retType:  voidDataType,
+	c.globalFuncs["printf"] = &types.Function{
+		LlvmFunction: c.externalFuncs["printf"],
+		FunctionName: "printf",
 	}
 
 	// println
-	c.globalFuncs["println"] = function{
-		Function: internal.Println(typeConvertMap["string"], c.externalFuncs["printf"], c.module),
-		retType:  voidDataType,
+	c.globalFuncs["println"] = &types.Function{
+		LlvmFunction: internal.Println(types.ModuleStringType, c.externalFuncs["printf"], c.module),
+		FunctionName: "println",
 	}
-	c.module.AppendFunction(c.globalFuncs["println"].Function)
+	c.module.AppendFunction(c.globalFuncs["println"].LlvmFunction)
 
 	// len_string
-	strLen := internal.StringLen(typeConvertMap["string"])
-	c.globalFuncs["len_string"] = function{
-		Function: strLen,
-		retType: datatype{
-			baseType:     "i64",
-			llvmDataType: i64,
-		},
+	strLen := internal.StringLen(types.ModuleStringType)
+	c.globalFuncs["len_string"] = &types.Function{
+		LlvmFunction: strLen,
+		ReturnType:   types.I64,
 	}
 	c.module.AppendFunction(strLen)
-}
-
-func ptrTypeType(val value.Value) types.Type {
-	if t, valIsPtr := val.Type().(*types.PointerType); valIsPtr {
-		return t.Elem
-	}
-	panic("ptrTypeType is not pointer type")
 }
 
 func (c *compiler) compile(instructions []parser.Node) {
@@ -171,7 +158,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 				falseBlock = c.contextFunc.NewBlock(getBlockName() + "-false")
 			}
 
-			block.NewCondBr(cond, trueBlock, falseBlock)
+			block.NewCondBr(cond.Value, trueBlock, falseBlock)
 
 			c.contextBlock = trueBlock
 			c.compile(v.True)
@@ -211,20 +198,15 @@ func (c *compiler) compile(instructions []parser.Node) {
 				compiledName = v.Name
 			}
 
-			params := make([]*types.Param, len(v.Arguments))
+			params := make([]*llvmTypes.Param, len(v.Arguments))
 			for k, par := range v.Arguments {
-				params[k] = ir.NewParam(par.Name, typeNodeToLLVMType(par.Type))
+				params[k] = ir.NewParam(par.Name, parserTypeToType(par.Type).LLVM())
 			}
 
-			funcRetType := datatype{
-				baseType:     "void",
-				llvmDataType: types.Type(types.Void),
-			}
+			var funcRetType types.Type = types.Void
 
 			if len(v.ReturnValues) == 1 {
-				funcRetType.baseType = v.ReturnValues[0].Type.TypeName
-				funcRetType.llvmDataType = typeNodeToLLVMType(v.ReturnValues[0].Type)
-				// TODO: Alseo set pointerlevel
+				funcRetType = parserTypeToType(v.ReturnValues[0].Type)
 			}
 
 			// TODO: Only do this in the main package
@@ -233,60 +215,65 @@ func (c *compiler) compile(instructions []parser.Node) {
 					panic("main func can not have a return type")
 				}
 
-				funcRetType.baseType = "int32"
-				funcRetType.llvmDataType = i32
+				funcRetType = types.I32
 			}
 
 			// Create a new function, and add it to the list of global functions
-			fn := c.module.NewFunction(compiledName, funcRetType.llvmDataType, params...)
-			c.globalFuncs[v.Name] = function{
-				Function: fn,
-				retType:  funcRetType,
+			fn := c.module.NewFunction(compiledName, funcRetType.LLVM(), params...)
+
+			typesFunc := &types.Function{
+				LlvmFunction: fn,
+				ReturnType:   funcRetType,
+				FunctionName: v.Name,
 			}
 
 			// Save as a method on the type
 			if v.IsMethod {
-				if _, ok := typeMapMethodNameFunction[v.MethodOnType.TypeName]; !ok {
-					typeMapMethodNameFunction[v.MethodOnType.TypeName] = make(map[string]method)
+				if t, ok := typeConvertMap[v.MethodOnType.TypeName]; ok {
+					t.AddMethod(v.Name, &types.Method{
+						Function:        typesFunc,
+						PointerReceiver: false,
+						MethodName:      v.Name,
+					})
+				} else {
+					panic("save method on type failed")
 				}
 
-				typeMapMethodNameFunction[v.MethodOnType.TypeName][v.Name] = method{
-					Func: function{
-						Function: fn,
-						retType:  funcRetType,
-					},
-					PointerReceiver: false,
-				}
+			} else {
+				c.globalFuncs[v.Name] = typesFunc
 			}
 
 			entry := fn.NewBlock(getBlockName())
 
 			c.contextFunc = fn
 			c.contextBlock = entry
-			c.contextBlockVariables = make(map[string]variable)
+			c.contextBlockVariables = make(map[string]value.Value)
 
 			// Save all parameters in the block mapping
 			for i, param := range params {
 				paramName := v.Arguments[i].Name
+				dataType := parserTypeToType(v.Arguments[i].Type)
 
 				// Structs needs to be pointer-allocated
-				if _, ok := param.Type().(*types.StructType); ok {
-					paramPtr := entry.NewAlloca(typeNodeToLLVMType(v.Arguments[i].Type))
+				if _, ok := param.Type().(*llvmTypes.StructType); ok {
+					paramPtr := entry.NewAlloca(dataType.LLVM())
 					entry.NewStore(param, paramPtr)
 
-					c.contextBlockVariables[paramName] = variable{
-						Value: paramPtr,
-						datatype: datatype{
-							baseType:     v.Arguments[i].Type.TypeName,
-							pointerLevel: 1,
-						},
+					c.contextBlockVariables[paramName] = value.Value{
+						Value:        paramPtr,
+						Type:         dataType,
+						PointerLevel: 1,
 					}
 
 					continue
 				}
 
 				// TODO: Using 0 as the pointer level here might not be correct
-				c.contextBlockVariables[paramName] = valueToVariable(param, 0)
+				c.contextBlockVariables[paramName] = value.Value{
+					Value:        param,
+					Type:         dataType,
+					PointerLevel: 0,
+				}
 			}
 
 			c.compile(v.Body)
@@ -298,7 +285,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 			// Return 0 by default in main func
 			if v.Name == "main" {
-				c.contextBlock.NewRet(constant.NewInt(0, typeStringToLLVM("int32")))
+				c.contextBlock.NewRet(constant.NewInt(0, types.I32.LLVM()))
 			}
 
 			break
@@ -307,60 +294,48 @@ func (c *compiler) compile(instructions []parser.Node) {
 			// Set value and jump to return block
 			val := c.compileValue(v.Val)
 
-			if loadNeeded(val) {
-				val = block.NewLoad(val)
+			if val.PointerLevel > 0 {
+				block.NewRet(block.NewLoad(val.Value))
+				break
 			}
 
-			block.NewRet(val)
+			block.NewRet(val.Value)
 			break
 
 		case parser.AllocNode:
 
 			// Allocate from type
 			if typeNode, ok := v.Val.(parser.TypeNode); ok {
-				alloc := block.NewAlloca(typeNodeToLLVMType(typeNode))
+				treType := parserTypeToType(typeNode)
+
+				alloc := block.NewAlloca(treType.LLVM())
 				alloc.SetName(v.Name)
-				c.contextBlockVariables[v.Name] = variable{
-					Value: alloc,
-					datatype: datatype{
-						baseType:     typeNode.Type(),
-						pointerLevel: 1,
-					},
+
+				c.contextBlockVariables[v.Name] = value.Value{
+					Value:        alloc,
+					Type:         treType,
+					PointerLevel: 1, // This is probably not always correct
 				}
 				break
 			}
 
 			// Allocate from value
 			val := c.compileValue(v.Val)
+			llvmVal := val.Value
 
-			if loadNeeded(val) {
-				val = block.NewLoad(val)
+			if val.PointerLevel > 0 {
+				llvmVal = block.NewLoad(llvmVal)
 			}
 
-			alloc := block.NewAlloca(val.Type())
+			alloc := block.NewAlloca(val.Type.LLVM())
 			alloc.SetName(v.Name)
-			block.NewStore(val, alloc)
+			block.NewStore(llvmVal, alloc)
 
-			var dt datatype
-
-			if isVariable, ok := val.(variable); ok {
-				dt = datatype{
-					baseType:     isVariable.datatype.baseType,
-					pointerLevel: isVariable.datatype.pointerLevel + 1,
-				}
-			} else {
-				dt = datatype{
-					baseType:     val.Type().String(),
-					llvmDataType: val.Type(),
-					pointerLevel: 1, // TODO: This is not always correct
-				}
+			c.contextBlockVariables[v.Name] = value.Value{
+				Type:         val.Type,
+				Value:        alloc,
+				PointerLevel: 1, // TODO
 			}
-
-			c.contextBlockVariables[v.Name] = variable{
-				Value:    alloc,
-				datatype: dt,
-			}
-
 			break
 
 		case parser.AssignNode:
@@ -373,11 +348,13 @@ func (c *compiler) compile(instructions []parser.Node) {
 				dst = c.compileValue(v.Target)
 			}
 
+			llvmDst := dst.Value
+
 			// Allocate from type
 			if typeNode, ok := v.Val.(parser.TypeNode); ok {
 				if singleTypeNode, ok := typeNode.(parser.SingleTypeNode); ok {
-					alloc := block.NewAlloca(typeStringToLLVM(singleTypeNode.TypeName))
-					block.NewStore(block.NewLoad(alloc), dst)
+					alloc := block.NewAlloca(parserTypeToType(singleTypeNode).LLVM())
+					block.NewStore(block.NewLoad(alloc), llvmDst)
 					break
 				}
 
@@ -386,29 +363,26 @@ func (c *compiler) compile(instructions []parser.Node) {
 
 			// Allocate from value
 			val := c.compileValue(v.Val)
+			llvmV := val.Value
 
-			if loadNeeded(val) {
-				val = block.NewLoad(val)
+			if val.PointerLevel > 0 {
+				llvmV = block.NewLoad(llvmV)
 			}
 
-			block.NewStore(val, dst)
+			block.NewStore(llvmV, llvmDst)
 			break
 
 		case parser.DefineTypeNode:
-			t := typeNodeToLLVMType(v.Type)
+			t := parserTypeToType(v.Type)
+
+			// Add type to module and override the structtype to use the named
+			// type in the module
+			if structType, ok := t.(*types.Struct); ok {
+				structType.Type = c.module.NewType(v.Name, t.LLVM())
+			}
 
 			// Add to tre mapping
 			typeConvertMap[v.Name] = t
-
-			// Save struct definition
-			// TODO: Does this work with nested structs?
-			if structNode, ok := v.Type.(parser.StructTypeNode); ok {
-				// Save struct name mapping
-				typeMapElementNameIndex[v.Name] = structNode.Names
-
-				// Generate LLVM code for structs
-				c.module.NewType(v.Name, t)
-			}
 
 		case parser.DeclarePackageNode:
 			// TODO: Make use of it
@@ -433,7 +407,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 	}
 }
 
-func (c *compiler) funcByName(name string) function {
+func (c *compiler) funcByName(name string) *types.Function {
 	if f, ok := c.globalFuncs[name]; ok {
 		return f
 	}
@@ -456,107 +430,152 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 	case parser.ConstantNode:
 		switch v.Type {
 		case parser.NUMBER:
-			return constant.NewInt(v.Value, i64)
+			return value.Value{
+				Value:        constant.NewInt(v.Value, i64.LLVM()),
+				Type:         i64,
+				PointerLevel: 0,
+			}
 
 		case parser.STRING:
 			constString := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant(v.ValueStr))
 			constString.IsConst = true
 
-			alloc := c.contextBlock.NewAlloca(typeConvertMap["string"])
+			alloc := c.contextBlock.NewAlloca(typeConvertMap["string"].LLVM())
 
 			// Save length of the string
-			lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
-			c.contextBlock.NewStore(constant.NewInt(int64(len(v.ValueStr)), i64), lenItem)
+			lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+			c.contextBlock.NewStore(constant.NewInt(int64(len(v.ValueStr)), i64.LLVM()), lenItem)
 
 			// Save i8* version of string
-			strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
+			strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
 			c.contextBlock.NewStore(strings.Toi8Ptr(c.contextBlock, constString), strItem)
-			return c.contextBlock.NewLoad(alloc)
+
+			return value.Value{
+				Value:        c.contextBlock.NewLoad(alloc),
+				Type:         types.String,
+				PointerLevel: 0,
+			}
 		}
 		break
 
 	case parser.OperatorNode:
 		left := c.compileValue(v.Left)
+		leftLLVM := left.Value
+
 		right := c.compileValue(v.Right)
+		rightLLVM := right.Value
 
-		if loadNeeded(left) {
-			left = c.contextBlock.NewLoad(left)
+		if left.PointerLevel > 0 {
+			leftLLVM = c.contextBlock.NewLoad(leftLLVM)
 		}
 
-		if loadNeeded(right) {
-			right = c.contextBlock.NewLoad(right)
+		if right.PointerLevel > 0 {
+			rightLLVM = c.contextBlock.NewLoad(rightLLVM)
 		}
 
-		if !left.Type().Equal(right.Type()) {
+		if !leftLLVM.Type().Equal(rightLLVM.Type()) {
 			panic(fmt.Sprintf("Different types in operation: %T and %T", left, right))
 		}
 
-		switch left.Type().GetName() {
+		switch leftLLVM.Type().GetName() {
 		case "string":
 			if v.Operator == parser.OP_ADD {
-				leftLen := c.contextBlock.NewExtractValue(left, []int64{0})
-				rightLen := c.contextBlock.NewExtractValue(right, []int64{0})
+				leftLen := c.contextBlock.NewExtractValue(leftLLVM, []int64{0})
+				rightLen := c.contextBlock.NewExtractValue(rightLLVM, []int64{0})
 				sumLen := c.contextBlock.NewAdd(leftLen, rightLen)
 
-				backingArray := c.contextBlock.NewAlloca(i8)
+				backingArray := c.contextBlock.NewAlloca(i8.LLVM())
 				backingArray.NElems = sumLen
 
 				// Copy left to new backing array
-				c.contextBlock.NewCall(c.externalFuncs["strcpy"], backingArray, c.contextBlock.NewExtractValue(left, []int64{1}))
+				c.contextBlock.NewCall(c.externalFuncs["strcpy"], backingArray, c.contextBlock.NewExtractValue(leftLLVM, []int64{1}))
 
 				// Append right to backing array
-				c.contextBlock.NewCall(c.externalFuncs["strcat"], backingArray, c.contextBlock.NewExtractValue(right, []int64{1}))
+				c.contextBlock.NewCall(c.externalFuncs["strcat"], backingArray, c.contextBlock.NewExtractValue(rightLLVM, []int64{1}))
 
-				alloc := c.contextBlock.NewAlloca(typeConvertMap["string"])
+				alloc := c.contextBlock.NewAlloca(typeConvertMap["string"].LLVM())
 
 				// Save length of the string
-				lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
+				lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
 				c.contextBlock.NewStore(sumLen, lenItem)
 
 				// Save i8* version of string
-				strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
+				strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
 				c.contextBlock.NewStore(backingArray, strItem)
-				return c.contextBlock.NewLoad(alloc)
+
+				return value.Value{
+					Value:        c.contextBlock.NewLoad(alloc),
+					Type:         types.String,
+					PointerLevel: 0,
+				}
 			}
 
 			panic("string does not implement operation " + v.Operator)
 		}
 
+		var opRes llvmValue.Value
+
 		switch v.Operator {
 		case parser.OP_ADD:
-			return c.contextBlock.NewAdd(left, right)
+			opRes = c.contextBlock.NewAdd(leftLLVM, rightLLVM)
 		case parser.OP_SUB:
-			return c.contextBlock.NewSub(left, right)
+			opRes = c.contextBlock.NewSub(leftLLVM, rightLLVM)
 		case parser.OP_MUL:
-			return c.contextBlock.NewMul(left, right)
+			opRes = c.contextBlock.NewMul(leftLLVM, rightLLVM)
 		case parser.OP_DIV:
-			return c.contextBlock.NewSDiv(left, right) // SDiv == Signed Division
+			opRes = c.contextBlock.NewSDiv(leftLLVM, rightLLVM) // SDiv == Signed Division
 		}
-		break
+
+		return value.Value{
+			Value:        opRes,
+			Type:         left.Type,
+			PointerLevel: 0,
+		}
 
 	case parser.NameNode:
 		return c.varByName(v.Name)
 
 	case parser.CallNode:
-		var args []value.Value
+		var args []llvmValue.Value
 
 		name, isNameNode := v.Function.(parser.NameNode)
 
 		// len() functions
 		if isNameNode && name.Name == "len" {
 			arg := c.compileValue(v.Arguments[0])
-			if arg.Type().String() == "%string*" || arg.Type().String() == "%string" {
-				if arg.Type().String() == "%string*" {
-					arg = c.contextBlock.NewLoad(arg)
+
+			if arg.Type.Name() == "string" {
+				f := c.funcByName("len_string")
+
+				val := arg.Value
+				if arg.PointerLevel > 0 {
+					val = c.contextBlock.NewLoad(val)
 				}
-				return c.contextBlock.NewCall(c.funcByName("len_string"), arg)
+
+				return value.Value{
+					Value:        c.contextBlock.NewCall(f.LlvmFunction, val),
+					Type:         f.ReturnType,
+					PointerLevel: 0,
+				}
 			}
 
-			if ptrType, ok := arg.Type().(*types.PointerType); ok {
-				if arrayType, ok := ptrType.Elem.(*types.ArrayType); ok {
-					return constant.NewInt(arrayType.Len, i64)
+			if arg.Type.Name() == "array" {
+				if ptrType, ok := arg.Value.Type().(*llvmTypes.PointerType); ok {
+					if arrayType, ok := ptrType.Elem.(*llvmTypes.ArrayType); ok {
+						return value.Value{
+							Value:        constant.NewInt(arrayType.Len, i64.LLVM()),
+							Type:         i64,
+							PointerLevel: 0,
+						}
+					}
 				}
 			}
+
+			// if ptrType, ok := arg.Type().(*types.PointerType); ok {
+			// 	if arrayType, ok := ptrType.Elem.(*types.ArrayType); ok {
+			// 		return constant.NewInt(arrayType.Len, i64)
+			// 	}
+			// }
 		}
 
 		isExternal := false
@@ -565,40 +584,48 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		}
 
 		for _, vv := range v.Arguments {
-			val := c.compileValue(vv)
+			treVal := c.compileValue(vv)
+			val := treVal.Value
 
 			// Convert %string* to i8* when calling external functions
 			if isExternal {
-				if val.Type().String() == "%string*" {
-					val = c.contextBlock.NewLoad(val)
+				if treVal.Type.Name() == "string" {
+					if treVal.PointerLevel > 0 {
+						val = c.contextBlock.NewLoad(val)
+					}
+					args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
+					continue
 				}
-				if val.Type().String() == "%string" {
+
+				if treVal.Type.Name() == "array" {
+					if treVal.PointerLevel > 0 {
+						val = c.contextBlock.NewLoad(val)
+					}
 					args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
 					continue
 				}
 			}
 
-			if loadNeeded(val) {
+			if treVal.PointerLevel > 0 {
 				val = c.contextBlock.NewLoad(val)
 			}
-
 			args = append(args, val)
 		}
 
-		var fn function
+		var fn *types.Function
 
 		if isNameNode {
 			fn = c.funcByName(name.Name)
 		} else {
 			funcByVal := c.compileValue(v.Function)
-			if checkIfFunc, ok := funcByVal.(function); ok {
+			if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
 				fn = checkIfFunc
-			} else if checkIfMethod, ok := funcByVal.(methodCall); ok {
-				fn = checkIfMethod.method.Func
-				var methodCallArgs []value.Value
+			} else if checkIfMethod, ok := funcByVal.Type.(*types.Method); ok {
+				fn = checkIfMethod.Function
+				var methodCallArgs []llvmValue.Value
 
-				instance := checkIfMethod.Value
-				if !checkIfMethod.method.PointerReceiver {
+				instance := funcByVal.Value
+				if !checkIfMethod.PointerReceiver {
 					instance = c.contextBlock.NewLoad(instance)
 				}
 
@@ -612,37 +639,32 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		}
 
 		// Call function and return the result
-		return variable{
-			Value:    c.contextBlock.NewCall(fn, args...),
-			datatype: fn.retType,
+		return value.Value{
+			Value:        c.contextBlock.NewCall(fn.LlvmFunction, args...),
+			Type:         fn.ReturnType,
+			PointerLevel: 0,
 		}
 
 	case parser.TypeCastNode:
 		val := c.compileValue(v.Val)
 
-		var current *types.IntType
+		var current *llvmTypes.IntType
 		var ok bool
 
-		if loadNeeded(val) {
-			currentType := ptrTypeType(val)
-			current, ok = currentType.(*types.IntType)
-			if !ok {
-				panic("TypeCast origin must be int type")
-			}
-		} else {
-			current, ok = val.Type().(*types.IntType)
-			if !ok {
-				panic("TypeCast origin must be int type")
-			}
+		current, ok = val.Type.LLVM().(*llvmTypes.IntType)
+		if !ok {
+			panic("TypeCast origin must be int type")
 		}
 
-		target, ok := typeStringToLLVM(v.Type).(*types.IntType)
+		targetType := parserTypeToType(v.Type)
+		target, ok := targetType.LLVM().(*llvmTypes.IntType)
 		if !ok {
 			panic("TypeCast target must be int type")
 		}
 
-		if loadNeeded(val) {
-			val = c.contextBlock.NewLoad(val)
+		llvmVal := val.Value
+		if val.PointerLevel > 0 {
+			llvmVal = c.contextBlock.NewLoad(llvmVal)
 		}
 
 		// Same size, nothing to do here
@@ -652,70 +674,73 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 
 		res := c.contextBlock.NewAlloca(target)
 
-		var changedSize value.Value
+		var changedSize llvmValue.Value
 
 		if current.Size < target.Size {
-			changedSize = c.contextBlock.NewSExt(val, target)
+			changedSize = c.contextBlock.NewSExt(llvmVal, target)
 		} else {
-			changedSize = c.contextBlock.NewTrunc(val, target)
+			changedSize = c.contextBlock.NewTrunc(llvmVal, target)
 		}
 
 		c.contextBlock.NewStore(changedSize, res)
-		return res
+
+		return value.Value{
+			Value:        res,
+			Type:         targetType,
+			PointerLevel: 1,
+		}
 
 	case parser.StructLoadElementNode:
-		srcCheckIfVar := c.compileValue(v.Struct)
-		src, ok := srcCheckIfVar.(variable)
-		if !ok {
-			panic(fmt.Sprintf("Expected variable in StructLoadElementNode. Got %T", srcCheckIfVar))
-		}
+		src := c.compileValue(v.Struct)
 
-		typeName := src.datatype.baseType
-
-		if src.datatype.pointerLevel == 0 {
+		if src.PointerLevel == 0 {
 			// GetElementPtr only works on pointer types, and we don't have a pointer to our object.
 			// Allocate it and use the pointer instead
-			dst := c.contextBlock.NewAlloca(src.Type())
-			c.contextBlock.NewStore(src, dst)
-			src = variable{
-				Value:    dst,
-				datatype: src.datatype,
-			}
-			// increase pointer level
-			src.datatype.pointerLevel++
-		}
-
-		// Check if it's a member
-		if indexMapping, ok := typeMapElementNameIndex[typeName]; ok {
-			if elementIndex, ok := indexMapping[v.ElementName]; ok {
-				return c.contextBlock.NewGetElementPtr(src, constant.NewInt(0, i32), constant.NewInt(int64(elementIndex), i32))
+			dst := c.contextBlock.NewAlloca(src.Type.LLVM())
+			c.contextBlock.NewStore(src.Value, dst)
+			src = value.Value{
+				Value:        dst,
+				Type:         src.Type,
+				PointerLevel: src.PointerLevel + 1,
 			}
 		}
 
-		// Check if it's a method
-		if methodMapping, ok := typeMapMethodNameFunction[typeName]; ok {
-			if function, ok := methodMapping[v.ElementName]; ok {
-				return methodCall{
-					Value:  src,
-					method: function,
+		// Check if it is a struct member
+		if structType, ok := src.Type.(*types.Struct); ok {
+			if memberIndex, ok := structType.MemberIndexes[v.ElementName]; ok {
+				retVal := c.contextBlock.NewGetElementPtr(src.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(memberIndex), i32.LLVM()))
+				return value.Value{
+					Type:         structType.Members[v.ElementName],
+					Value:        retVal,
+					PointerLevel: 1, // TODO
 				}
 			}
 		}
 
-		panic(fmt.Sprintf("%s internal error: no such type map indexing: %s", typeName, v.ElementName))
+		// Check if it's a method
+		if method, ok := src.Type.GetMethod(v.ElementName); ok {
+			return value.Value{
+				Type:         method,
+				Value:        src.Value,
+				PointerLevel: 0,
+			}
+		}
+
+		panic(fmt.Sprintf("%T internal error: no such type map indexing: %s", src, v.ElementName))
 
 	case parser.SliceArrayNode:
 		src := c.compileValue(v.Val)
+		srcVal := src.Value
 
 		var originalLength *ir.InstExtractValue
 
 		// Get backing array from string type
-		if src.Type().String() == "%string*" {
-			src = c.contextBlock.NewLoad(src)
+		if src.PointerLevel > 0 {
+			srcVal = c.contextBlock.NewLoad(srcVal)
 		}
-		if src.Type().String() == "%string" {
-			originalLength = c.contextBlock.NewExtractValue(src, []int64{0})
-			src = c.contextBlock.NewExtractValue(src, []int64{1})
+		if src.Type.Name() == "string" {
+			originalLength = c.contextBlock.NewExtractValue(srcVal, []int64{0})
+			srcVal = c.contextBlock.NewExtractValue(srcVal, []int64{1})
 		}
 
 		start := c.compileValue(v.Start)
@@ -727,64 +752,76 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 		safeBlock := c.contextBlock.Parent.NewBlock(getBlockName())
 
 		// Make sure that the offset is within the string length
-		cmp := c.contextBlock.NewICmp(ir.IntUGE, start, originalLength)
+		cmp := c.contextBlock.NewICmp(ir.IntUGE, start.Value, originalLength)
 		c.contextBlock.NewCondBr(cmp, outsideOfLengthBr, safeBlock)
 
 		c.contextBlock = safeBlock
 
-		offset := safeBlock.NewGetElementPtr(src, start)
+		offset := safeBlock.NewGetElementPtr(srcVal, start.Value)
 
-		var length value.Value
+		var length llvmValue.Value
 		if v.HasEnd {
-			length = c.compileValue(v.End)
+			length = c.compileValue(v.End).Value
 		} else {
-			length = constant.NewInt(1, i64)
+			length = constant.NewInt(1, i64.LLVM())
 		}
 
 		dst := safeBlock.NewCall(c.externalFuncs["strndup"], offset, length)
 
 		// Convert *i8 to %string
-		alloc := safeBlock.NewAlloca(typeConvertMap["string"])
+		alloc := safeBlock.NewAlloca(typeConvertMap["string"].LLVM())
 
 		// Save length of the string
-		lenItem := safeBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(0, i32))
-		safeBlock.NewStore(constant.NewInt(100, i64), lenItem) // TODO
+		lenItem := safeBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+		safeBlock.NewStore(constant.NewInt(100, i64.LLVM()), lenItem) // TODO
 
 		// Save i8* version of string
-		strItem := safeBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32), constant.NewInt(1, i32))
+		strItem := safeBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
 		safeBlock.NewStore(dst, strItem)
-		return safeBlock.NewLoad(alloc)
+
+		return value.Value{
+			Value:        safeBlock.NewLoad(alloc),
+			Type:         typeConvertMap["string"],
+			PointerLevel: 0,
+		}
 
 	case parser.LoadArrayElement:
 		arr := c.compileValue(v.Array)
+		arrayValue := arr.Value
+
 		index := c.compileValue(v.Pos)
 
-		var runtimeLength value.Value
+		var runtimeLength llvmValue.Value
 		var compileTimeLenght int64
 		lengthKnownAtCompileTime := false
 		lengthKnownAtRunTime := false
 		arrIsString := false
+		var retType types.Type
 
 		// Length of array
-		if ptrType, ok := arr.Type().(*types.PointerType); ok {
-			if arrayType, ok := ptrType.Elem.(*types.ArrayType); ok {
+		if ptrType, ok := arr.Value.Type().(*llvmTypes.PointerType); ok {
+			if arrayType, ok := ptrType.Elem.(*llvmTypes.ArrayType); ok {
 				compileTimeLenght = arrayType.Len
 				lengthKnownAtCompileTime = true
+				arrType := arr.Type.(*types.Array)
+				retType = arrType.Type
 			}
 		}
 
 		// Length of string
 		if !lengthKnownAtCompileTime {
 			// Get backing array from string type
-			if arr.Type().String() == "%string*" {
-				arr = c.contextBlock.NewLoad(arr)
-			}
-			if arr.Type().String() == "%string" {
-				runtimeLength = c.contextBlock.NewExtractValue(arr, []int64{0})
+			if arr.Type.Name() == "string" {
+				if arr.PointerLevel > 0 {
+					arrayValue = c.contextBlock.NewLoad(arrayValue)
+				}
+
+				runtimeLength = c.contextBlock.NewExtractValue(arrayValue, []int64{0})
 				// Get backing array
-				arr = c.contextBlock.NewExtractValue(arr, []int64{1})
+				arrayValue = c.contextBlock.NewExtractValue(arrayValue, []int64{1})
 				lengthKnownAtRunTime = true
 				arrIsString = true
+				retType = types.I8
 			}
 		}
 
@@ -799,7 +836,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 				compilePanic("index out of range")
 			}
 
-			if intType, ok := index.(*constant.Int); ok {
+			if intType, ok := index.Value.(*constant.Int); ok {
 				if intType.X.IsInt64() {
 					isCheckedAtCompileTime = true
 
@@ -818,8 +855,8 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			safeBlock := c.contextBlock.Parent.NewBlock(getBlockName())
 
 			outOfRangeCmp := c.contextBlock.NewOr(
-				c.contextBlock.NewICmp(ir.IntSLT, index, constant.NewInt(0, i64)),
-				c.contextBlock.NewICmp(ir.IntSGE, index, runtimeLength),
+				c.contextBlock.NewICmp(ir.IntSLT, index.Value, constant.NewInt(0, i64.LLVM())),
+				c.contextBlock.NewICmp(ir.IntSGE, index.Value, runtimeLength),
 			)
 
 			c.contextBlock.NewCondBr(outOfRangeCmp, outsideOfLengthBlock, safeBlock)
@@ -827,31 +864,27 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			c.contextBlock = safeBlock
 		}
 
-		var indicies []value.Value
+		var indicies []llvmValue.Value
 		if !arrIsString {
-			indicies = append(indicies, constant.NewInt(0, i64))
+			indicies = append(indicies, constant.NewInt(0, i64.LLVM()))
 		}
-		indicies = append(indicies, index)
+		indicies = append(indicies, index.Value)
 
-		return c.contextBlock.NewGetElementPtr(arr, indicies...)
+		return value.Value{
+			Value:        c.contextBlock.NewGetElementPtr(arrayValue, indicies...),
+			Type:         retType,
+			PointerLevel: 1,
+		}
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))
-}
-
-func loadNeeded(val value.Value) bool {
-	t := val.Type()
-	if _, ok := t.(*types.PointerType); ok {
-		return true
-	}
-	return false
 }
 
 func (c *compiler) panic(block *ir.BasicBlock, message string) {
 	globMsg := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant("runtime panic: "+message+"\n"))
 	globMsg.IsConst = true
 	block.NewCall(c.externalFuncs["printf"], strings.Toi8Ptr(block, globMsg))
-	block.NewCall(c.externalFuncs["exit"], constant.NewInt(1, i32))
+	block.NewCall(c.externalFuncs["exit"], constant.NewInt(1, i32.LLVM()))
 }
 
 func compilePanic(message string) {
