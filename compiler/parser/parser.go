@@ -404,8 +404,10 @@ func (p *parser) aheadParse(input Node) Node {
 				panic("type conversion must take only one argument")
 			}
 			return p.aheadParse(TypeCastNode{
-				Type: current.Val,
-				Val:  val[0],
+				Type: SingleTypeNode{
+					TypeName: current.Val,
+				},
+				Val: val[0],
 			})
 		}
 

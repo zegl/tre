@@ -1,10 +1,11 @@
 package compiler
 
 import (
-	"github.com/llir/llvm/ir"
-	"github.com/llir/llvm/ir/types"
-	"github.com/llir/llvm/ir/value"
+	"github.com/zegl/tre/compiler/compiler/types"
+	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
+
+	"github.com/llir/llvm/ir"
 )
 
 func getConditionLLVMpred(operator parser.Operator) ir.IntPred {
@@ -24,18 +25,24 @@ func getConditionLLVMpred(operator parser.Operator) ir.IntPred {
 	panic("unknown op: " + string(operator))
 }
 
-func (c *compiler) compileCondition(v parser.OperatorNode) *ir.InstICmp {
-	leftVal := c.compileValue(v.Left)
-	rightVal := c.compileValue(v.Right)
+func (c *compiler) compileCondition(v parser.OperatorNode) value.Value {
+	left := c.compileValue(v.Left)
+	right := c.compileValue(v.Right)
 
-	for _, val := range []*value.Value{&leftVal, &rightVal} {
-		if !loadNeeded(*val) {
+	leftVal := left.Value
+	rightVal := right.Value
+
+	/*for _, val := range []*value.Value{&left, &right} {
+		if (*val).PointerLevel == 0 {
 			continue
 		}
 
+		(*val).Value = c.contextBlock.NewLoad((*val).Value)
+
 		// Allocate new variable
 		// TODO: Is this step needed?
-		var newVal *ir.InstAlloca
+
+		/*var newVal *ir.InstAlloca
 
 		if t, valIsPtr := (*val).Type().(*types.PointerType); valIsPtr {
 			newVal = c.contextBlock.NewAlloca(t.Elem)
@@ -45,7 +52,23 @@ func (c *compiler) compileCondition(v parser.OperatorNode) *ir.InstICmp {
 
 		c.contextBlock.NewStore(c.contextBlock.NewLoad(*val), newVal)
 		*val = c.contextBlock.NewLoad(newVal)
+
 	}
 
-	return c.contextBlock.NewICmp(getConditionLLVMpred(v.Operator), leftVal, rightVal)
+	//return c.contextBlock.NewICmp(getConditionLLVMpred(v.Operator), leftVal, rightVal)
+	*/
+
+	if left.PointerLevel > 0 {
+		leftVal = c.contextBlock.NewLoad(leftVal)
+	}
+
+	if right.PointerLevel > 0 {
+		rightVal = c.contextBlock.NewLoad(rightVal)
+	}
+
+	return value.Value{
+		Type:         types.Bool,
+		Value:        c.contextBlock.NewICmp(getConditionLLVMpred(v.Operator), leftVal, rightVal),
+		PointerLevel: 0,
+	}
 }
