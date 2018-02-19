@@ -125,3 +125,18 @@ func (a Array) LLVM() types.Type {
 func (a Array) Name() string {
 	return "array"
 }
+
+type Pointer struct {
+	backingType
+
+	Type     Type
+	LlvmType types.Type
+}
+
+func (p Pointer) LLVM() types.Type {
+	return p.LlvmType
+}
+
+func (p Pointer) Name() string {
+	return "pointer"
+}

@@ -29,7 +29,7 @@ func Parse(input []lexer.Item, debug bool) BlockNode {
 	}
 }
 
-func (p *parser) parseOne() Node {
+func (p *parser) parseOne(withAheadParse bool) (res Node) {
 	current := p.input[p.i]
 
 	if p.debug {
@@ -41,13 +41,23 @@ func (p *parser) parseOne() Node {
 	case lexer.EOF:
 		panic("unexpected EOF")
 
+	case lexer.EOL:
+		// Ignore the EOL, continue further
+		// p.i++
+		// return p.parseOne()
+		return nil
+
 	// IDENTIFIERS are converted to either:
 	// - a CallNode if followed by an opening parenthesis (a function call), or
 	// - a NodeName (variables)
 	case lexer.IDENTIFIER:
-		return p.aheadParse(NameNode{
-			Name: current.Val,
-		})
+		res = NameNode{Name: current.Val}
+
+		if withAheadParse {
+			res = p.aheadParse(res)
+		}
+
+		return
 
 		// NUMBER always returns a ConstantNode
 		// Convert string representation to int64
@@ -57,17 +67,43 @@ func (p *parser) parseOne() Node {
 			panic(err)
 		}
 
-		return p.aheadParse(ConstantNode{
+		res = ConstantNode{
 			Type:  NUMBER,
 			Value: val,
-		})
+		}
+		if withAheadParse {
+			res = p.aheadParse(res)
+		}
+		return
 
 		// STRING is always a ConstantNode, the value is not modified
 	case lexer.STRING:
-		return p.aheadParse(ConstantNode{
+		res = ConstantNode{
 			Type:     STRING,
 			ValueStr: current.Val,
-		})
+		}
+		if withAheadParse {
+			res = p.aheadParse(res)
+		}
+		return
+
+	case lexer.OPERATOR:
+		if current.Val == "&" {
+			p.i++
+			res = GetReferenceNode{Item: p.parseOne(false)}
+			if withAheadParse {
+				res = p.aheadParse(res)
+			}
+			return
+		}
+		if current.Val == "*" {
+			p.i++
+			res = DereferenceNode{Item: p.parseOne(false)}
+			if withAheadParse {
+				res = p.aheadParse(res)
+			}
+			return
+		}
 
 	case lexer.KEYWORD:
 
@@ -200,9 +236,11 @@ func (p *parser) parseOne() Node {
 		// "return" creates a ReturnNode
 		if current.Val == "return" {
 			p.i++
-			return p.aheadParse(ReturnNode{
-				Val: p.parseOne(),
-			})
+			res = ReturnNode{Val: p.parseOne(true)}
+			if withAheadParse {
+				res = p.aheadParse(res)
+			}
+			return
 		}
 
 		// Declare a new type
@@ -219,10 +257,14 @@ func (p *parser) parseOne() Node {
 				panic(err)
 			}
 
-			return p.aheadParse(DefineTypeNode{
+			res = DefineTypeNode{
 				Name: name.Val,
 				Type: typeType,
-			})
+			}
+			if withAheadParse {
+				res = p.aheadParse(res)
+			}
+			return
 		}
 
 		// New instance of type
@@ -312,13 +354,12 @@ func (p *parser) aheadParse(input Node) Node {
 				if next.Val == ":=" {
 					return AllocNode{
 						Name: nameNode.Name,
-						Val:  p.parseOne(),
+						Val:  p.parseOne(true),
 					}
-				} else {
-					return AssignNode{
-						Name: nameNode.Name,
-						Val:  p.parseOne(),
-					}
+				}
+				return AssignNode{
+					Name: nameNode.Name,
+					Val:  p.parseOne(true),
 				}
 			}
 
@@ -326,14 +367,21 @@ func (p *parser) aheadParse(input Node) Node {
 				if loadNode, ok := input.(StructLoadElementNode); ok {
 					return AssignNode{
 						Target: loadNode,
-						Val:    p.parseOne(),
+						Val:    p.parseOne(true),
 					}
 				}
 
 				if arrayNode, ok := input.(LoadArrayElement); ok {
 					return AssignNode{
 						Target: arrayNode,
-						Val:    p.parseOne(),
+						Val:    p.parseOne(true),
+					}
+				}
+
+				if dereferenceNode, ok := input.(DereferenceNode); ok {
+					return AssignNode{
+						Target: dereferenceNode,
+						Val:    p.parseOne(true),
 					}
 				}
 			}
@@ -345,7 +393,7 @@ func (p *parser) aheadParse(input Node) Node {
 		if next.Val == "[" {
 			p.i += 2
 
-			index := p.parseOne()
+			index := p.parseOne(true)
 
 			var res Node
 
@@ -356,7 +404,7 @@ func (p *parser) aheadParse(input Node) Node {
 					Val:    input,
 					Start:  index,
 					HasEnd: true,
-					End:    p.parseOne(),
+					End:    p.parseOne(true),
 				}
 			} else {
 				res = LoadArrayElement{
@@ -380,7 +428,7 @@ func (p *parser) aheadParse(input Node) Node {
 			res := OperatorNode{
 				Operator: opsCharToOp[next.Val],
 				Left:     input,
-				Right:    p.parseOne(),
+				Right:    p.parseOne(true),
 			}
 
 			// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
@@ -450,7 +498,11 @@ func (p *parser) parseUntil(until lexer.Item) []Node {
 			continue
 		}
 
-		res = append(res, p.parseOne())
+		one := p.parseOne(true)
+		if one != nil {
+			res = append(res, one)
+		}
+
 		p.i++
 	}
 }

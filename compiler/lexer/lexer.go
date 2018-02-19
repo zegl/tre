@@ -1,6 +1,9 @@
 package lexer
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type lexType uint8
 
@@ -11,7 +14,9 @@ const (
 	STRING
 	OPERATOR
 	SEPARATOR
+
 	EOF
+	EOL
 )
 
 type Item struct {
@@ -20,10 +25,34 @@ type Item struct {
 	Line int
 }
 
+func (i Item) String() string {
+	var t string
+	switch i.Type {
+	case IDENTIFIER:
+		t = "IDENTIFIER"
+	case KEYWORD:
+		t = "KEYWORD"
+	case NUMBER:
+		t = "NUMBER"
+	case STRING:
+		t = "STRING"
+	case OPERATOR:
+		t = "OPERATOR"
+	case SEPARATOR:
+		t = "SEPARATOR"
+	case EOF:
+		t = "EOF"
+	case EOL:
+		t = "EOL"
+	}
+
+	return fmt.Sprintf("{Type:%s, Val:%s, Line:%d}", t, i.Val, i.Line)
+}
+
 var operations = map[string]struct{}{
 	"+":  {},
 	"-":  {},
-	"*":  {},
+	"*":  {}, // Multiplication and dereferencing
 	"/":  {},
 	"<":  {},
 	">":  {},
@@ -38,6 +67,7 @@ var operations = map[string]struct{}{
 	".":  {},
 	"[":  {},
 	"]":  {},
+	"&":  {},
 }
 
 var separators = map[string]struct{}{
@@ -53,10 +83,12 @@ func Lex(inputFullSource string) []Item {
 	var res []Item
 
 	for line, input := range strings.Split(inputFullSource, "\n") {
+		line = line + 1
 
-		line = line + 1 //
+		res = append(res, Item{Type: EOL, Line: line})
 
 		i := 0
+
 		for i < len(input) {
 
 			// Comment, until end of line or end of file
