@@ -327,7 +327,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 				llvmVal = block.NewLoad(llvmVal)
 			}
 
-			alloc := block.NewAlloca(val.Type.LLVM())
+			alloc := block.NewAlloca(llvmVal.Type())
 			alloc.SetName(v.Name)
 			block.NewStore(llvmVal, alloc)
 
@@ -875,6 +875,11 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 			Type:         retType,
 			PointerLevel: 1,
 		}
+
+	case parser.GetReferenceNode:
+		return c.compileGetReferenceNode(v)
+	case parser.DereferenceNode:
+		return c.compileDereferenceNode(v)
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))

@@ -175,7 +175,7 @@ type AllocNode struct {
 }
 
 func (an AllocNode) String() string {
-	return fmt.Sprintf("alloc(%s = %v(", an.Name, an.Val)
+	return fmt.Sprintf("alloc(%s = %v)", an.Name, an.Val)
 }
 
 // AssignNode assign Val to Target (or Name)
@@ -288,4 +288,22 @@ type ContinueNode struct {
 
 func (n ContinueNode) String() string {
 	return "continue"
+}
+
+type GetReferenceNode struct {
+	baseNode
+	Item Node
+}
+
+func (grn GetReferenceNode) String() string {
+	return fmt.Sprintf("&(%s)", grn.Item)
+}
+
+type DereferenceNode struct {
+	baseNode
+	Item Node
+}
+
+func (dn DereferenceNode) String() string {
+	return fmt.Sprintf("*(%s)", dn.Item)
 }
