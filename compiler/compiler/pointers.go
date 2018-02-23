@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/zegl/tre/compiler/compiler/types"
-
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
 
@@ -15,8 +14,15 @@ func (c *compiler) compileGetReferenceNode(v parser.GetReferenceNode) value.Valu
 	val := c.compileValue(v.Item)
 
 	newType := val.Type.LLVM()
+
+	// Up our pointer level one step if val.PointerLevel > 0
+	// and val is not of type Pointer
+	//
+	// TODO: Get rid of the whole PointerLevel mess
 	if val.PointerLevel > 0 {
-		newType = llvmTypes.NewPointer(newType)
+		if _, ok := val.Type.(*types.Pointer); !ok {
+			newType = llvmTypes.NewPointer(newType)
+		}
 	}
 
 	newSrc := c.contextBlock.NewAlloca(newType)
