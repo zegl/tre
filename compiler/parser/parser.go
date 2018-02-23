@@ -566,8 +566,20 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		}
 		p.i++
 
-		for current.Type != lexer.SEPARATOR || current.Val != "}" {
+		for {
 			itemName := p.lookAhead(0)
+
+			// Ignore EOL
+			if itemName.Type == lexer.EOL {
+				p.i++
+				continue
+			}
+
+			// Stop at }
+			if itemName.Type == lexer.SEPARATOR && itemName.Val == "}" {
+				break
+			}
+
 			if itemName.Type != lexer.IDENTIFIER {
 				panic("expected IDENTIFIER in struct{}, got " + fmt.Sprintf("%+v", itemName))
 			}
