@@ -6,8 +6,11 @@ import (
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
 
+	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 )
+
+var stringConstants = map[string]*ir.Global{}
 
 func (c *compiler) compileConstantNode(v parser.ConstantNode) value.Value {
 	switch v.Type {
@@ -19,8 +22,16 @@ func (c *compiler) compileConstantNode(v parser.ConstantNode) value.Value {
 		}
 
 	case parser.STRING:
-		constString := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant(v.ValueStr))
-		constString.IsConst = true
+		var constString *ir.Global
+
+		// Reuse the *ir.Global if it has already been created
+		if reusedConst, ok := stringConstants[v.ValueStr]; ok {
+			constString = reusedConst
+		} else {
+			constString = c.module.NewGlobalDef(strings.NextStringName(), strings.Constant(v.ValueStr))
+			constString.IsConst = true
+			stringConstants[v.ValueStr] = constString
+		}
 
 		alloc := c.contextBlock.NewAlloca(typeConvertMap["string"].LLVM())
 
