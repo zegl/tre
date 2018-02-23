@@ -428,35 +428,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 	switch v := node.(type) {
 
 	case parser.ConstantNode:
-		switch v.Type {
-		case parser.NUMBER:
-			return value.Value{
-				Value:        constant.NewInt(v.Value, i64.LLVM()),
-				Type:         i64,
-				PointerLevel: 0,
-			}
-
-		case parser.STRING:
-			constString := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant(v.ValueStr))
-			constString.IsConst = true
-
-			alloc := c.contextBlock.NewAlloca(typeConvertMap["string"].LLVM())
-
-			// Save length of the string
-			lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
-			c.contextBlock.NewStore(constant.NewInt(int64(len(v.ValueStr)), i64.LLVM()), lenItem)
-
-			// Save i8* version of string
-			strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
-			c.contextBlock.NewStore(strings.Toi8Ptr(c.contextBlock, constString), strItem)
-
-			return value.Value{
-				Value:        c.contextBlock.NewLoad(alloc),
-				Type:         types.String,
-				PointerLevel: 0,
-			}
-		}
-		break
+		return c.compileConstantNode(v)
 
 	case parser.OperatorNode:
 		left := c.compileValue(v.Left)
