@@ -83,9 +83,12 @@ func Lex(inputFullSource string) []Item {
 	var res []Item
 
 	for line, input := range strings.Split(inputFullSource, "\n") {
-		line = line + 1
+		if line > 0 {
+			res = append(res, Item{Type: EOL, Line: line})
+		}
 
-		res = append(res, Item{Type: EOL, Line: line})
+		// Lines starts at 1
+		line = line + 1
 
 		i := 0
 

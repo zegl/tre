@@ -1,8 +1,9 @@
 package lexer
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLexerSimpleAdd(t *testing.T) {
@@ -12,6 +13,26 @@ func TestLexerSimpleAdd(t *testing.T) {
 		{Type: IDENTIFIER, Val: "aa", Line: 1},
 		{Type: OPERATOR, Val: "+", Line: 1},
 		{Type: IDENTIFIER, Val: "b", Line: 1},
+		{Type: EOF, Val: ""},
+	}
+
+	assert.Equal(t, expected, r)
+}
+
+func TestLexerSimpleAddWithNewlines(t *testing.T) {
+	r := Lex("aa + b\naa + b")
+
+	expected := []Item{
+		{Type: IDENTIFIER, Val: "aa", Line: 1},
+		{Type: OPERATOR, Val: "+", Line: 1},
+		{Type: IDENTIFIER, Val: "b", Line: 1},
+
+		{Type: EOL, Val: "", Line: 1},
+
+		{Type: IDENTIFIER, Val: "aa", Line: 2},
+		{Type: OPERATOR, Val: "+", Line: 2},
+		{Type: IDENTIFIER, Val: "b", Line: 2},
+
 		{Type: EOF, Val: ""},
 	}
 
