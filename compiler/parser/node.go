@@ -29,21 +29,29 @@ func (cn CallNode) String() string {
 	return fmt.Sprintf("CallNode: %s(%+v)", cn.Function, cn.Arguments)
 }
 
-// BlockNode is a list of other nodes
-type BlockNode struct {
+type PackageNode struct {
+	baseNode
+
+	Files []FileNode
+	Name  string
+}
+
+// FileNode is a list of other nodes
+// Indicates the root of one source file
+type FileNode struct {
 	baseNode
 
 	Instructions []Node
 }
 
-func (bn BlockNode) String() string {
+func (fn FileNode) String() string {
 	var res []string
 
-	for _, i := range bn.Instructions {
+	for _, i := range fn.Instructions {
 		res = append(res, fmt.Sprintf("%+v", i))
 	}
 
-	return fmt.Sprintf("BlockNode: \n\t%s", strings.Join(res, "\n\t"))
+	return fmt.Sprintf("FileNode: \n\t%s", strings.Join(res, "\n\t"))
 }
 
 // OperatorNode is mathematical operations and comparisons
@@ -306,4 +314,13 @@ type DereferenceNode struct {
 
 func (dn DereferenceNode) String() string {
 	return fmt.Sprintf("*(%s)", dn.Item)
+}
+
+type ImportNode struct {
+	baseNode
+	PackagePath string
+}
+
+func (in ImportNode) String() string {
+	return fmt.Sprintf("import %s", in.PackagePath)
 }

@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/zegl/tre/compiler/compiler"
+
 	"github.com/zegl/tre/compiler/lexer"
 	"github.com/zegl/tre/compiler/parser"
 
@@ -13,33 +15,21 @@ import (
 	"os"
 )
 
+var debug bool
+
 func main() {
 	if len(os.Args) < 2 {
 		log.Printf("No file specified. Usage: %s path/to/file.tre", os.Args[0])
 		os.Exit(1)
 	}
 
-	inputFile := os.Args[1]
-	debug := len(os.Args) > 2 && os.Args[2] == "--debug"
+	debug = len(os.Args) > 2 && os.Args[2] == "--debug"
 
-	// Read specified input file
-	fileContents, err := ioutil.ReadFile(inputFile)
-	if err != nil {
-		panic(err)
-	}
+	c := compiler.NewCompiler()
 
-	// Run input code through the lexer. A list of tokens is returned.
-	lexed := lexer.Lex(string(fileContents))
+	compilePackage(c, os.Args[1], "main")
 
-	// Run lexed source through the parser. A syntax tree is returned.
-	parsed := parser.Parse(lexed, debug)
-
-	if debug {
-		log.Println(parsed)
-	}
-
-	// Run AST through the compiler. LLVM IR is returned.
-	compiled := compiler.Compile(parsed)
+	compiled := c.GetIR()
 
 	if debug {
 		log.Println(compiled)
@@ -74,4 +64,70 @@ func main() {
 	}
 
 	os.Exit(0)
+}
+
+func compilePackage(c *compiler.Compiler, path, name string) {
+	f, err := os.Stat(path)
+	if err != nil {
+		panic(err)
+	}
+
+	var parsedFiles []parser.FileNode
+
+	// Parse all files in the folder
+	if f.IsDir() {
+		files, err := ioutil.ReadDir(path)
+		if err != nil {
+			panic(path + ": " + err.Error())
+		}
+
+		for _, file := range files {
+			if !file.IsDir() {
+				if strings.HasSuffix(file.Name(), ".go") {
+					parsedFiles = append(parsedFiles, parseFile(path+"/"+file.Name()))
+				}
+			}
+		}
+	} else {
+		// Parse a single file
+		parsedFiles = append(parsedFiles, parseFile(path))
+	}
+
+	// Scan for ImportNodes
+	// Use importNodes to import more packages
+	for _, file := range parsedFiles {
+		for _, i := range file.Instructions {
+			if _, ok := i.(parser.DeclarePackageNode); ok {
+				continue
+			}
+
+			if importNode, ok := i.(parser.ImportNode); ok {
+				compilePackage(c, path+"/vendor/"+importNode.PackagePath, importNode.PackagePath)
+				continue
+			}
+
+			break
+		}
+	}
+
+	c.Compile(parser.PackageNode{
+		Files: parsedFiles,
+		Name:  name,
+	})
+}
+
+func parseFile(path string) parser.FileNode {
+	// Read specified input file
+	fileContents, err := ioutil.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+
+	// Run input code through the lexer. A list of tokens is returned.
+	lexed := lexer.Lex(string(fileContents))
+
+	// Run lexed source through the parser. A syntax tree is returned.
+	parsed := parser.Parse(lexed, debug)
+
+	return parsed
 }

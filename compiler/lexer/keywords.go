@@ -11,4 +11,5 @@ var keywords = map[string]struct{}{
 	"for":      {},
 	"break":    {},
 	"continue": {},
+	"import":   {},
 }

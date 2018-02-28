@@ -17,14 +17,14 @@ type parser struct {
 	debug bool
 }
 
-func Parse(input []lexer.Item, debug bool) BlockNode {
+func Parse(input []lexer.Item, debug bool) FileNode {
 	p := &parser{
 		i:     0,
 		input: input,
 		debug: debug,
 	}
 
-	return BlockNode{
+	return FileNode{
 		Instructions: p.parseUntil(lexer.Item{Type: lexer.EOF}),
 	}
 }
@@ -313,6 +313,10 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 
 		if current.Val == "continue" {
 			return ContinueNode{}
+		}
+
+		if current.Val == "import" {
+			return p.parseImport()
 		}
 	}
 

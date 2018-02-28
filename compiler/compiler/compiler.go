@@ -17,7 +17,7 @@ import (
 	llvmValue "github.com/llir/llvm/ir/value"
 )
 
-type compiler struct {
+type Compiler struct {
 	module *ir.Module
 
 	// functions provided by the OS, such as printf
@@ -25,6 +25,10 @@ type compiler struct {
 
 	// functions provided by the language, such as println
 	globalFuncs map[string]*types.Function
+
+	packages           map[string]*types.PackageInstance
+	currentPackage     *types.PackageInstance
+	currentPackageName string
 
 	contextFunc           *ir.Function
 	contextBlock          *ir.BasicBlock
@@ -41,11 +45,13 @@ var (
 	i64 = types.I64
 )
 
-func Compile(root parser.BlockNode) string {
-	c := &compiler{
+func NewCompiler() *Compiler {
+	c := &Compiler{
 		module:        ir.NewModule(),
 		externalFuncs: make(map[string]*ir.Function),
 		globalFuncs:   make(map[string]*types.Function),
+
+		packages: make(map[string]*types.PackageInstance),
 
 		contextLoopBreak:    make([]*ir.BasicBlock, 0),
 		contextLoopContinue: make([]*ir.BasicBlock, 0),
@@ -77,13 +83,26 @@ func Compile(root parser.BlockNode) string {
 
 	c.module.TargetTriple = fmt.Sprintf("%s-%s", targetTriple[0], targetTriple[1])
 
-	c.compile(root.Instructions)
+	return c
+}
 
-	// Print IR
+func (c *Compiler) Compile(root parser.PackageNode) {
+	c.currentPackage = &types.PackageInstance{
+		Funcs: make(map[string]*types.Function),
+	}
+	c.currentPackageName = root.Name
+	c.packages[c.currentPackageName] = c.currentPackage
+
+	for _, fileNode := range root.Files {
+		c.compile(fileNode.Instructions)
+	}
+}
+
+func (c *Compiler) GetIR() string {
 	return fmt.Sprintln(c.module)
 }
 
-func (c *compiler) addExternal() {
+func (c *Compiler) addExternal() {
 	printfFunc := c.module.NewFunction("printf", i32.LLVM(), ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())))
 	printfFunc.Sig.Variadic = true
 	c.externalFuncs["printf"] = printfFunc
@@ -117,7 +136,7 @@ func (c *compiler) addExternal() {
 	)
 }
 
-func (c *compiler) addGlobal() {
+func (c *Compiler) addGlobal() {
 	types.ModuleStringType = c.module.NewType("string", internal.String())
 
 	// printf
@@ -142,7 +161,7 @@ func (c *compiler) addGlobal() {
 	c.module.AppendFunction(strLen)
 }
 
-func (c *compiler) compile(instructions []parser.Node) {
+func (c *Compiler) compile(instructions []parser.Node) {
 	for _, i := range instructions {
 		block := c.contextBlock
 
@@ -193,9 +212,9 @@ func (c *compiler) compile(instructions []parser.Node) {
 				})
 
 				// Change the name of our function
-				compiledName = "method_" + v.MethodOnType.TypeName + "_" + v.Name
+				compiledName = c.currentPackageName + "_method_" + v.MethodOnType.TypeName + "_" + v.Name
 			} else {
-				compiledName = v.Name
+				compiledName = c.currentPackageName + "_" + v.Name
 			}
 
 			params := make([]*llvmTypes.Param, len(v.Arguments))
@@ -209,13 +228,13 @@ func (c *compiler) compile(instructions []parser.Node) {
 				funcRetType = parserTypeToType(v.ReturnValues[0].Type)
 			}
 
-			// TODO: Only do this in the main package
-			if v.Name == "main" {
+			if c.currentPackageName == "main" && v.Name == "main" {
 				if len(v.ReturnValues) != 0 {
 					panic("main func can not have a return type")
 				}
 
 				funcRetType = types.I32
+				compiledName = "main"
 			}
 
 			// Create a new function, and add it to the list of global functions
@@ -240,7 +259,7 @@ func (c *compiler) compile(instructions []parser.Node) {
 				}
 
 			} else {
-				c.globalFuncs[v.Name] = typesFunc
+				c.currentPackage.Funcs[v.Name] = typesFunc
 			}
 
 			entry := fn.NewBlock(getBlockName())
@@ -400,6 +419,10 @@ func (c *compiler) compile(instructions []parser.Node) {
 			c.compileContinueNode(v)
 			break
 
+		case parser.ImportNode:
+			// NOOP
+			break
+
 		default:
 			c.compileValue(v)
 			break
@@ -407,24 +430,36 @@ func (c *compiler) compile(instructions []parser.Node) {
 	}
 }
 
-func (c *compiler) funcByName(name string) *types.Function {
+func (c *Compiler) funcByName(name string) *types.Function {
 	if f, ok := c.globalFuncs[name]; ok {
+		return f
+	}
+
+	// Function in the current package
+	if f, ok := c.currentPackage.Funcs[name]; ok {
 		return f
 	}
 
 	panic("funcByName: no such func: " + name)
 }
 
-func (c *compiler) varByName(name string) value.Value {
+func (c *Compiler) varByName(name string) value.Value {
 	// Named variable in this block?
 	if val, ok := c.contextBlockVariables[name]; ok {
 		return val
 	}
 
+	// Imported package?
+	if pkg, ok := c.packages[name]; ok {
+		return value.Value{
+			Type: pkg,
+		}
+	}
+
 	panic("undefined variable: " + name)
 }
 
-func (c *compiler) compileValue(node parser.Node) value.Value {
+func (c *Compiler) compileValue(node parser.Node) value.Value {
 	switch v := node.(type) {
 
 	case parser.ConstantNode:
@@ -665,6 +700,16 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 	case parser.StructLoadElementNode:
 		src := c.compileValue(v.Struct)
 
+		if packageRef, ok := src.Type.(*types.PackageInstance); ok {
+			if f, ok := packageRef.Funcs[v.ElementName]; ok {
+				return value.Value{
+					Type: f,
+				}
+			}
+
+			panic(fmt.Sprintf("Package %s has no such method %s", packageRef.Name(), v.ElementName))
+		}
+
 		if src.PointerLevel == 0 {
 			// GetElementPtr only works on pointer types, and we don't have a pointer to our object.
 			// Allocate it and use the pointer instead
@@ -857,7 +902,7 @@ func (c *compiler) compileValue(node parser.Node) value.Value {
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))
 }
 
-func (c *compiler) panic(block *ir.BasicBlock, message string) {
+func (c *Compiler) panic(block *ir.BasicBlock, message string) {
 	globMsg := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant("runtime panic: "+message+"\n"))
 	globMsg.IsConst = true
 	block.NewCall(c.externalFuncs["printf"], strings.Toi8Ptr(block, globMsg))
