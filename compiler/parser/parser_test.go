@@ -16,7 +16,7 @@ func TestCall(t *testing.T) {
 		{Type: lexer.EOF, Val: ""},
 	}
 
-	expected := BlockNode{
+	expected := FileNode{
 		Instructions: []Node{
 			CallNode{
 				Function:  NameNode{Name: "printf"},
@@ -36,7 +36,7 @@ func TestAdd(t *testing.T) {
 		{Type: lexer.EOF, Val: ""},
 	}
 
-	expected := BlockNode{
+	expected := FileNode{
 		Instructions: []Node{
 			OperatorNode{
 				Operator: OP_ADD,
@@ -65,7 +65,7 @@ func TestInfixPriority(t *testing.T) {
 		{Type: lexer.EOF, Val: ""},
 	}
 
-	expected := BlockNode{
+	expected := FileNode{
 		Instructions: []Node{
 			OperatorNode{
 				Operator: OP_ADD,
@@ -101,7 +101,7 @@ func TestInfixPriority2(t *testing.T) {
 		{Type: lexer.EOF, Val: ""},
 	}
 
-	expected := BlockNode{
+	expected := FileNode{
 		Instructions: []Node{
 			OperatorNode{
 				Operator: OP_ADD,
