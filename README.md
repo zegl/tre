@@ -55,11 +55,11 @@ TODO:
 * * println (currently only works on strings)
 * * printf (should be removed)
 * * exit (shoould be removed)
-* * len
+* * len (string, array)
+* Packages
+* Methods
+* Pointers
 
 TODO:
 
-* Packages
 * Interfaces
-* Methods
-* Pointers
