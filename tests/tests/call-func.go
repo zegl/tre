@@ -1,8 +1,10 @@
 package main
 
+import "fmt"
+
 func otherfunc() {
     // in other func
-    printf("in other func\n")
+    fmt.Println("in other func\n")
 }
 
 func main() {
