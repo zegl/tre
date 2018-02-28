@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"go/build"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -29,15 +31,28 @@ func TestAllPrograms(t *testing.T) {
 
 	for _, file := range files {
 		t.Run(file.Name(), func(t *testing.T) {
-			if !buildRunAndCheck(t, bindir, testsdir+"/"+file.Name()) {
-				t.Error("failed")
+			if err := buildRunAndCheck(t, bindir, testsdir+"/"+file.Name()); err != nil {
+				t.Error("failed: " + err.Error())
 			}
 		})
 	}
 }
 
-func buildRunAndCheck(t *testing.T, bindir, path string) bool {
-	content, _ := ioutil.ReadFile(path)
+func buildRunAndCheck(t *testing.T, bindir, path string) error {
+	fp, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	mainPath := path
+	if fp.IsDir() {
+		mainPath = path + "/main.go"
+	}
+
+	content, err := ioutil.ReadFile(mainPath)
+	if err != nil {
+		return err
+	}
 
 	expect := ""
 
@@ -66,7 +81,7 @@ func buildRunAndCheck(t *testing.T, bindir, path string) bool {
 		if err.Error() != "exit status 1" {
 			println(path, err.Error())
 			t.Log(string(stdout))
-			return false
+			return errors.New("Compiletime failure")
 		}
 
 		// Don't execute the program, but check compier message
@@ -83,7 +98,7 @@ func buildRunAndCheck(t *testing.T, bindir, path string) bool {
 			if err.Error() != "exit status 1" {
 				println(path, err.Error())
 				t.Log(string(stdout))
-				return false
+				return errors.New("Runtime failure")
 			}
 		}
 
@@ -91,10 +106,10 @@ func buildRunAndCheck(t *testing.T, bindir, path string) bool {
 	}
 
 	if expect == output {
-		return true
+		return nil
 	}
 
 	t.Logf("Expected:\n---\n'%s'\n---\nResult:\n---\n'%s'\n---\n", expect, output)
 
-	return false
+	return errors.New("Unexpected result")
 }
