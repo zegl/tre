@@ -2,7 +2,7 @@ package compiler
 
 import "github.com/zegl/tre/compiler/parser"
 
-func (c *compiler) compileForNode(v parser.ForNode) {
+func (c *Compiler) compileForNode(v parser.ForNode) {
 	// TODO: create a new context-block for code running inside the for loop
 	c.compile([]parser.Node{
 		v.BeforeLoop,
@@ -48,10 +48,10 @@ func (c *compiler) compileForNode(v parser.ForNode) {
 	c.contextLoopContinue = c.contextLoopContinue[0 : len(c.contextLoopContinue)-1]
 }
 
-func (c *compiler) compileBreakNode(v parser.BreakNode) {
+func (c *Compiler) compileBreakNode(v parser.BreakNode) {
 	c.contextBlock.NewBr(c.contextLoopBreak[len(c.contextLoopBreak)-1])
 }
 
-func (c *compiler) compileContinueNode(v parser.ContinueNode) {
+func (c *Compiler) compileContinueNode(v parser.ContinueNode) {
 	c.contextBlock.NewBr(c.contextLoopContinue[len(c.contextLoopContinue)-1])
 }

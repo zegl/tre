@@ -25,7 +25,7 @@ func getConditionLLVMpred(operator parser.Operator) ir.IntPred {
 	panic("unknown op: " + string(operator))
 }
 
-func (c *compiler) compileCondition(v parser.OperatorNode) value.Value {
+func (c *Compiler) compileCondition(v parser.OperatorNode) value.Value {
 	left := c.compileValue(v.Left)
 	right := c.compileValue(v.Right)
 

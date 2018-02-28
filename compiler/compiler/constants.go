@@ -12,7 +12,7 @@ import (
 
 var stringConstants = map[string]*ir.Global{}
 
-func (c *compiler) compileConstantNode(v parser.ConstantNode) value.Value {
+func (c *Compiler) compileConstantNode(v parser.ConstantNode) value.Value {
 	switch v.Type {
 	case parser.NUMBER:
 		return value.Value{
