@@ -101,8 +101,41 @@ func compilePackage(c *compiler.Compiler, path, name string) {
 				continue
 			}
 
+			gopath := os.Getenv("HOME") + "/go"
+			if gopathFromEnv, ok := os.LookupEnv("GOPATH"); ok {
+				gopath = gopathFromEnv
+			}
+
 			if importNode, ok := i.(parser.ImportNode); ok {
-				compilePackage(c, path+"/vendor/"+importNode.PackagePath, importNode.PackagePath)
+
+				searchPaths := []string{
+					path + "/vendor/" + importNode.PackagePath,
+
+					// "GOROOT" equivalent
+					gopath + "/src/github.com/zegl/tre/pkg/" + importNode.PackagePath,
+				}
+
+				importSuccessful := false
+
+				for _, sp := range searchPaths {
+					fp, err := os.Stat(sp)
+					if err != nil || !fp.IsDir() {
+						continue
+					}
+
+					if debug {
+						log.Printf("Loading %s from %s", importNode.PackagePath, sp)
+					}
+
+					compilePackage(c, sp, importNode.PackagePath)
+					importSuccessful = true
+				}
+
+				if !importSuccessful {
+					log.Printf("Paths: %+v", searchPaths)
+					panic("Unable to import: " + importNode.PackagePath)
+				}
+
 				continue
 			}
 
