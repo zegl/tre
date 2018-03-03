@@ -10,11 +10,12 @@ import (
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
 
+	"errors"
+
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
-	"errors"
 )
 
 type Compiler struct {
@@ -37,6 +38,8 @@ type Compiler struct {
 	// What a break or continue should resolve to
 	contextLoopBreak    []*ir.BasicBlock
 	contextLoopContinue []*ir.BasicBlock
+
+	stringConstants map[string]*ir.Global
 }
 
 var (
@@ -55,6 +58,8 @@ func NewCompiler() *Compiler {
 
 		contextLoopBreak:    make([]*ir.BasicBlock, 0),
 		contextLoopContinue: make([]*ir.BasicBlock, 0),
+
+		stringConstants: make(map[string]*ir.Global),
 	}
 
 	c.addExternal()
