@@ -1,13 +1,13 @@
 package build
 
 import (
+	"errors"
 	"fmt"
-	"os/exec"
-	"strings"
 	"io/ioutil"
 	"log"
 	"os"
-	"errors"
+	"os/exec"
+	"strings"
 
 	"github.com/zegl/tre/compiler/compiler"
 	"github.com/zegl/tre/compiler/lexer"
@@ -20,7 +20,10 @@ func Build(path string, setDebug bool) error {
 	c := compiler.NewCompiler()
 	debug = setDebug
 
-	compilePackage(c, path, "main")
+	err := compilePackage(c, path, "main")
+	if err != nil {
+		return err
+	}
 
 	compiled := c.GetIR()
 
@@ -120,7 +123,11 @@ func compilePackage(c *compiler.Compiler, path, name string) error {
 						log.Printf("Loading %s from %s", importNode.PackagePath, sp)
 					}
 
-					compilePackage(c, sp, importNode.PackagePath)
+					err = compilePackage(c, sp, importNode.PackagePath)
+					if err != nil {
+						return err
+					}
+
 					importSuccessful = true
 				}
 
