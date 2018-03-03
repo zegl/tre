@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 
 	"github.com/zegl/tre/compiler/compiler/internal"
@@ -15,6 +14,7 @@ import (
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+	"errors"
 )
 
 type Compiler struct {
@@ -77,6 +77,8 @@ func NewCompiler() *Compiler {
 		targetTriple[1] = "apple-macosx10.13.0"
 	case "linux":
 		targetTriple[1] = "pc-linux-gnu"
+	case "windows":
+		targetTriple[1] = "pc-windows"
 	default:
 		panic("unsupported GOOS: " + runtime.GOOS)
 	}
@@ -86,7 +88,13 @@ func NewCompiler() *Compiler {
 	return c
 }
 
-func (c *Compiler) Compile(root parser.PackageNode) {
+func (c *Compiler) Compile(root parser.PackageNode) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.New(fmt.Sprint(r))
+		}
+	}()
+
 	c.currentPackage = &types.PackageInstance{
 		Funcs: make(map[string]*types.Function),
 	}
@@ -96,6 +104,8 @@ func (c *Compiler) Compile(root parser.PackageNode) {
 	for _, fileNode := range root.Files {
 		c.compile(fileNode.Instructions)
 	}
+
+	return
 }
 
 func (c *Compiler) GetIR() string {
@@ -909,7 +919,8 @@ func (c *Compiler) panic(block *ir.BasicBlock, message string) {
 	block.NewCall(c.externalFuncs["exit"], constant.NewInt(1, i32.LLVM()))
 }
 
+type Panic string
+
 func compilePanic(message string) {
-	fmt.Fprintf(os.Stderr, "compile panic: %s\n", message)
-	os.Exit(1)
+	panic(Panic(fmt.Sprintf("compile panic: %s\n", message)))
 }
