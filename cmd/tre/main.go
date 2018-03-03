@@ -1,21 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"os/exec"
-	"strings"
-
-	"github.com/zegl/tre/compiler/compiler"
-
-	"github.com/zegl/tre/compiler/lexer"
-	"github.com/zegl/tre/compiler/parser"
-
-	"io/ioutil"
-	"log"
 	"os"
-)
+	"log"
 
-var debug bool
+	"github.com/zegl/tre/cmd/tre/build"
+)
 
 func main() {
 	if len(os.Args) < 2 {
@@ -23,144 +13,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	debug = len(os.Args) > 2 && os.Args[2] == "--debug"
+	debug := len(os.Args) > 2 && os.Args[2] == "--debug"
 
-	c := compiler.NewCompiler()
-
-	compilePackage(c, os.Args[1], "main")
-
-	compiled := c.GetIR()
-
-	if debug {
-		log.Println(compiled)
-	}
-
-	// Get dir to save temporary dirs in
-	tmpDir, err := ioutil.TempDir("", "tre")
+	err := build.Build(os.Args[1], debug)
 	if err != nil {
-		panic(err)
-	}
-
-	// Write LLVM IR to disk
-	err = ioutil.WriteFile(tmpDir+"/main.ll", []byte(compiled), 0666)
-	if err != nil {
-		panic(err)
-	}
-
-	// Invoke clang compiler to compile LLVM IR to a binary executable
-	cmd := exec.Command("clang",
-		tmpDir+"/main.ll",     // Path to LLVM IR
-		"-o", "output-binary", // Output path
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(string(output))
-		panic(err)
-	}
-
-	if len(output) > 0 {
-		fmt.Println(string(output))
+		log.Println(err)
 		os.Exit(1)
 	}
 
 	os.Exit(0)
-}
-
-func compilePackage(c *compiler.Compiler, path, name string) {
-	f, err := os.Stat(path)
-	if err != nil {
-		panic(err)
-	}
-
-	var parsedFiles []parser.FileNode
-
-	// Parse all files in the folder
-	if f.IsDir() {
-		files, err := ioutil.ReadDir(path)
-		if err != nil {
-			panic(path + ": " + err.Error())
-		}
-
-		for _, file := range files {
-			if !file.IsDir() {
-				if strings.HasSuffix(file.Name(), ".go") {
-					parsedFiles = append(parsedFiles, parseFile(path+"/"+file.Name()))
-				}
-			}
-		}
-	} else {
-		// Parse a single file
-		parsedFiles = append(parsedFiles, parseFile(path))
-	}
-
-	// Scan for ImportNodes
-	// Use importNodes to import more packages
-	for _, file := range parsedFiles {
-		for _, i := range file.Instructions {
-			if _, ok := i.(parser.DeclarePackageNode); ok {
-				continue
-			}
-
-			gopath := os.Getenv("HOME") + "/go"
-			if gopathFromEnv, ok := os.LookupEnv("GOPATH"); ok {
-				gopath = gopathFromEnv
-			}
-
-			if importNode, ok := i.(parser.ImportNode); ok {
-
-				searchPaths := []string{
-					path + "/vendor/" + importNode.PackagePath,
-
-					// "GOROOT" equivalent
-					gopath + "/src/github.com/zegl/tre/pkg/" + importNode.PackagePath,
-				}
-
-				importSuccessful := false
-
-				for _, sp := range searchPaths {
-					fp, err := os.Stat(sp)
-					if err != nil || !fp.IsDir() {
-						continue
-					}
-
-					if debug {
-						log.Printf("Loading %s from %s", importNode.PackagePath, sp)
-					}
-
-					compilePackage(c, sp, importNode.PackagePath)
-					importSuccessful = true
-				}
-
-				if !importSuccessful {
-					log.Printf("Paths: %+v", searchPaths)
-					panic("Unable to import: " + importNode.PackagePath)
-				}
-
-				continue
-			}
-
-			break
-		}
-	}
-
-	c.Compile(parser.PackageNode{
-		Files: parsedFiles,
-		Name:  name,
-	})
-}
-
-func parseFile(path string) parser.FileNode {
-	// Read specified input file
-	fileContents, err := ioutil.ReadFile(path)
-	if err != nil {
-		panic(err)
-	}
-
-	// Run input code through the lexer. A list of tokens is returned.
-	lexed := lexer.Lex(string(fileContents))
-
-	// Run lexed source through the parser. A syntax tree is returned.
-	parsed := parser.Parse(lexed, debug)
-
-	return parsed
 }
