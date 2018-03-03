@@ -2,27 +2,20 @@ package compiler
 
 import (
 	"errors"
+	gobuild "go/build"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 	"testing"
-	gobuild "go/build"
 
 	"github.com/zegl/tre/cmd/tre/build"
 )
 
 func TestAllPrograms(t *testing.T) {
-	bindir := gobuild.Default.GOPATH + "/src/github.com/zegl/tre/tests"
+	bindir := gobuild.Default.GOPATH + "/src/github.com/zegl/tre/compiler"
 	testsdir := gobuild.Default.GOPATH + "/src/github.com/zegl/tre/compiler/testdata"
-
-	/*buildOutput, err := exec.Command("go", "build", "-i", "github.com/zegl/tre/cmd/tre").CombinedOutput()
-	if err != nil {
-		t.Error(err)
-		t.Error(string(buildOutput))
-		return
-	}*/
 
 	files, _ := ioutil.ReadDir(testsdir)
 	if len(files) == 0 {
@@ -65,47 +58,19 @@ func buildRunAndCheck(t *testing.T, bindir, path string) error {
 	expect = strings.Replace(expect, "\r\n", "\n", -1)
 	expect = strings.TrimSpace(expect)
 
+	runProgram := true
+	var output string
+
 	err = build.Build(path, false)
 	if err != nil {
-		return nil
-		return err
-	}
-
-	/*var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command(bindir+"/tre.exe", path)
-	} else {
-		cmd = exec.Command(bindir+"/tre", path)
-	}
-
-	runProgram := true
-
-	// Compile output
-	stdout, err := cmd.CombinedOutput()
-	if err != nil {
-		if err.Error() != "exit status 1" {
-			println(path, err.Error())
-			t.Log(string(stdout))
-			return errors.New("Compiletime failure")
-		}
-
-		// Don't execute the program, but check compier message
+		output = strings.TrimSpace(err.Error())
 		runProgram = false
-	}*/
-
-	var cmd *exec.Cmd
-
-	//output := strings.TrimSpace(string(stdout))
-
-	var output string
-	var stdout []byte
-
-	return nil
+	}
 
 	// Run program output
-	//if runProgram {
-		cmd = exec.Command(bindir + "/output-binary")
-		stdout, err = cmd.CombinedOutput()
+	if runProgram {
+		cmd := exec.Command(bindir + "/output-binary")
+		stdout, err := cmd.CombinedOutput()
 		if err != nil {
 			if err.Error() != "exit status 1" {
 				println(path, err.Error())
@@ -115,7 +80,7 @@ func buildRunAndCheck(t *testing.T, bindir, path string) error {
 		}
 
 		output = output + strings.TrimSpace(string(stdout))
-	//}
+	}
 
 	if expect == output {
 		return nil
