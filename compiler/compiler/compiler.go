@@ -3,6 +3,7 @@ package compiler
 import (
 	"fmt"
 	"runtime"
+	"runtime/debug"
 
 	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/strings"
@@ -96,7 +97,17 @@ func NewCompiler() *Compiler {
 func (c *Compiler) Compile(root parser.PackageNode) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New(fmt.Sprint(r))
+			// Compile time panics, that are not errors in the compiler
+			if _, ok := r.(Panic); ok {
+				err = errors.New(fmt.Sprint(r))
+				return
+			}
+
+			// Bugs in the compiler
+			err = fmt.Errorf("%s\n\nInternal compiler stacktrace:\n%s",
+				fmt.Sprint(r),
+				string(debug.Stack()),
+			)
 		}
 	}()
 
@@ -178,8 +189,6 @@ func (c *Compiler) addGlobal() {
 
 func (c *Compiler) compile(instructions []parser.Node) {
 	for _, i := range instructions {
-		block := c.contextBlock
-
 		switch v := i.(type) {
 		case parser.ConditionNode:
 			cond := c.compileCondition(v.Cond)
@@ -192,7 +201,7 @@ func (c *Compiler) compile(instructions []parser.Node) {
 				falseBlock = c.contextFunc.NewBlock(getBlockName() + "-false")
 			}
 
-			block.NewCondBr(cond.Value, trueBlock, falseBlock)
+			c.contextBlock.NewCondBr(cond.Value, trueBlock, falseBlock)
 
 			c.contextBlock = trueBlock
 			c.compile(v.True)
@@ -329,11 +338,11 @@ func (c *Compiler) compile(instructions []parser.Node) {
 			val := c.compileValue(v.Val)
 
 			if val.PointerLevel > 0 {
-				block.NewRet(block.NewLoad(val.Value))
+				c.contextBlock.NewRet(c.contextBlock.NewLoad(val.Value))
 				break
 			}
 
-			block.NewRet(val.Value)
+			c.contextBlock.NewRet(val.Value)
 			break
 
 		case parser.AllocNode:
@@ -342,7 +351,7 @@ func (c *Compiler) compile(instructions []parser.Node) {
 			if typeNode, ok := v.Val.(parser.TypeNode); ok {
 				treType := parserTypeToType(typeNode)
 
-				alloc := block.NewAlloca(treType.LLVM())
+				alloc := c.contextBlock.NewAlloca(treType.LLVM())
 				alloc.SetName(v.Name)
 
 				c.contextBlockVariables[v.Name] = value.Value{
@@ -358,12 +367,12 @@ func (c *Compiler) compile(instructions []parser.Node) {
 			llvmVal := val.Value
 
 			if val.PointerLevel > 0 {
-				llvmVal = block.NewLoad(llvmVal)
+				llvmVal = c.contextBlock.NewLoad(llvmVal)
 			}
 
-			alloc := block.NewAlloca(llvmVal.Type())
+			alloc := c.contextBlock.NewAlloca(llvmVal.Type())
 			alloc.SetName(v.Name)
-			block.NewStore(llvmVal, alloc)
+			c.contextBlock.NewStore(llvmVal, alloc)
 
 			c.contextBlockVariables[v.Name] = value.Value{
 				Type:         val.Type,
@@ -387,8 +396,8 @@ func (c *Compiler) compile(instructions []parser.Node) {
 			// Allocate from type
 			if typeNode, ok := v.Val.(parser.TypeNode); ok {
 				if singleTypeNode, ok := typeNode.(parser.SingleTypeNode); ok {
-					alloc := block.NewAlloca(parserTypeToType(singleTypeNode).LLVM())
-					block.NewStore(block.NewLoad(alloc), llvmDst)
+					alloc := c.contextBlock.NewAlloca(parserTypeToType(singleTypeNode).LLVM())
+					c.contextBlock.NewStore(c.contextBlock.NewLoad(alloc), llvmDst)
 					break
 				}
 
@@ -400,10 +409,10 @@ func (c *Compiler) compile(instructions []parser.Node) {
 			llvmV := val.Value
 
 			if val.PointerLevel > 0 {
-				llvmV = block.NewLoad(llvmV)
+				llvmV = c.contextBlock.NewLoad(llvmV)
 			}
 
-			block.NewStore(llvmV, llvmDst)
+			c.contextBlock.NewStore(llvmV, llvmDst)
 			break
 
 		case parser.DefineTypeNode:
@@ -762,66 +771,22 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 
 	case parser.SliceArrayNode:
 		src := c.compileValue(v.Val)
-		srcVal := src.Value
 
-		var originalLength *ir.InstExtractValue
-
-		// Get backing array from string type
-		if src.PointerLevel > 0 {
-			srcVal = c.contextBlock.NewLoad(srcVal)
-		}
-		if src.Type.Name() == "string" {
-			originalLength = c.contextBlock.NewExtractValue(srcVal, []int64{0})
-			srcVal = c.contextBlock.NewExtractValue(srcVal, []int64{1})
+		if _, ok := src.Type.(*types.StringType); ok {
+			return c.compileSubstring(src, v)
 		}
 
-		start := c.compileValue(v.Start)
-
-		outsideOfLengthBr := c.contextBlock.Parent.NewBlock(getBlockName())
-		c.panic(outsideOfLengthBr, "Substring start larger than len")
-		outsideOfLengthBr.NewUnreachable()
-
-		safeBlock := c.contextBlock.Parent.NewBlock(getBlockName())
-
-		// Make sure that the offset is within the string length
-		cmp := c.contextBlock.NewICmp(ir.IntUGE, start.Value, originalLength)
-		c.contextBlock.NewCondBr(cmp, outsideOfLengthBr, safeBlock)
-
-		c.contextBlock = safeBlock
-
-		offset := safeBlock.NewGetElementPtr(srcVal, start.Value)
-
-		var length llvmValue.Value
-		if v.HasEnd {
-			length = c.compileValue(v.End).Value
-		} else {
-			length = constant.NewInt(1, i64.LLVM())
-		}
-
-		dst := safeBlock.NewCall(c.externalFuncs["strndup"], offset, length)
-
-		// Convert *i8 to %string
-		alloc := safeBlock.NewAlloca(typeConvertMap["string"].LLVM())
-
-		// Save length of the string
-		lenItem := safeBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
-		safeBlock.NewStore(constant.NewInt(100, i64.LLVM()), lenItem) // TODO
-
-		// Save i8* version of string
-		strItem := safeBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
-		safeBlock.NewStore(dst, strItem)
-
-		return value.Value{
-			Value:        safeBlock.NewLoad(alloc),
-			Type:         typeConvertMap["string"],
-			PointerLevel: 0,
-		}
+		return c.compileSliceArray(src, v)
 
 	case parser.LoadArrayElement:
 		arr := c.compileValue(v.Array)
 		arrayValue := arr.Value
 
 		index := c.compileValue(v.Pos)
+		indexVal := index.Value
+		if index.PointerLevel > 0 {
+			indexVal = c.contextBlock.NewLoad(indexVal)
+		}
 
 		var runtimeLength llvmValue.Value
 		var compileTimeLenght int64
@@ -831,12 +796,11 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		var retType types.Type
 
 		// Length of array
-		if ptrType, ok := arr.Value.Type().(*llvmTypes.PointerType); ok {
-			if arrayType, ok := ptrType.Elem.(*llvmTypes.ArrayType); ok {
+		if arr, ok := arr.Type.(*types.Array); ok {
+			if arrayType, ok := arr.LlvmType.(*llvmTypes.ArrayType); ok {
 				compileTimeLenght = arrayType.Len
 				lengthKnownAtCompileTime = true
-				arrType := arr.Type.(*types.Array)
-				retType = arrType.Type
+				retType = arr.Type
 			}
 		}
 
@@ -880,15 +844,22 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		}
 
 		if !isCheckedAtCompileTime {
-			outsideOfLengthBlock := c.contextBlock.Parent.NewBlock(getBlockName())
+			outsideOfLengthBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-array-index-out-of-range")
 			c.panic(outsideOfLengthBlock, "index out of range")
 			outsideOfLengthBlock.NewUnreachable()
 
-			safeBlock := c.contextBlock.Parent.NewBlock(getBlockName())
+			safeBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-after-array-index-check")
+
+			var runtimeOrCompiletimeCmp *ir.InstICmp
+			if lengthKnownAtCompileTime {
+				runtimeOrCompiletimeCmp = c.contextBlock.NewICmp(ir.IntSGE, indexVal, constant.NewInt(compileTimeLenght, i32.LLVM()))
+			} else {
+				runtimeOrCompiletimeCmp = c.contextBlock.NewICmp(ir.IntSGE, indexVal, runtimeLength)
+			}
 
 			outOfRangeCmp := c.contextBlock.NewOr(
-				c.contextBlock.NewICmp(ir.IntSLT, index.Value, constant.NewInt(0, i64.LLVM())),
-				c.contextBlock.NewICmp(ir.IntSGE, index.Value, runtimeLength),
+				c.contextBlock.NewICmp(ir.IntSLT, indexVal, constant.NewInt(0, i64.LLVM())),
+				runtimeOrCompiletimeCmp,
 			)
 
 			c.contextBlock.NewCondBr(outOfRangeCmp, outsideOfLengthBlock, safeBlock)
@@ -900,7 +871,7 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		if !arrIsString {
 			indicies = append(indicies, constant.NewInt(0, i64.LLVM()))
 		}
-		indicies = append(indicies, index.Value)
+		indicies = append(indicies, indexVal)
 
 		return value.Value{
 			Value:        c.contextBlock.NewGetElementPtr(arrayValue, indicies...),
