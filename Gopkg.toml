@@ -1,0 +1,11 @@
+[[constraint]]
+  name = "github.com/llir/llvm"
+  version = "0.2.0"
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.2.1"
+
+[prune]
+  go-tests = true
+  unused-packages = true
