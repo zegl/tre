@@ -602,11 +602,17 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 				}
 			}
 
-			// if ptrType, ok := arg.Type().(*types.PointerType); ok {
-			// 	if arrayType, ok := ptrType.Elem.(*types.ArrayType); ok {
-			// 		return constant.NewInt(arrayType.Len, i64)
-			// 	}
-			// }
+			if arg.Type.Name() == "slice" {
+				// TODO: Why is a double load needed?
+				val := c.contextBlock.NewLoad(arg.Value)
+				val = c.contextBlock.NewLoad(val)
+
+				return value.Value{
+					Value:        c.contextBlock.NewExtractValue(val, []int64{0}),
+					Type:         i64,
+					PointerLevel: 0,
+				}
+			}
 		}
 
 		isExternal := false

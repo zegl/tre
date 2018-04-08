@@ -70,7 +70,6 @@ func (c *Compiler) compileSubstring(src value.Value, v parser.SliceArrayNode) va
 
 func (c *Compiler) compileSliceArray(src value.Value, v parser.SliceArrayNode) value.Value {
 	arrType := src.Type.(*types.Array)
-	llvmArray := arrType.LlvmType.(*llvmTypes.ArrayType)
 
 	sliceType := internal.Slice(arrType.Type.LLVM())
 
@@ -79,13 +78,15 @@ func (c *Compiler) compileSliceArray(src value.Value, v parser.SliceArrayNode) v
 	startIndex := c.compileValue(v.Start)
 	endIndex := c.compileValue(v.End)
 
+	sliceLen := c.contextBlock.NewSub(endIndex.Value, startIndex.Value)
+
 	// Len
 	lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
-	c.contextBlock.NewStore(endIndex.Value, lenItem)
+	c.contextBlock.NewStore(sliceLen, lenItem)
 
 	// Cap
 	capItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
-	c.contextBlock.NewStore(constant.NewInt(llvmArray.Len, i64.LLVM()), capItem)
+	c.contextBlock.NewStore(sliceLen, capItem)
 
 	// Offset
 	offsetItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(2, i32.LLVM()))

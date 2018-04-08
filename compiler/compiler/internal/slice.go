@@ -1,6 +1,8 @@
 package internal
 
-import "github.com/llir/llvm/ir/types"
+import (
+	"github.com/llir/llvm/ir/types"
+)
 
 func Slice(itemType types.Type) *types.StructType {
 	return types.NewStruct(
