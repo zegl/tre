@@ -603,9 +603,13 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 			}
 
 			if arg.Type.Name() == "slice" {
-				// TODO: Why is a double load needed?
-				val := c.contextBlock.NewLoad(arg.Value)
+				val := arg.Value
 				val = c.contextBlock.NewLoad(val)
+
+				// TODO: Why is a double load needed?
+				if _, ok := val.Type().(*llvmTypes.PointerType); ok {
+					val = c.contextBlock.NewLoad(val)
+				}
 
 				return value.Value{
 					Value:        c.contextBlock.NewExtractValue(val, []int64{0}),

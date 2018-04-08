@@ -3,6 +3,8 @@ package compiler
 import (
 	"fmt"
 
+	"github.com/zegl/tre/compiler/compiler/internal"
+
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/parser"
 
@@ -158,6 +160,13 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 			Members:       members,
 			MemberIndexes: memberIndexes,
 			Type:          llvmTypes.NewStruct(structTypes...),
+		}
+
+	case parser.SliceTypeNode:
+		itemType := parserTypeToType(t.ItemType)
+		return &types.Slice{
+			Type:     itemType,
+			LlvmType: internal.Slice(itemType.LLVM()),
 		}
 	}
 

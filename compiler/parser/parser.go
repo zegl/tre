@@ -613,8 +613,23 @@ func (p *parser) parseOneType() (TypeNode, error) {
 	// Array parsing
 	if current.Type == lexer.OPERATOR && current.Val == "[" {
 		arrayLenght := p.lookAhead(1)
+
+		// Slice parsing
+		if arrayLenght.Type == lexer.OPERATOR && arrayLenght.Val == "]" {
+			p.i += 2
+
+			sliceItemType, err := p.parseOneType()
+			if err != nil {
+				return nil, errors.New("arrayParse failed: " + err.Error())
+			}
+
+			return SliceTypeNode{
+				ItemType: sliceItemType,
+			}, nil
+		}
+
 		if arrayLenght.Type != lexer.NUMBER {
-			return nil, errors.New("parseArray failed: Expected number after [")
+			return nil, errors.New("parseArray failed: Expected number or ] after [")
 		}
 		arrayLengthInt, err := strconv.Atoi(arrayLenght.Val)
 		if err != nil {
