@@ -8,6 +8,7 @@ import (
 // Node is the base node. A node consists of something that the compiler or language can do
 type Node interface {
 	Node()
+	String() string
 }
 
 // baseNode implements the Node interface, to recuce code duplication
@@ -113,6 +114,9 @@ const (
 )
 
 func (cn ConstantNode) String() string {
+	if len(cn.ValueStr) > 0 {
+		return cn.ValueStr
+	}
 	return fmt.Sprintf("%d", cn.Value)
 }
 
@@ -124,6 +128,10 @@ type ConditionNode struct {
 	Cond  OperatorNode
 	True  []Node
 	False []Node
+}
+
+func (ConditionNode) String() string {
+	return "condition"
 }
 
 // DefineFuncNode creates a new named function
@@ -160,7 +168,7 @@ type NameNode struct {
 }
 
 func (nn NameNode) String() string {
-	return fmt.Sprintf("variable(%s)", nn.Name)
+	return fmt.Sprintf("var(%s)", nn.Name)
 }
 
 // ReturnNode returns Val from within the current function
@@ -183,7 +191,7 @@ type AllocNode struct {
 }
 
 func (an AllocNode) String() string {
-	return fmt.Sprintf("alloc(%s = %v)", an.Name, an.Val)
+	return fmt.Sprintf("alloc(%s) = %v", an.Name, an.Val)
 }
 
 // AssignNode assign Val to Target (or Name)
@@ -197,10 +205,10 @@ type AssignNode struct {
 
 func (an AssignNode) String() string {
 	if len(an.Name) > 0 {
-		return fmt.Sprintf("assign(%s = %v)", an.Name, an.Val)
+		return fmt.Sprintf("assign(%s) = %v", an.Name, an.Val)
 	}
 
-	return fmt.Sprintf("assign(%+v = %v)", an.Target, an.Val)
+	return fmt.Sprintf("assign(%+v) = %v", an.Target, an.Val)
 }
 
 // TypeCastNode tries to cast Val to Type
@@ -248,6 +256,10 @@ type LoadArrayElement struct {
 	Pos   Node
 }
 
+func (l LoadArrayElement) String() string {
+	return fmt.Sprintf("loadArrayElement(%+v[%+v])", l.Array, l.Pos)
+}
+
 // SliceArrayNode slices an array or string
 // Can be on the forms arr[1], arr[1:], or arr[1:3]
 type SliceArrayNode struct {
@@ -260,7 +272,7 @@ type SliceArrayNode struct {
 }
 
 func (san SliceArrayNode) String() string {
-	return fmt.Sprintf("%+v[%d:%d]", san.Val, san.Start, san.End)
+	return fmt.Sprintf("slice(%+v[%s:%s])", san.Val.String(), san.Start.String(), san.End.String())
 }
 
 // DeclarePackageNode declares the package that we're in
@@ -268,6 +280,10 @@ type DeclarePackageNode struct {
 	baseNode
 
 	PackageName string
+}
+
+func (d DeclarePackageNode) String() string {
+	return "DeclarePackageNode(" + d.PackageName + ")"
 }
 
 // ForNode creates a new for-loop
@@ -278,6 +294,10 @@ type ForNode struct {
 	Condition      OperatorNode
 	AfterIteration Node
 	Block          []Node
+}
+
+func (f ForNode) String() string {
+	return fmt.Sprintf("For(%s; %s; %s) {\n\t%s\n}", f.BeforeLoop, f.Condition, f.AfterIteration, f.Block)
 }
 
 // BreakNode breaks out of the current for loop

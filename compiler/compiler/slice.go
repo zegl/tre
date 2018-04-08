@@ -3,7 +3,10 @@ package compiler
 import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
+	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+	"github.com/zegl/tre/compiler/compiler/internal"
+	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
 )
@@ -66,6 +69,42 @@ func (c *Compiler) compileSubstring(src value.Value, v parser.SliceArrayNode) va
 }
 
 func (c *Compiler) compileSliceArray(src value.Value, v parser.SliceArrayNode) value.Value {
-	// TODO
-	return c.compileSubstring(src, v)
+	arrType := src.Type.(*types.Array)
+	llvmArray := arrType.LlvmType.(*llvmTypes.ArrayType)
+
+	sliceType := internal.Slice(arrType.Type.LLVM())
+
+	alloc := c.contextBlock.NewAlloca(sliceType)
+
+	startIndex := c.compileValue(v.Start)
+	endIndex := c.compileValue(v.End)
+
+	// Len
+	lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+	c.contextBlock.NewStore(endIndex.Value, lenItem)
+
+	// Cap
+	capItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
+	c.contextBlock.NewStore(constant.NewInt(llvmArray.Len, i64.LLVM()), capItem)
+
+	// Offset
+	offsetItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(2, i32.LLVM()))
+	c.contextBlock.NewStore(startIndex.Value, offsetItem)
+
+	// Backing Array
+	backingArrayItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(3, i32.LLVM()))
+	_ = backingArrayItem
+
+	itemPtr := c.contextBlock.NewBitCast(src.Value, llvmTypes.NewPointer(arrType.Type.LLVM()))
+	c.contextBlock.NewStore(itemPtr, backingArrayItem)
+
+	res := value.Value{
+		Type: &types.Slice{
+			Type:     arrType.Type,
+			LlvmType: sliceType,
+		},
+		Value: alloc,
+	}
+
+	return res
 }

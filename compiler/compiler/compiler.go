@@ -792,7 +792,7 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		var compileTimeLenght int64
 		lengthKnownAtCompileTime := false
 		lengthKnownAtRunTime := false
-		arrIsString := false
+		isLlvmArrayBased := false
 		var retType types.Type
 
 		// Length of array
@@ -801,7 +801,32 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 				compileTimeLenght = arrayType.Len
 				lengthKnownAtCompileTime = true
 				retType = arr.Type
+				isLlvmArrayBased = true
 			}
+		}
+
+		// Length of slice
+		if slice, ok := arr.Type.(*types.Slice); ok {
+			lengthKnownAtCompileTime = false
+			lengthKnownAtRunTime = true
+
+			retType = slice.Type
+
+			// TODO: Figure out if this really is needed
+			arrayValue = c.contextBlock.NewLoad(arrayValue)
+			arrayValue = c.contextBlock.NewLoad(arrayValue)
+
+			sliceValue := arrayValue
+
+			// Length of the slice
+			runtimeLength = c.contextBlock.NewExtractValue(sliceValue, []int64{0})
+
+			// Add offset to indexVal
+			backingArrayOffset := c.contextBlock.NewExtractValue(sliceValue, []int64{2})
+			indexVal = c.contextBlock.NewAdd(indexVal, backingArrayOffset)
+
+			// Backing array
+			arrayValue = c.contextBlock.NewExtractValue(sliceValue, []int64{3})
 		}
 
 		// Length of string
@@ -816,8 +841,8 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 				// Get backing array
 				arrayValue = c.contextBlock.NewExtractValue(arrayValue, []int64{1})
 				lengthKnownAtRunTime = true
-				arrIsString = true
 				retType = types.I8
+				isLlvmArrayBased = false
 			}
 		}
 
@@ -868,7 +893,7 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		}
 
 		var indicies []llvmValue.Value
-		if !arrIsString {
+		if isLlvmArrayBased {
 			indicies = append(indicies, constant.NewInt(0, i64.LLVM()))
 		}
 		indicies = append(indicies, indexVal)
