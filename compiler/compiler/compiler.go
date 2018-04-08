@@ -835,6 +835,9 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 			backingArrayOffset := c.contextBlock.NewExtractValue(sliceValue, []int64{2})
 			indexVal = c.contextBlock.NewAdd(indexVal, backingArrayOffset)
 
+			// Add offset to runtimeLength
+			runtimeLength = c.contextBlock.NewAdd(runtimeLength, backingArrayOffset)
+
 			// Backing array
 			arrayValue = c.contextBlock.NewExtractValue(sliceValue, []int64{3})
 		}
