@@ -100,14 +100,18 @@ func Lex(inputFullSource string) []Item {
 			}
 
 			if _, ok := operations[string(input[i])]; ok {
+
 				// Operators can be 1 or 2 characters
-				if _, ok := operations[string(input[i])+string(input[i+1])]; ok {
-					res = append(res, Item{Type: OPERATOR, Val: string(input[i]) + string(input[i+1]), Line: line})
-					i++
-				} else {
-					res = append(res, Item{Type: OPERATOR, Val: string(input[i]), Line: line})
+				if len(input) > i+1 {
+					if _, ok := operations[string(input[i])+string(input[i+1])]; ok {
+						res = append(res, Item{Type: OPERATOR, Val: string(input[i]) + string(input[i+1]), Line: line})
+						i++
+						i++
+						continue
+					}
 				}
 
+				res = append(res, Item{Type: OPERATOR, Val: string(input[i]), Line: line})
 				i++
 				continue
 			}

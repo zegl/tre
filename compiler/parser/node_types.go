@@ -6,6 +6,7 @@ import "fmt"
 type TypeNode interface {
 	Node() // must also implement the Node interface
 	Type() string
+	String() string
 }
 
 // SingleTypeNode refers to an existing type. Such as "string".
@@ -17,6 +18,10 @@ type SingleTypeNode struct {
 
 func (stn SingleTypeNode) Type() string {
 	return stn.TypeName
+}
+
+func (stn SingleTypeNode) String() string {
+	return "type(" + stn.Type() + ")"
 }
 
 // StructTypeNode refers to a struct type
@@ -31,6 +36,10 @@ func (stn StructTypeNode) Type() string {
 	return fmt.Sprintf("%+v", stn.Types)
 }
 
+func (stn StructTypeNode) String() string {
+	return fmt.Sprintf("StructTypeNode(%+v)", stn.Types)
+}
+
 // ArrayTypeNode refers to an array
 type ArrayTypeNode struct {
 	baseNode
@@ -41,4 +50,8 @@ type ArrayTypeNode struct {
 
 func (atn ArrayTypeNode) Type() string {
 	return fmt.Sprintf("[%d]%+v", atn.Len, atn.ItemType)
+}
+
+func (atn ArrayTypeNode) String() string {
+	return atn.Type()
 }

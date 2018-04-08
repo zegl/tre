@@ -126,6 +126,23 @@ func (a Array) Name() string {
 	return "array"
 }
 
+type Slice struct {
+	backingType
+	Type Type
+	//Cap                int64
+	//Len                int64
+	//BackingArrayOffset int64
+	LlvmType types.Type
+}
+
+func (s Slice) LLVM() types.Type {
+	return s.LlvmType
+}
+
+func (Slice) Name() string {
+	return "slice"
+}
+
 type Pointer struct {
 	backingType
 
