@@ -55,3 +55,16 @@ func (atn ArrayTypeNode) Type() string {
 func (atn ArrayTypeNode) String() string {
 	return atn.Type()
 }
+
+type SliceTypeNode struct {
+	baseNode
+	ItemType TypeNode
+}
+
+func (stn SliceTypeNode) Type() string {
+	return fmt.Sprintf("[]%+v", stn.ItemType)
+}
+
+func (stn SliceTypeNode) String() string {
+	return stn.Type()
+}

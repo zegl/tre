@@ -128,10 +128,7 @@ func (a Array) Name() string {
 
 type Slice struct {
 	backingType
-	Type Type
-	//Cap                int64
-	//Len                int64
-	//BackingArrayOffset int64
+	Type     Type
 	LlvmType types.Type
 }
 
