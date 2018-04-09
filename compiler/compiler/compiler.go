@@ -573,50 +573,17 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 
 		// len() functions
 		if isNameNode && name.Name == "len" {
-			arg := c.compileValue(v.Arguments[0])
+			return c.lenFuncCall(v)
+		}
 
-			if arg.Type.Name() == "string" {
-				f := c.funcByName("len_string")
+		// cap() function
+		if isNameNode && name.Name == "cap" {
+			return c.capFuncCall(v)
+		}
 
-				val := arg.Value
-				if arg.PointerLevel > 0 {
-					val = c.contextBlock.NewLoad(val)
-				}
-
-				return value.Value{
-					Value:        c.contextBlock.NewCall(f.LlvmFunction, val),
-					Type:         f.ReturnType,
-					PointerLevel: 0,
-				}
-			}
-
-			if arg.Type.Name() == "array" {
-				if ptrType, ok := arg.Value.Type().(*llvmTypes.PointerType); ok {
-					if arrayType, ok := ptrType.Elem.(*llvmTypes.ArrayType); ok {
-						return value.Value{
-							Value:        constant.NewInt(arrayType.Len, i64.LLVM()),
-							Type:         i64,
-							PointerLevel: 0,
-						}
-					}
-				}
-			}
-
-			if arg.Type.Name() == "slice" {
-				val := arg.Value
-				val = c.contextBlock.NewLoad(val)
-
-				// TODO: Why is a double load needed?
-				if _, ok := val.Type().(*llvmTypes.PointerType); ok {
-					val = c.contextBlock.NewLoad(val)
-				}
-
-				return value.Value{
-					Value:        c.contextBlock.NewExtractValue(val, []int64{0}),
-					Type:         i64,
-					PointerLevel: 0,
-				}
-			}
+		// append() function
+		if isNameNode && name.Name == "append" {
+			return c.appendFuncCall(v)
 		}
 
 		isExternal := false
