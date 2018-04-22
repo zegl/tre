@@ -38,7 +38,7 @@ func main() {
 	printf("%d\n", arr[0]) // 100
 	printf("%d\n", arr[1]) // 200
 	printf("%d\n", arr[2]) // 300
-	printf("%d\n", arr[3])
+	printf("%d\n", arr[3]) // 400
 
 	append(arr, 500)
 
