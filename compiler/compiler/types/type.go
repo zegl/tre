@@ -15,10 +15,8 @@ type Type interface {
 
 	AddMethod(string, *Method)
 	GetMethod(string) (*Method, bool)
-}
 
-type ZeroableType interface {
-	Zero(*ir.BasicBlock) *ir.InstAlloca
+	Zero(*ir.BasicBlock, *ir.InstAlloca)
 }
 
 type backingType struct {
@@ -39,6 +37,10 @@ func (b *backingType) GetMethod(name string) (*Method, bool) {
 
 func (backingType) Size() int64 {
 	panic("Type does not have size set")
+}
+
+func (backingType) Zero(*ir.BasicBlock, *ir.InstAlloca) {
+	// NOOP
 }
 
 type Struct struct {
@@ -111,6 +113,10 @@ func (b Basic) Size() int64 {
 	return b.TypeSize
 }
 
+func (b Basic) Zero(block *ir.BasicBlock, alloca *ir.InstAlloca) {
+	block.NewStore(constant.NewInt(0, b.Type), alloca)
+}
+
 type StringType struct {
 	backingType
 	Type types.Type
@@ -155,7 +161,7 @@ func (Slice) Name() string {
 	return "slice"
 }
 
-func (s Slice) Zero(block *ir.BasicBlock, mallocFunc *ir.Function) *ir.InstAlloca {
+func (s Slice) SliceZero(block *ir.BasicBlock, mallocFunc *ir.Function) *ir.InstAlloca {
 	emptySlize := block.NewAlloca(s.LLVM())
 
 	len := block.NewGetElementPtr(emptySlize, constant.NewInt(0, types.I32), constant.NewInt(0, types.I32))

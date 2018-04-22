@@ -358,9 +358,10 @@ func (c *Compiler) compile(instructions []parser.Node) {
 				var alloc *ir.InstAlloca
 
 				if sliceType, ok := treType.(*types.Slice); ok {
-					alloc = sliceType.Zero(c.contextBlock, c.externalFuncs["malloc"])
+					alloc = sliceType.SliceZero(c.contextBlock, c.externalFuncs["malloc"])
 				} else {
 					alloc = c.contextBlock.NewAlloca(treType.LLVM())
+					treType.Zero(c.contextBlock, alloc)
 				}
 
 				alloc.SetName(v.Name)
