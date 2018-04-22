@@ -6,9 +6,9 @@ import (
 
 func Slice(itemType types.Type) *types.StructType {
 	return types.NewStruct(
-		types.I64,                  // Len
-		types.I64,                  // Cap
-		types.I64,                  // Array Offset
+		types.I32,                  // Len
+		types.I32,                  // Cap
+		types.I32,                  // Array Offset
 		types.NewPointer(itemType), // Content
 	)
 }

@@ -9,3 +9,9 @@ func getBlockName() string {
 	blockIndex++
 	return name
 }
+
+func getVarName(prefix string) string {
+	name := fmt.Sprintf("%s-%d", prefix, blockIndex)
+	blockIndex++
+	return name
+}

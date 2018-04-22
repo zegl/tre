@@ -133,6 +133,9 @@ func (c *Compiler) addExternal() {
 	printfFunc.Sig.Variadic = true
 	c.externalFuncs["printf"] = printfFunc
 
+	c.externalFuncs["malloc"] = c.module.NewFunction("malloc", llvmTypes.NewPointer(i8.LLVM()), ir.NewParam("", i64.LLVM()))
+	c.externalFuncs["realloc"] = c.module.NewFunction("realloc", llvmTypes.NewPointer(i8.LLVM()), ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())), ir.NewParam("", i64.LLVM()))
+
 	c.externalFuncs["strcat"] = c.module.NewFunction("strcat",
 		llvmTypes.NewPointer(i8.LLVM()),
 		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
@@ -351,7 +354,14 @@ func (c *Compiler) compile(instructions []parser.Node) {
 			if typeNode, ok := v.Val.(parser.TypeNode); ok {
 				treType := parserTypeToType(typeNode)
 
-				alloc := c.contextBlock.NewAlloca(treType.LLVM())
+				var alloc *ir.InstAlloca
+
+				if sliceType, ok := treType.(*types.Slice); ok {
+					alloc = sliceType.Zero(c.contextBlock, c.externalFuncs["malloc"])
+				} else {
+					alloc = c.contextBlock.NewAlloca(treType.LLVM())
+				}
+
 				alloc.SetName(v.Name)
 
 				c.contextBlockVariables[v.Name] = value.Value{
@@ -791,7 +801,10 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 
 			// TODO: Figure out if this really is needed
 			arrayValue = c.contextBlock.NewLoad(arrayValue)
-			arrayValue = c.contextBlock.NewLoad(arrayValue)
+
+			// arrayValue = c.contextBlock.NewLoad(arrayValue)
+
+			indexVal = c.contextBlock.NewTrunc(indexVal, i32.LLVM())
 
 			sliceValue := arrayValue
 
@@ -804,6 +817,8 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 
 			// Add offset to runtimeLength
 			runtimeLength = c.contextBlock.NewAdd(runtimeLength, backingArrayOffset)
+
+			// runtimeLength = c.contextBlock.NewSExt(runtimeLength, i64.LLVM())
 
 			// Backing array
 			arrayValue = c.contextBlock.NewExtractValue(sliceValue, []int64{3})

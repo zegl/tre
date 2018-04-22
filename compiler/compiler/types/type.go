@@ -4,15 +4,21 @@ import (
 	"fmt"
 
 	"github.com/llir/llvm/ir"
+	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
 )
 
 type Type interface {
 	LLVM() types.Type
 	Name() string
+	Size() int64
 
 	AddMethod(string, *Method)
 	GetMethod(string) (*Method, bool)
+}
+
+type ZeroableType interface {
+	Zero(*ir.BasicBlock) *ir.InstAlloca
 }
 
 type backingType struct {
@@ -29,6 +35,10 @@ func (b *backingType) AddMethod(name string, method *Method) {
 func (b *backingType) GetMethod(name string) (*Method, bool) {
 	m, ok := b.methods[name]
 	return m, ok
+}
+
+func (backingType) Size() int64 {
+	panic("Type does not have size set")
 }
 
 type Struct struct {
@@ -86,6 +96,7 @@ type Basic struct {
 
 	Type     types.Type
 	TypeName string
+	TypeSize int64
 }
 
 func (b Basic) LLVM() types.Type {
@@ -94,6 +105,10 @@ func (b Basic) LLVM() types.Type {
 
 func (b Basic) Name() string {
 	return b.TypeName
+}
+
+func (b Basic) Size() int64 {
+	return b.TypeSize
 }
 
 type StringType struct {
@@ -138,6 +153,25 @@ func (s Slice) LLVM() types.Type {
 
 func (Slice) Name() string {
 	return "slice"
+}
+
+func (s Slice) Zero(block *ir.BasicBlock, mallocFunc *ir.Function) *ir.InstAlloca {
+	emptySlize := block.NewAlloca(s.LLVM())
+
+	len := block.NewGetElementPtr(emptySlize, constant.NewInt(0, types.I32), constant.NewInt(0, types.I32))
+	cap := block.NewGetElementPtr(emptySlize, constant.NewInt(0, types.I32), constant.NewInt(1, types.I32))
+	offset := block.NewGetElementPtr(emptySlize, constant.NewInt(0, types.I32), constant.NewInt(2, types.I32))
+	backingArray := block.NewGetElementPtr(emptySlize, constant.NewInt(0, types.I32), constant.NewInt(3, types.I32))
+
+	block.NewStore(constant.NewInt(0, types.I32), len)
+	block.NewStore(constant.NewInt(2, types.I32), cap)
+	block.NewStore(constant.NewInt(0, types.I32), offset)
+
+	mallocatedSpaceRaw := block.NewCall(mallocFunc, constant.NewInt(2*s.Type.Size(), types.I64))
+	bitcasted := block.NewBitCast(mallocatedSpaceRaw, types.NewPointer(s.Type.LLVM()))
+	block.NewStore(bitcasted, backingArray)
+
+	return emptySlize
 }
 
 type Pointer struct {
