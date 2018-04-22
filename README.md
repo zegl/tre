@@ -42,7 +42,7 @@ More examples of what's possible can be found in the [compiler testdata](https:/
 - [x] array
 - [x] slice
 - [ ] map
-- [ ] bool
+- [x] bool
 - [ ] func
 
 ### Language features
