@@ -47,6 +47,13 @@ func (c *Compiler) compileConstantNode(v parser.ConstantNode) value.Value {
 			PointerLevel: 0,
 		}
 
+	case parser.BOOL:
+		return value.Value{
+			Value:        constant.NewInt(v.Value, i1.LLVM()),
+			Type:         i64,
+			PointerLevel: 0,
+		}
+
 	default:
 		panic("Unknown constant Type")
 	}
