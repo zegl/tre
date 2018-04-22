@@ -797,12 +797,21 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 			lengthKnownAtCompileTime = false
 			lengthKnownAtRunTime = true
 
+			// When the slice is a slice window into an array
+			var isSliceOfArray bool
+
 			retType = slice.Type
 
-			// TODO: Figure out if this really is needed
 			arrayValue = c.contextBlock.NewLoad(arrayValue)
 
-			// arrayValue = c.contextBlock.NewLoad(arrayValue)
+			// One more load is needed when the slice is a window into a LLVM array
+			if _, ok := arrayValue.Type().(*llvmTypes.PointerType); ok {
+				isSliceOfArray = true
+			}
+
+			if isSliceOfArray {
+				arrayValue = c.contextBlock.NewLoad(arrayValue)
+			}
 
 			indexVal = c.contextBlock.NewTrunc(indexVal, i32.LLVM())
 
@@ -817,8 +826,6 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 
 			// Add offset to runtimeLength
 			runtimeLength = c.contextBlock.NewAdd(runtimeLength, backingArrayOffset)
-
-			// runtimeLength = c.contextBlock.NewSExt(runtimeLength, i64.LLVM())
 
 			// Backing array
 			arrayValue = c.contextBlock.NewExtractValue(sliceValue, []int64{3})

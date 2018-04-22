@@ -79,18 +79,21 @@ func (c *Compiler) compileSliceArray(src value.Value, v parser.SliceArrayNode) v
 	endIndex := c.compileValue(v.End)
 
 	sliceLen := c.contextBlock.NewSub(endIndex.Value, startIndex.Value)
+	sliceLen32 := c.contextBlock.NewTrunc(sliceLen, i32.LLVM())
+
+	offset32 := c.contextBlock.NewTrunc(startIndex.Value, i32.LLVM())
 
 	// Len
 	lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
-	c.contextBlock.NewStore(sliceLen, lenItem)
+	c.contextBlock.NewStore(sliceLen32, lenItem)
 
 	// Cap
 	capItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
-	c.contextBlock.NewStore(sliceLen, capItem)
+	c.contextBlock.NewStore(sliceLen32, capItem)
 
 	// Offset
 	offsetItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(2, i32.LLVM()))
-	c.contextBlock.NewStore(startIndex.Value, offsetItem)
+	c.contextBlock.NewStore(offset32, offsetItem)
 
 	// Backing Array
 	backingArrayItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(3, i32.LLVM()))
