@@ -1,6 +1,9 @@
 # tre
 
-An experimental programming language backed by LLVM. The current goal is to make it compatible with Go.
+> A LLVM backed Go compiler.
+
+`tre` is built in Go and can compile a subset of Go code to LLVM IR. Clang is
+used to compile the IR to an executable.
 
 ## Building 
 
@@ -27,39 +30,43 @@ func main() {
 }
 ```
 
+More examples of what's possible can be found in the [compiler testdata](https://github.com/zegl/tre/tree/master/compiler/testdata).
+
 ## Features
 
 ### Types
 
-Currently implemented:
-
-* int (all signed types)
-* string
-* struct
-* array
-
-TODO:
-
-* Slices
-* Maps
-* Bool
+- [x] int (all signed types)
+- [x] string
+- [x] struct
+- [x] array
+- [x] slice
+- [ ] map
+- [ ] bool
+- [ ] func
 
 ### Language features
 
-* Functions
-* * TODO: More than 1 return variable
-* * TODO: Assign a function to a variable, functions as arguments etc.
-* String features: `str[1]`, `str[1:5]`, `len(str)`
-* Array features: `arr[1] = 123`, `arr[1]`, `len(arr)`
-* Builtin methods
-* * println (currently only works on strings)
-* * printf (should be removed)
-* * exit (shoould be removed)
-* * len (string, array)
-* Packages
-* Methods
-* Pointers
+- [ ] Functions
+- - [x] Named functions
+- - [x] Methods
+- - [ ] More than 1 return variable
+- - [ ] First class functions: Assign a function to a variable, functions as arguments etc.
+- [x] Strings
+- [x] Arrays
+- [x] Builtin functions
+- - [x] println (to be removed)
+- - [x] printf (to be removed)
+- - [x] exit (to be removed)
+- - [x] len (string, array, slice) TODO: Maps
+- - [x] cap (slice)
+- - [x] append (slice)
+- [ ] Packages
+- [ ] Methods
+- [ ] Pointers
+- [ ] Interfaces
 
-TODO:
+## Dependencies
 
-* Interfaces
+* [clang](https://clang.llvm.org/) - (only tested with version 6)
+* [llir/llvm](https://github.com/llir/llvm)
