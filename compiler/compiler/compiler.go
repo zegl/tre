@@ -44,6 +44,7 @@ type Compiler struct {
 }
 
 var (
+	i1  = types.I1
 	i8  = types.I8
 	i32 = types.I32
 	i64 = types.I64
@@ -910,6 +911,8 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		return c.compileGetReferenceNode(v)
 	case parser.DereferenceNode:
 		return c.compileDereferenceNode(v)
+	case parser.NegateNode:
+		return c.compileNegateBoolNode(v)
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))

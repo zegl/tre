@@ -111,6 +111,7 @@ type DataType uint8
 const (
 	STRING DataType = iota
 	NUMBER
+	BOOL
 )
 
 func (cn ConstantNode) String() string {
@@ -343,4 +344,13 @@ type ImportNode struct {
 
 func (in ImportNode) String() string {
 	return fmt.Sprintf("import %s", in.PackagePath)
+}
+
+type NegateNode struct {
+	baseNode
+	Item Node
+}
+
+func (nn NegateNode) String() string {
+	return fmt.Sprintf("!%s", nn.Item)
 }

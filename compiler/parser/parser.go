@@ -105,6 +105,12 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 			return
 		}
 
+		if current.Val == "!" {
+			p.i++
+			res = NegateNode{Item: p.parseOne(false)}
+			return
+		}
+
 	case lexer.KEYWORD:
 
 		// "if" gets converted to a ConditionNode
@@ -121,15 +127,26 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 				panic("could not parse if-condition")
 			}
 
-			cond, ok := condNodes[0].(OperatorNode)
-			if !ok {
-				panic("node in if-condition must be OperatorNode")
+			var opNode OperatorNode
+
+			if cond, ok := condNodes[0].(OperatorNode); ok {
+				opNode = cond
+			} else {
+				// Add implicit == true
+				opNode = OperatorNode{
+					Left: condNodes[0],
+					Right: ConstantNode{
+						Type:  BOOL,
+						Value: 1,
+					},
+					Operator: OP_EQ,
+				}
 			}
 
 			p.i++
 
 			return p.aheadParse(ConditionNode{
-				Cond: cond,
+				Cond: opNode,
 				True: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"}),
 			})
 		}
@@ -317,6 +334,18 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 
 		if current.Val == "import" {
 			return p.parseImport()
+		}
+
+		if current.Val == "true" || current.Val == "false" {
+			var v int64 = 0
+			if current.Val == "true" {
+				v = 1
+			}
+
+			return ConstantNode{
+				Type:  BOOL,
+				Value: v,
+			}
 		}
 	}
 
