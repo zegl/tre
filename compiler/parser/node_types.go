@@ -1,6 +1,8 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // TypeNode is an interface for different ways of creating new types or referring to existing ones
 type TypeNode interface {
