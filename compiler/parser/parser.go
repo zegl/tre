@@ -111,6 +111,39 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 			return
 		}
 
+		// Slice initalization
+		if current.Val == "[" {
+			next := p.lookAhead(1)
+			if next.Type != lexer.OPERATOR || next.Val != "]" {
+				panic("expected ] after [")
+			}
+
+			p.i += 2
+
+			sliceItemType, err := p.parseOneType()
+			if err != nil {
+				panic(err)
+			}
+
+			p.i++
+
+			next = p.lookAhead(0)
+			if next.Type != lexer.SEPARATOR || next.Val != "{" {
+				log.Printf("%+v", next)
+				panic("expected { after type in slice init")
+			}
+
+			p.i++
+
+			items := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+
+			res = InitializeSliceNode{
+				Type:  sliceItemType,
+				Items: items,
+			}
+			return
+		}
+
 	case lexer.KEYWORD:
 
 		// "if" gets converted to a ConditionNode
