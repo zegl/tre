@@ -354,3 +354,13 @@ type NegateNode struct {
 func (nn NegateNode) String() string {
 	return fmt.Sprintf("!%s", nn.Item)
 }
+
+type InitializeSliceNode struct {
+	baseNode
+	Type  TypeNode
+	Items []Node
+}
+
+func (i InitializeSliceNode) String() string {
+	return fmt.Sprintf("[]%s{%+v}", i.Type, i.Items)
+}

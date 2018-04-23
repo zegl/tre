@@ -358,7 +358,7 @@ func (c *Compiler) compile(instructions []parser.Node) {
 				var alloc *ir.InstAlloca
 
 				if sliceType, ok := treType.(*types.Slice); ok {
-					alloc = sliceType.SliceZero(c.contextBlock, c.externalFuncs["malloc"])
+					alloc = sliceType.SliceZero(c.contextBlock, c.externalFuncs["malloc"], 2)
 				} else {
 					alloc = c.contextBlock.NewAlloca(treType.LLVM())
 					treType.Zero(c.contextBlock, alloc)
@@ -914,6 +914,8 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		return c.compileDereferenceNode(v)
 	case parser.NegateNode:
 		return c.compileNegateBoolNode(v)
+	case parser.InitializeSliceNode:
+		return c.compileInitializeSliceNode(v)
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))

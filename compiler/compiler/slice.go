@@ -215,3 +215,44 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 
 	return input
 }
+
+func (c *Compiler) compileInitializeSliceNode(v parser.InitializeSliceNode) value.Value {
+
+	itemType := parserTypeToType(v.Type)
+
+	sliceType := &types.Slice{
+		Type:     itemType,
+		LlvmType: internal.Slice(itemType.LLVM()),
+	}
+
+	// Create slice with cap set to the requested size
+	allocSlice := sliceType.SliceZero(c.contextBlock, c.externalFuncs["malloc"], len(v.Items))
+
+	backingArrayPtr := c.contextBlock.NewGetElementPtr(allocSlice,
+		constant.NewInt(0, i32.LLVM()),
+		constant.NewInt(3, i32.LLVM()),
+	)
+
+	c.contextBlock.SetName(getVarName("backingarrayptr"))
+	loadedPtr := c.contextBlock.NewLoad(backingArrayPtr)
+
+	// Add items
+	for i, val := range v.Items {
+		storePtr := c.contextBlock.NewGetElementPtr(loadedPtr, constant.NewInt(int64(i), i32.LLVM()))
+		newVal := c.compileValue(val).Value
+		c.contextBlock.NewStore(newVal, storePtr)
+	}
+
+	// Set len
+	lenPtr := c.contextBlock.NewGetElementPtr(allocSlice,
+		constant.NewInt(0, i32.LLVM()),
+		constant.NewInt(0, i32.LLVM()),
+	)
+	c.contextBlock.NewStore(constant.NewInt(int64(len(v.Items)), i32.LLVM()), lenPtr)
+
+	return value.Value{
+		Value:        allocSlice,
+		Type:         sliceType,
+		PointerLevel: 1, // This is probably not correct
+	}
+}
