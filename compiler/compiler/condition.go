@@ -32,32 +32,6 @@ func (c *Compiler) compileCondition(v parser.OperatorNode) value.Value {
 	leftVal := left.Value
 	rightVal := right.Value
 
-	/*for _, val := range []*value.Value{&left, &right} {
-		if (*val).PointerLevel == 0 {
-			continue
-		}
-
-		(*val).Value = c.contextBlock.NewLoad((*val).Value)
-
-		// Allocate new variable
-		// TODO: Is this step needed?
-
-		/*var newVal *ir.InstAlloca
-
-		if t, valIsPtr := (*val).Type().(*types.PointerType); valIsPtr {
-			newVal = c.contextBlock.NewAlloca(t.Elem)
-		} else {
-			newVal = c.contextBlock.NewAlloca((*val).Type())
-		}
-
-		c.contextBlock.NewStore(c.contextBlock.NewLoad(*val), newVal)
-		*val = c.contextBlock.NewLoad(newVal)
-
-	}
-
-	//return c.contextBlock.NewICmp(getConditionLLVMpred(v.Operator), leftVal, rightVal)
-	*/
-
 	if left.PointerLevel > 0 {
 		leftVal = c.contextBlock.NewLoad(leftVal)
 	}
