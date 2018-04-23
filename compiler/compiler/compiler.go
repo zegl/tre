@@ -39,6 +39,10 @@ type Compiler struct {
 	contextLoopBreak    []*ir.BasicBlock
 	contextLoopContinue []*ir.BasicBlock
 
+	// What type the current assign operation is assigning to.
+	// Is used when evaluating what type an integer constant should be.
+	contextAssignType []types.Type
+
 	stringConstants map[string]*ir.Global
 }
 
@@ -59,6 +63,8 @@ func NewCompiler() *Compiler {
 
 		contextLoopBreak:    make([]*ir.BasicBlock, 0),
 		contextLoopContinue: make([]*ir.BasicBlock, 0),
+
+		contextAssignType: make([]types.Type, 0),
 
 		stringConstants: make(map[string]*ir.Global),
 	}

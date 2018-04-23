@@ -13,8 +13,15 @@ import (
 func (c *Compiler) compileConstantNode(v parser.ConstantNode) value.Value {
 	switch v.Type {
 	case parser.NUMBER:
+		var intType types.Type = i64
+
+		// Use context to detect which integer type we should create
+		if len(c.contextAssignType) > 0 {
+			intType = c.contextAssignType[len(c.contextAssignType)-1]
+		}
+
 		return value.Value{
-			Value:        constant.NewInt(v.Value, i64.LLVM()),
+			Value:        constant.NewInt(v.Value, intType.LLVM()),
 			Type:         i64,
 			PointerLevel: 0,
 		}
