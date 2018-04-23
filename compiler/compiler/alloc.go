@@ -73,6 +73,10 @@ func (c *Compiler) compileAssignNode(v parser.AssignNode) {
 		panic("AssignNode from non TypeNode is not allowed")
 	}
 
+	// Push assign type stack
+	// Can be used later when evaluating integer constants
+	c.contextAssignType = append(c.contextAssignType, dst.Type)
+
 	// Allocate from value
 	val := c.compileValue(v.Val)
 	llvmV := val.Value
@@ -82,4 +86,7 @@ func (c *Compiler) compileAssignNode(v parser.AssignNode) {
 	}
 
 	c.contextBlock.NewStore(llvmV, llvmDst)
+
+	// Pop assigng type stack
+	c.contextAssignType = c.contextAssignType[0 : len(c.contextAssignType)-1]
 }
