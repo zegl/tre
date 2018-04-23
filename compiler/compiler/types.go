@@ -4,11 +4,13 @@ import (
 	"fmt"
 
 	"github.com/zegl/tre/compiler/compiler/internal"
+	"github.com/zegl/tre/compiler/compiler/value"
 
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/parser"
 
 	llvmTypes "github.com/llir/llvm/ir/types"
+	llvmValue "github.com/llir/llvm/ir/value"
 )
 
 var typeConvertMap = map[string]types.Type{
@@ -69,4 +71,50 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 	}
 
 	panic(fmt.Sprintf("unknown typeNode: %T", typeNode))
+}
+
+func (c *Compiler) compileTypeCastNode(v parser.TypeCastNode) value.Value {
+	val := c.compileValue(v.Val)
+
+	var current *llvmTypes.IntType
+	var ok bool
+
+	current, ok = val.Type.LLVM().(*llvmTypes.IntType)
+	if !ok {
+		panic("TypeCast origin must be int type")
+	}
+
+	targetType := parserTypeToType(v.Type)
+	target, ok := targetType.LLVM().(*llvmTypes.IntType)
+	if !ok {
+		panic("TypeCast target must be int type")
+	}
+
+	llvmVal := val.Value
+	if val.PointerLevel > 0 {
+		llvmVal = c.contextBlock.NewLoad(llvmVal)
+	}
+
+	// Same size, nothing to do here
+	if current.Size == target.Size {
+		return val
+	}
+
+	res := c.contextBlock.NewAlloca(target)
+
+	var changedSize llvmValue.Value
+
+	if current.Size < target.Size {
+		changedSize = c.contextBlock.NewSExt(llvmVal, target)
+	} else {
+		changedSize = c.contextBlock.NewTrunc(llvmVal, target)
+	}
+
+	c.contextBlock.NewStore(changedSize, res)
+
+	return value.Value{
+		Value:        res,
+		Type:         targetType,
+		PointerLevel: 1,
+	}
 }

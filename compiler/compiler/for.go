@@ -27,7 +27,7 @@ func (c *Compiler) compileForNode(v parser.ForNode) {
 
 	// Compile condition block
 	c.contextBlock = checkCondBlock
-	cmp := c.compileCondition(v.Condition)
+	cmp := c.compileOperatorNode(v.Condition)
 	c.contextBlock.NewCondBr(cmp.Value, loopBodyBlock, afterLoopBlock)
 
 	// Compiler loop body
