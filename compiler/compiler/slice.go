@@ -247,7 +247,7 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 			mallocatedSpaceRaw,
 			// Src
 			prevBackArrayCasted,
-			// n
+			// n - Number of bytes to copy
 			copyBytesSize,
 		)
 
