@@ -16,8 +16,8 @@ func (c *Compiler) compileConstantNode(v parser.ConstantNode) value.Value {
 		var intType types.Type = i64
 
 		// Use context to detect which integer type we should create
-		if len(c.contextAssignType) > 0 {
-			intType = c.contextAssignType[len(c.contextAssignType)-1]
+		if len(c.contextAssignDest) > 0 {
+			intType = c.contextAssignDest[len(c.contextAssignDest)-1].Type
 		}
 
 		return value.Value{

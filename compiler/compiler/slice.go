@@ -124,76 +124,151 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 	input := c.compileValue(v.Arguments[0])
 	inputSlice := input.Type.(*types.Slice)
 
-	preAppendContextBlock := c.contextBlock
+	isSelfAssign := false
 
-	len := preAppendContextBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
-	len.SetName(getVarName("len"))
+	// Check if this the slice is currently assigning to itself.
+	// If that is the case (which it commonly is), we can safely expand the backing array.
+	// If not: The whole slice + backing array has to be copied before it can be altered.
+	if len(c.contextAssignDest) > 0 {
+		assignDst := c.contextAssignDest[len(c.contextAssignDest)-1]
+		if assignDst.Value.Ident() == input.Value.Ident() {
+			isSelfAssign = true
+		}
+	}
 
-	cap := preAppendContextBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
-	cap.SetName(getVarName("cap"))
+	// Will contain the slice that the new data will be added to
+	// Can be the same slice as "input", or a new one
+	var sliceToAppendTo value.Value
 
 	// Create blocks that are needed lager
-	growSliceAllocBlock := c.contextFunc.NewBlock(getBlockName() + "-grow-slice-alloc")
 	appendToSliceBlock := c.contextFunc.NewBlock(getBlockName() + "-append-to-slice")
 
-	loadedLen := preAppendContextBlock.NewLoad(len)
-	loadedCap := preAppendContextBlock.NewLoad(cap)
+	if isSelfAssign {
+		growSliceAllocBlock := c.contextFunc.NewBlock(getBlockName() + "-grow-slice-alloc")
 
-	// Grow backing array if len == cap
-	preAppendContextBlock.NewCondBr(
-		c.contextBlock.NewICmp(ir.IntEQ, loadedLen, loadedCap),
-		growSliceAllocBlock,
-		appendToSliceBlock,
-	)
+		preAppendContextBlock := c.contextBlock
 
-	len64 := growSliceAllocBlock.NewSExt(loadedLen, i64.LLVM())
+		len := preAppendContextBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+		len.SetName(getVarName("len"))
 
-	// Double the size
-	newCap := growSliceAllocBlock.NewAlloca(i64.LLVM())
-	newCap.SetName(getVarName("new-cap"))
-	newCapMul := growSliceAllocBlock.NewMul(len64, constant.NewInt(2, i64.LLVM()))
-	growSliceAllocBlock.NewStore(newCapMul, newCap)
+		cap := preAppendContextBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
+		cap.SetName(getVarName("cap"))
 
-	reallocSize := growSliceAllocBlock.NewMul(newCapMul, constant.NewInt(inputSlice.Type.Size(), i64.LLVM()))
+		loadedLen := preAppendContextBlock.NewLoad(len)
+		loadedCap := preAppendContextBlock.NewLoad(cap)
 
-	prevBackingArrayPtr := growSliceAllocBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(3, i32.LLVM()))
-	prevBackingArrayPtr.SetName(getVarName("raw-prev-backing-ptr"))
+		// Grow backing array if len == cap
+		preAppendContextBlock.NewCondBr(
+			c.contextBlock.NewICmp(ir.IntEQ, loadedLen, loadedCap),
+			growSliceAllocBlock,
+			appendToSliceBlock,
+		)
 
-	loadedPrevBacking := growSliceAllocBlock.NewLoad(prevBackingArrayPtr)
+		len64 := growSliceAllocBlock.NewSExt(loadedLen, i64.LLVM())
 
-	castedPrevBacking := growSliceAllocBlock.NewBitCast(loadedPrevBacking, llvmTypes.NewPointer(llvmTypes.I8))
-	castedPrevBacking.SetName(getVarName("casted-prev-backing-ptr"))
+		// Double the size
+		newCap := growSliceAllocBlock.NewAlloca(i64.LLVM())
+		newCap.SetName(getVarName("new-cap"))
+		newCapMul := growSliceAllocBlock.NewMul(len64, constant.NewInt(2, i64.LLVM()))
+		growSliceAllocBlock.NewStore(newCapMul, newCap)
 
-	reallocatedSpaceRaw := growSliceAllocBlock.NewCall(c.externalFuncs["realloc"], castedPrevBacking, reallocSize)
-	reallocatedSpaceRaw.SetName(getVarName("reallocatedspace-raw"))
+		reallocSize := growSliceAllocBlock.NewMul(newCapMul, constant.NewInt(inputSlice.Type.Size(), i64.LLVM()))
 
-	reallocatedSpace := growSliceAllocBlock.NewBitCast(reallocatedSpaceRaw, llvmTypes.NewPointer(inputSlice.Type.LLVM()))
-	reallocatedSpace.SetName(getVarName("reallocatedspace-casted"))
+		prevBackingArrayPtr := growSliceAllocBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(3, i32.LLVM()))
+		prevBackingArrayPtr.SetName(getVarName("raw-prev-backing-ptr"))
 
-	// Save cap
-	sliceCapPtr := growSliceAllocBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
-	newCap32 := growSliceAllocBlock.NewTrunc(growSliceAllocBlock.NewLoad(newCap), i32.LLVM())
-	growSliceAllocBlock.NewStore(newCap32, sliceCapPtr)
+		loadedPrevBacking := growSliceAllocBlock.NewLoad(prevBackingArrayPtr)
 
-	// Set offset to 0
-	sliceOffsetPtr := growSliceAllocBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(2, i32.LLVM()))
-	growSliceAllocBlock.NewStore(constant.NewInt(0, i32.LLVM()), sliceOffsetPtr)
+		castedPrevBacking := growSliceAllocBlock.NewBitCast(loadedPrevBacking, llvmTypes.NewPointer(llvmTypes.I8))
+		castedPrevBacking.SetName(getVarName("casted-prev-backing-ptr"))
 
-	// Set as new backing array
-	backingArrayPtr := growSliceAllocBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(3, i32.LLVM()))
-	growSliceAllocBlock.NewStore(reallocatedSpace, backingArrayPtr)
+		reallocatedSpaceRaw := growSliceAllocBlock.NewCall(c.externalFuncs["realloc"], castedPrevBacking, reallocSize)
+		reallocatedSpaceRaw.SetName(getVarName("reallocatedspace-raw"))
 
-	growSliceAllocBlock.NewBr(appendToSliceBlock)
+		reallocatedSpace := growSliceAllocBlock.NewBitCast(reallocatedSpaceRaw, llvmTypes.NewPointer(inputSlice.Type.LLVM()))
+		reallocatedSpace.SetName(getVarName("reallocatedspace-casted"))
+
+		// Save cap
+		sliceCapPtr := growSliceAllocBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
+		newCap32 := growSliceAllocBlock.NewTrunc(growSliceAllocBlock.NewLoad(newCap), i32.LLVM())
+		growSliceAllocBlock.NewStore(newCap32, sliceCapPtr)
+
+		// Set offset to 0
+		sliceOffsetPtr := growSliceAllocBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(2, i32.LLVM()))
+		growSliceAllocBlock.NewStore(constant.NewInt(0, i32.LLVM()), sliceOffsetPtr)
+
+		// Set as new backing array
+		backingArrayPtr := growSliceAllocBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(3, i32.LLVM()))
+		growSliceAllocBlock.NewStore(reallocatedSpace, backingArrayPtr)
+
+		growSliceAllocBlock.NewBr(appendToSliceBlock)
+		sliceToAppendTo = input
+	} else {
+
+		// Allocate a new slice
+		newSlice := c.contextBlock.NewAlloca(input.Type.LLVM())
+		len := c.contextBlock.NewGetElementPtr(newSlice, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+		cap := c.contextBlock.NewGetElementPtr(newSlice, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
+		offset := c.contextBlock.NewGetElementPtr(newSlice, constant.NewInt(0, i32.LLVM()), constant.NewInt(2, i32.LLVM()))
+		backingArray := c.contextBlock.NewGetElementPtr(newSlice, constant.NewInt(0, i32.LLVM()), constant.NewInt(3, i32.LLVM()))
+
+		// Copy len and cap from the previous slice
+		prevSliceLen := c.contextBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+		prevSliceLen.SetName(getVarName("prev-len"))
+		prevSliceCap := c.contextBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
+		prevSliceCap.SetName(getVarName("prev-cap"))
+
+		loadedPrevLen := c.contextBlock.NewLoad(prevSliceLen)
+		loadedPrevCap := c.contextBlock.NewLoad(prevSliceCap)
+
+		c.contextBlock.NewStore(loadedPrevLen, len)
+		c.contextBlock.NewStore(loadedPrevCap, cap)
+		c.contextBlock.NewStore(constant.NewInt(0, i32.LLVM()), offset)
+
+		// Allocate a new backing array, and copy the data from the previous one to the new
+		// TODO: Make sure that cap is large enough for the new data
+		cap64 := c.contextBlock.NewZExt(loadedPrevCap, i64.LLVM())
+		mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs["malloc"], cap64)
+		bitcasted := c.contextBlock.NewBitCast(mallocatedSpaceRaw, llvmTypes.NewPointer(inputSlice.Type.LLVM()))
+		c.contextBlock.NewStore(bitcasted, backingArray)
+
+		// Copy data from the old backing array to the new one
+		prevBackArray := c.contextBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(3, i32.LLVM()))
+		prevBackArray.SetName(getVarName("prev-backarr"))
+		prevBackArrayLoaded := c.contextBlock.NewLoad(prevBackArray)
+		prevBackArrayCasted := c.contextBlock.NewBitCast(prevBackArrayLoaded, llvmTypes.NewPointer(i8.LLVM()))
+		prevBackArrayCasted.SetName(getVarName("prev-backarray-casted"))
+
+		loadedPrevLen64 := c.contextBlock.NewZExt(loadedPrevLen, i64.LLVM())
+		copyBytesSize := c.contextBlock.NewMul(loadedPrevLen64, constant.NewInt(inputSlice.Type.Size(), i64.LLVM()))
+
+		c.contextBlock.NewCall(c.externalFuncs["memcpy"],
+			// Dest
+			mallocatedSpaceRaw,
+			// Src
+			prevBackArrayCasted,
+			// n
+			copyBytesSize,
+		)
+
+		sliceToAppendTo = value.Value{
+			Type:         input.Type,
+			Value:        newSlice,
+			PointerLevel: 1,
+		}
+
+		c.contextBlock.NewBr(appendToSliceBlock)
+	}
 
 	// Add item
 
 	// Get current len
-	sliceLenPtr := appendToSliceBlock.NewGetElementPtr(input.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+	sliceLenPtr := appendToSliceBlock.NewGetElementPtr(sliceToAppendTo.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
 	sliceLen := appendToSliceBlock.NewLoad(sliceLenPtr)
 	sliceLen.SetName(getVarName("slicelen"))
 
 	// TODO: Allow adding many items at once `foo = append(foo, bar, baz)`
-	backingArrayAppendPtr := appendToSliceBlock.NewGetElementPtr(input.Value,
+	backingArrayAppendPtr := appendToSliceBlock.NewGetElementPtr(sliceToAppendTo.Value,
 		constant.NewInt(0, i32.LLVM()),
 		constant.NewInt(3, i32.LLVM()),
 	)
@@ -203,7 +278,15 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 	storePtr := appendToSliceBlock.NewGetElementPtr(loadedPtr, sliceLen)
 
 	c.contextBlock = appendToSliceBlock
+
+	// Add type of items in slice to the context
+	c.contextAssignDest = append(c.contextAssignDest, value.Value{Type: inputSlice.Type})
+
 	newVal := c.compileValue(v.Arguments[1]).Value
+
+	// Pop assigng type stack
+	c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
+
 	appendToSliceBlock.NewStore(newVal, storePtr)
 
 	// Increase len
@@ -213,11 +296,10 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 
 	c.contextBlock = appendToSliceBlock
 
-	return input
+	return sliceToAppendTo
 }
 
 func (c *Compiler) compileInitializeSliceNode(v parser.InitializeSliceNode) value.Value {
-
 	itemType := parserTypeToType(v.Type)
 
 	sliceType := &types.Slice{

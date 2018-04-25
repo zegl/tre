@@ -41,7 +41,7 @@ type Compiler struct {
 
 	// What type the current assign operation is assigning to.
 	// Is used when evaluating what type an integer constant should be.
-	contextAssignType []types.Type
+	contextAssignDest []value.Value
 
 	stringConstants map[string]*ir.Global
 }
@@ -64,7 +64,7 @@ func NewCompiler() *Compiler {
 		contextLoopBreak:    make([]*ir.BasicBlock, 0),
 		contextLoopContinue: make([]*ir.BasicBlock, 0),
 
-		contextAssignType: make([]types.Type, 0),
+		contextAssignDest: make([]value.Value, 0),
 
 		stringConstants: make(map[string]*ir.Global),
 	}
@@ -141,6 +141,7 @@ func (c *Compiler) addExternal() {
 
 	c.externalFuncs["malloc"] = c.module.NewFunction("malloc", llvmTypes.NewPointer(i8.LLVM()), ir.NewParam("", i64.LLVM()))
 	c.externalFuncs["realloc"] = c.module.NewFunction("realloc", llvmTypes.NewPointer(i8.LLVM()), ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())), ir.NewParam("", i64.LLVM()))
+	c.externalFuncs["memcpy"] = c.module.NewFunction("memcpy", llvmTypes.NewPointer(i8.LLVM()), ir.NewParam("dest", llvmTypes.NewPointer(i8.LLVM())), ir.NewParam("src", llvmTypes.NewPointer(i8.LLVM())), ir.NewParam("n", i64.LLVM()))
 
 	c.externalFuncs["strcat"] = c.module.NewFunction("strcat",
 		llvmTypes.NewPointer(i8.LLVM()),

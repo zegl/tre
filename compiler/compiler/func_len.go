@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"fmt"
+
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -53,6 +55,5 @@ func (c *Compiler) lenFuncCall(v parser.CallNode) value.Value {
 		}
 	}
 
-	c.panic(c.contextBlock, "Can not call len on "+arg.Type.Name())
-	return value.Value{}
+	panic(fmt.Sprintf("Can not call len() on type %s (%+v)", arg.Type.Name(), v.Arguments[0]))
 }

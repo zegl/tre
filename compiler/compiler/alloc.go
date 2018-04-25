@@ -75,7 +75,8 @@ func (c *Compiler) compileAssignNode(v parser.AssignNode) {
 
 	// Push assign type stack
 	// Can be used later when evaluating integer constants
-	c.contextAssignType = append(c.contextAssignType, dst.Type)
+	// Is also used by append()
+	c.contextAssignDest = append(c.contextAssignDest, dst)
 
 	// Allocate from value
 	val := c.compileValue(v.Val)
@@ -88,5 +89,5 @@ func (c *Compiler) compileAssignNode(v parser.AssignNode) {
 	c.contextBlock.NewStore(llvmV, llvmDst)
 
 	// Pop assigng type stack
-	c.contextAssignType = c.contextAssignType[0 : len(c.contextAssignType)-1]
+	c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
 }
