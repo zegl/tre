@@ -11,6 +11,8 @@ import (
 type Type interface {
 	LLVM() types.Type
 	Name() string
+
+	// Size of type in bytes
 	Size() int64
 
 	AddMethod(string, *Method)
