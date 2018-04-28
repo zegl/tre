@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"fmt"
+
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
@@ -282,12 +284,16 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 	// Add type of items in slice to the context
 	c.contextAssignDest = append(c.contextAssignDest, value.Value{Type: inputSlice.Type})
 
-	newVal := c.compileValue(v.Arguments[1]).Value
+	addItem := c.compileValue(v.Arguments[1])
+	addItemVal := addItem.Value
+	if addItem.PointerLevel > 0 {
+		addItemVal = c.contextBlock.NewLoad(addItemVal)
+	}
 
 	// Pop assigng type stack
 	c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
 
-	appendToSliceBlock.NewStore(newVal, storePtr)
+	appendToSliceBlock.NewStore(addItemVal, storePtr)
 
 	// Increase len
 
@@ -315,14 +321,23 @@ func (c *Compiler) compileInitializeSliceNode(v parser.InitializeSliceNode) valu
 		constant.NewInt(3, i32.LLVM()),
 	)
 
-	c.contextBlock.SetName(getVarName("backingarrayptr"))
 	loadedPtr := c.contextBlock.NewLoad(backingArrayPtr)
+	loadedPtr.SetName(getVarName("loadedbackingarrayptr"))
 
 	// Add items
 	for i, val := range v.Items {
 		storePtr := c.contextBlock.NewGetElementPtr(loadedPtr, constant.NewInt(int64(i), i32.LLVM()))
-		newVal := c.compileValue(val).Value
-		c.contextBlock.NewStore(newVal, storePtr)
+		storePtr.SetName(getVarName(fmt.Sprintf("storeptr-%d", i)))
+
+		// Push assigng type stack
+		c.contextAssignDest = append(c.contextAssignDest, value.Value{Type: itemType})
+
+		itemVal := c.compileValue(val)
+
+		// Pop assigng type stack
+		c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
+
+		c.contextBlock.NewStore(itemVal.Value, storePtr)
 	}
 
 	// Set len
