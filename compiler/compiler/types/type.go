@@ -95,7 +95,43 @@ func (f Function) Name() string {
 	return f.FunctionName
 }
 
-type Basic struct {
+type BoolType struct {
+	backingType
+}
+
+func (BoolType) LLVM() types.Type {
+	return types.I1
+}
+
+func (BoolType) Name() string {
+	return "bool"
+}
+
+func (BoolType) Size() int64 {
+	return 1
+}
+
+func (b BoolType) Zero(block *ir.BasicBlock, alloca *ir.InstAlloca) {
+	block.NewStore(constant.NewInt(0, b.LLVM()), alloca)
+}
+
+type VoidType struct {
+	backingType
+}
+
+func (VoidType) LLVM() types.Type {
+	return types.Void
+}
+
+func (VoidType) Name() string {
+	return "void"
+}
+
+func (VoidType) Size() int64 {
+	return 0
+}
+
+type Int struct {
 	backingType
 
 	Type     types.Type
@@ -103,20 +139,20 @@ type Basic struct {
 	TypeSize int64
 }
 
-func (b Basic) LLVM() types.Type {
-	return b.Type
+func (i Int) LLVM() types.Type {
+	return i.Type
 }
 
-func (b Basic) Name() string {
-	return b.TypeName
+func (i Int) Name() string {
+	return i.TypeName
 }
 
-func (b Basic) Size() int64 {
-	return b.TypeSize
+func (i Int) Size() int64 {
+	return i.TypeSize
 }
 
-func (b Basic) Zero(block *ir.BasicBlock, alloca *ir.InstAlloca) {
-	block.NewStore(constant.NewInt(0, b.Type), alloca)
+func (i Int) Zero(block *ir.BasicBlock, alloca *ir.InstAlloca) {
+	block.NewStore(constant.NewInt(0, i.Type), alloca)
 }
 
 type StringType struct {
@@ -161,6 +197,10 @@ func (s Slice) LLVM() types.Type {
 
 func (Slice) Name() string {
 	return "slice"
+}
+
+func (Slice) Size() int64 {
+	return 3*4 + 4 // 3 int32s and a pointer
 }
 
 func (s Slice) SliceZero(block *ir.BasicBlock, mallocFunc *ir.Function, initCap int) *ir.InstAlloca {
