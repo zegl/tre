@@ -56,8 +56,8 @@ func (c *Compiler) compileConstantNode(v parser.ConstantNode) value.Value {
 
 	case parser.BOOL:
 		return value.Value{
-			Value:      constant.NewInt(v.Value, i1.LLVM()),
-			Type:       i64,
+			Value:      constant.NewInt(v.Value, types.Bool.LLVM()),
+			Type:       types.Bool,
 			IsVariable: false,
 		}
 
