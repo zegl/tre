@@ -308,14 +308,14 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 func (c *Compiler) compileInitializeSliceNode(v parser.InitializeSliceNode) value.Value {
 	itemType := parserTypeToType(v.Type)
 
-	var values []llvmValue.Value
+	var values []value.Value
 
 	// Add items
 	for _, val := range v.Items {
 		// Push assigng type stack
 		c.contextAssignDest = append(c.contextAssignDest, value.Value{Type: itemType})
 
-		values = append(values, c.compileValue(val).Value)
+		values = append(values, c.compileValue(val))
 
 		// Pop assigng type stack
 		c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
@@ -324,7 +324,7 @@ func (c *Compiler) compileInitializeSliceNode(v parser.InitializeSliceNode) valu
 	return c.compileInitializeSliceWithValues(itemType, values...)
 }
 
-func (c *Compiler) compileInitializeSliceWithValues(itemType types.Type, values ...llvmValue.Value) value.Value {
+func (c *Compiler) compileInitializeSliceWithValues(itemType types.Type, values ...value.Value) value.Value {
 	sliceType := &types.Slice{
 		Type:     itemType,
 		LlvmType: internal.Slice(itemType.LLVM()),
@@ -345,7 +345,7 @@ func (c *Compiler) compileInitializeSliceWithValues(itemType types.Type, values 
 	for i, val := range values {
 		storePtr := c.contextBlock.NewGetElementPtr(loadedPtr, constant.NewInt(int64(i), i32.LLVM()))
 		storePtr.SetName(getVarName(fmt.Sprintf("storeptr-%d", i)))
-		c.contextBlock.NewStore(val, storePtr)
+		c.contextBlock.NewStore(val.Value, storePtr)
 	}
 
 	// Set len

@@ -156,7 +156,7 @@ func (c *Compiler) compileReturnNode(v parser.ReturnNode) {
 }
 
 func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
-	var args []llvmValue.Value
+	var args []value.Value
 
 	name, isNameNode := v.Function.(parser.NameNode)
 
@@ -185,41 +185,13 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 			fn = checkIfFunc
 		} else if checkIfMethod, ok := funcByVal.Type.(*types.Method); ok {
 			fn = checkIfMethod.Function
-			var methodCallArgs []llvmValue.Value
+			var methodCallArgs []value.Value
 
-			instance := funcByVal.Value
-			if !checkIfMethod.PointerReceiver {
-				instance = c.contextBlock.NewLoad(instance)
-			}
+			// Should be loaded if the method is not a pointer receiver
+			funcByVal.IsVariable = !checkIfMethod.PointerReceiver
 
 			// Add instance as the first argument
-			methodCallArgs = append(methodCallArgs, instance)
-			methodCallArgs = append(methodCallArgs, args...)
-			args = methodCallArgs
-		} else {
-			panic("expected function or method, got something else")
-		}
-	}
-
-	var fn *types.Function
-
-	if isNameNode {
-		fn = c.funcByName(name.Name)
-	} else {
-		funcByVal := c.compileValue(v.Function)
-		if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
-			fn = checkIfFunc
-		} else if checkIfMethod, ok := funcByVal.Type.(*types.Method); ok {
-			fn = checkIfMethod.Function
-			var methodCallArgs []llvmValue.Value
-
-			instance := funcByVal.Value
-			if !checkIfMethod.PointerReceiver {
-				instance = c.contextBlock.NewLoad(instance)
-			}
-
-			// Add instance as the first argument
-			methodCallArgs = append(methodCallArgs, instance)
+			methodCallArgs = append(methodCallArgs, funcByVal)
 			methodCallArgs = append(methodCallArgs, args...)
 			args = methodCallArgs
 		} else {
@@ -232,60 +204,18 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 	// When this is the case we don't have to convert the arguments to a slice when calling the func
 	lastIsVariadicSlice := false
 
-	for argIndex, vv := range v.Arguments {
+	// Compile all values
+	for _, vv := range v.Arguments {
 		if devVar, ok := vv.(parser.DeVariadicSliceNode); ok {
 			lastIsVariadicSlice = true
-			val := c.contextBlock.NewLoad(c.compileValue(devVar.Item).Value)
-			args = append(args, val)
+			// val := c.contextBlock.NewLoad(c.compileValue(devVar.Item).Value)
+			args = append(args, c.compileValue(devVar.Item))
 			continue
 		}
-
-		treVal := c.compileValue(vv)
-		val := treVal.Value
-
-		// Convert %string* to i8* when calling external functions
-		if fn.IsExternal {
-			if treVal.Type.Name() == "string" {
-				if treVal.IsVariable {
-					val = c.contextBlock.NewLoad(val)
-				}
-				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
-				continue
-			}
-
-			if treVal.Type.Name() == "array" {
-				if treVal.IsVariable {
-					val = c.contextBlock.NewLoad(val)
-				}
-				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
-				continue
-			}
-		}
-
-		if treVal.IsVariable {
-			val = c.contextBlock.NewLoad(val)
-		}
-
-		fnArgumentType := fn.ArgumentTypes[argIndex]
-		if _, isInterface := fnArgumentType.(*types.Interface); isInterface {
-
-			// Convert to pointer variable
-			if !treVal.IsVariable {
-				ptrAlloca := c.contextBlock.NewAlloca(treVal.Type.LLVM())
-				c.contextBlock.NewStore(val, ptrAlloca)
-				val = ptrAlloca
-			}
-
-			ifaceStruct := c.contextBlock.NewAlloca(internal.Interface())
-			dataPtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
-			bitcastedVal := c.contextBlock.NewBitCast(val, llvmTypes.NewPointer(llvmTypes.I8))
-			c.contextBlock.NewStore(bitcastedVal, dataPtr)
-			val = c.contextBlock.NewLoad(ifaceStruct)
-		}
-
-		args = append(args, val)
+		args = append(args, c.compileValue(vv))
 	}
 
+	// Convert variadic arguments to a slice when needed
 	if fn.IsVariadic && !lastIsVariadicSlice {
 		// Only the last argument can be variadic
 		variadicArgIndex := len(fn.ArgumentTypes) - 1
@@ -296,14 +226,38 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 
 		// Remove "pre-sliceified" arguments from the list of arguments
 		args = args[0:variadicArgIndex]
+		args = append(args, variadicSlice)
+	}
 
-		loaded := c.contextBlock.NewLoad(variadicSlice.Value)
-		args = append(args, loaded)
+	// Convert all values to LLVM values
+	// Load the variable if needed
+	llvmArgs := make([]llvmValue.Value, len(args))
+	for i, v := range args {
+		val := v.Value
+
+		if v.IsVariable {
+			val = c.contextBlock.NewLoad(val)
+		}
+
+		// Convert strings and arrays to i8* when calling external functions
+		if fn.IsExternal {
+			if v.Type.Name() == "string" {
+				llvmArgs[i] = c.contextBlock.NewExtractValue(val, []int64{1})
+				continue
+			}
+
+			if v.Type.Name() == "array" {
+				llvmArgs[i] = c.contextBlock.NewExtractValue(val, []int64{1})
+				continue
+			}
+		}
+
+		llvmArgs[i] = val
 	}
 
 	// Call function and return the result
 	return value.Value{
-		Value:      c.contextBlock.NewCall(fn.LlvmFunction, args...),
+		Value:      c.contextBlock.NewCall(fn.LlvmFunction, llvmArgs...),
 		Type:       fn.ReturnType,
 		IsVariable: false,
 	}
