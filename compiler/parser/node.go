@@ -165,7 +165,7 @@ type NameNode struct {
 	baseNode
 
 	Name string
-	Type SingleTypeNode
+	Type TypeNode
 }
 
 func (nn NameNode) String() string {

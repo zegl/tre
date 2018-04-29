@@ -68,6 +68,9 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 			Type:     itemType,
 			LlvmType: internal.Slice(itemType.LLVM()),
 		}
+
+	case parser.InterfaceTypeNode:
+		return &types.Interface{}
 	}
 
 	panic(fmt.Sprintf("unknown typeNode: %T", typeNode))
