@@ -57,3 +57,35 @@ func (c *Compiler) compileStructLoadElementNode(v parser.StructLoadElementNode) 
 
 	panic(fmt.Sprintf("%T internal error: no such type map indexing: %s", src, v.ElementName))
 }
+
+func (c *Compiler) compileInitStructWithValues(v parser.InitializeStructNode) value.Value {
+	treType := parserTypeToType(v.Type)
+
+	structType, ok := treType.(*types.Struct)
+	if !ok {
+		panic("Expected struct type in compileInitStructWithValues")
+	}
+
+	alloc := c.contextBlock.NewAlloca(treType.LLVM())
+	treType.Zero(c.contextBlock, alloc)
+
+	for key, val := range v.Items {
+		keyIndex, ok := structType.MemberIndexes[key]
+		if !ok {
+			panic("Unknown struct key: " + key)
+		}
+
+		itemPtr := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(keyIndex), i32.LLVM()))
+		itemPtr.SetName(getVarName(key))
+
+		compiledVal := c.compileValue(val)
+
+		c.contextBlock.NewStore(compiledVal.Value, itemPtr)
+	}
+
+	return value.Value{
+		Type:       treType,
+		Value:      alloc,
+		IsVariable: true,
+	}
+}

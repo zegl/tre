@@ -305,6 +305,8 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		}
 
 		return c.compileSliceArray(src, v)
+	case parser.InitializeStructNode:
+		return c.compileInitStructWithValues(v)
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))
