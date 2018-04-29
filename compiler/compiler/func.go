@@ -88,9 +88,9 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 			entry.NewStore(param, paramPtr)
 
 			c.contextBlockVariables[paramName] = value.Value{
-				Value:        paramPtr,
-				Type:         dataType,
-				PointerLevel: 1,
+				Value:      paramPtr,
+				Type:       dataType,
+				IsVariable: true,
 			}
 
 			continue
@@ -98,9 +98,9 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 
 		// TODO: Using 0 as the pointer level here might not be correct
 		c.contextBlockVariables[paramName] = value.Value{
-			Value:        param,
-			Type:         dataType,
-			PointerLevel: 0,
+			Value:      param,
+			Type:       dataType,
+			IsVariable: false,
 		}
 	}
 
@@ -121,7 +121,7 @@ func (c *Compiler) compileReturnNode(v parser.ReturnNode) {
 	// Set value and jump to return block
 	val := c.compileValue(v.Val)
 
-	if val.PointerLevel > 0 {
+	if val.IsVariable {
 		c.contextBlock.NewRet(c.contextBlock.NewLoad(val.Value))
 		return
 	}
@@ -161,7 +161,7 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		// Convert %string* to i8* when calling external functions
 		if isExternal {
 			if treVal.Type.Name() == "string" {
-				if treVal.PointerLevel > 0 {
+				if treVal.IsVariable {
 					val = c.contextBlock.NewLoad(val)
 				}
 				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
@@ -169,7 +169,7 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 			}
 
 			if treVal.Type.Name() == "array" {
-				if treVal.PointerLevel > 0 {
+				if treVal.IsVariable {
 					val = c.contextBlock.NewLoad(val)
 				}
 				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
@@ -177,7 +177,7 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 			}
 		}
 
-		if treVal.PointerLevel > 0 {
+		if treVal.IsVariable {
 			val = c.contextBlock.NewLoad(val)
 		}
 		args = append(args, val)
@@ -211,8 +211,8 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 
 	// Call function and return the result
 	return value.Value{
-		Value:        c.contextBlock.NewCall(fn.LlvmFunction, args...),
-		Type:         fn.ReturnType,
-		PointerLevel: 0,
+		Value:      c.contextBlock.NewCall(fn.LlvmFunction, args...),
+		Type:       fn.ReturnType,
+		IsVariable: false,
 	}
 }

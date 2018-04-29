@@ -91,7 +91,7 @@ func (c *Compiler) compileTypeCastNode(v parser.TypeCastNode) value.Value {
 	}
 
 	llvmVal := val.Value
-	if val.PointerLevel > 0 {
+	if val.IsVariable {
 		llvmVal = c.contextBlock.NewLoad(llvmVal)
 	}
 
@@ -113,8 +113,8 @@ func (c *Compiler) compileTypeCastNode(v parser.TypeCastNode) value.Value {
 	c.contextBlock.NewStore(changedSize, res)
 
 	return value.Value{
-		Value:        res,
-		Type:         targetType,
-		PointerLevel: 1,
+		Value:      res,
+		Type:       targetType,
+		IsVariable: true,
 	}
 }

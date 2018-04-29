@@ -21,9 +21,9 @@ func (c *Compiler) compileConstantNode(v parser.ConstantNode) value.Value {
 		}
 
 		return value.Value{
-			Value:        constant.NewInt(v.Value, intType.LLVM()),
-			Type:         i64,
-			PointerLevel: 0,
+			Value:      constant.NewInt(v.Value, intType.LLVM()),
+			Type:       i64,
+			IsVariable: false,
 		}
 
 	case parser.STRING:
@@ -49,16 +49,16 @@ func (c *Compiler) compileConstantNode(v parser.ConstantNode) value.Value {
 		c.contextBlock.NewStore(strings.Toi8Ptr(c.contextBlock, constString), strItem)
 
 		return value.Value{
-			Value:        c.contextBlock.NewLoad(alloc),
-			Type:         types.String,
-			PointerLevel: 0,
+			Value:      c.contextBlock.NewLoad(alloc),
+			Type:       types.String,
+			IsVariable: false,
 		}
 
 	case parser.BOOL:
 		return value.Value{
-			Value:        constant.NewInt(v.Value, i1.LLVM()),
-			Type:         i64,
-			PointerLevel: 0,
+			Value:      constant.NewInt(v.Value, i1.LLVM()),
+			Type:       i64,
+			IsVariable: false,
 		}
 
 	default:

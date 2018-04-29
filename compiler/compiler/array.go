@@ -16,7 +16,7 @@ func (c *Compiler) compileLoadArrayElement(v parser.LoadArrayElement) value.Valu
 
 	index := c.compileValue(v.Pos)
 	indexVal := index.Value
-	if index.PointerLevel > 0 {
+	if index.IsVariable {
 		indexVal = c.contextBlock.NewLoad(indexVal)
 	}
 
@@ -80,7 +80,7 @@ func (c *Compiler) compileLoadArrayElement(v parser.LoadArrayElement) value.Valu
 	if !lengthKnownAtCompileTime {
 		// Get backing array from string type
 		if arr.Type.Name() == "string" {
-			if arr.PointerLevel > 0 {
+			if arr.IsVariable {
 				arrayValue = c.contextBlock.NewLoad(arrayValue)
 			}
 
@@ -146,8 +146,8 @@ func (c *Compiler) compileLoadArrayElement(v parser.LoadArrayElement) value.Valu
 	indicies = append(indicies, indexVal)
 
 	return value.Value{
-		Value:        c.contextBlock.NewGetElementPtr(arrayValue, indicies...),
-		Type:         retType,
-		PointerLevel: 1,
+		Value:      c.contextBlock.NewGetElementPtr(arrayValue, indicies...),
+		Type:       retType,
+		IsVariable: true,
 	}
 }

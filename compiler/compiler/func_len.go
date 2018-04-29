@@ -16,14 +16,14 @@ func (c *Compiler) lenFuncCall(v parser.CallNode) value.Value {
 		f := c.funcByName("len_string")
 
 		val := arg.Value
-		if arg.PointerLevel > 0 {
+		if arg.IsVariable {
 			val = c.contextBlock.NewLoad(val)
 		}
 
 		return value.Value{
-			Value:        c.contextBlock.NewCall(f.LlvmFunction, val),
-			Type:         f.ReturnType,
-			PointerLevel: 0,
+			Value:      c.contextBlock.NewCall(f.LlvmFunction, val),
+			Type:       f.ReturnType,
+			IsVariable: false,
 		}
 	}
 
@@ -31,9 +31,9 @@ func (c *Compiler) lenFuncCall(v parser.CallNode) value.Value {
 		if ptrType, ok := arg.Value.Type().(*llvmTypes.PointerType); ok {
 			if arrayType, ok := ptrType.Elem.(*llvmTypes.ArrayType); ok {
 				return value.Value{
-					Value:        constant.NewInt(arrayType.Len, i64.LLVM()),
-					Type:         i64,
-					PointerLevel: 0,
+					Value:      constant.NewInt(arrayType.Len, i64.LLVM()),
+					Type:       i64,
+					IsVariable: false,
 				}
 			}
 		}
@@ -49,9 +49,9 @@ func (c *Compiler) lenFuncCall(v parser.CallNode) value.Value {
 		}
 
 		return value.Value{
-			Value:        c.contextBlock.NewExtractValue(val, []int64{0}),
-			Type:         i64,
-			PointerLevel: 0,
+			Value:      c.contextBlock.NewExtractValue(val, []int64{0}),
+			Type:       i64,
+			IsVariable: false,
 		}
 	}
 
