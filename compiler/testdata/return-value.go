@@ -1,4 +1,4 @@
-package main
+package main  import "external"
 
 import "fmt"
 
@@ -10,5 +10,5 @@ func otherfunc() int {
 
 func main() {
 	// 100
-	printf("%d\n", otherfunc())
+	external.Printf("%d\n", otherfunc())
 }

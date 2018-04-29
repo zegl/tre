@@ -1,4 +1,4 @@
-package main
+package main  import "external"
 
 func main() {
     i := 100
@@ -6,20 +6,20 @@ func main() {
 
     // 100
     // 100
-    printf("%d\n", i)
-    printf("%d\n", *iptr)
+    external.Printf("%d\n", i)
+    external.Printf("%d\n", *iptr)
     
     *iptr = 200
 
     // 200
     // 200
-    printf("%d\n", i)
-    printf("%d\n", *iptr)
+    external.Printf("%d\n", i)
+    external.Printf("%d\n", *iptr)
 
     i = 300
 
     // 300
     // 300
-    printf("%d\n", i)
-    printf("%d\n", *iptr)
+    external.Printf("%d\n", i)
+    external.Printf("%d\n", *iptr)
 }

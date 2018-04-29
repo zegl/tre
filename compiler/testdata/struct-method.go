@@ -1,14 +1,14 @@
 // yoloyolo = 100
 // yoloyolo = 100
 
-package main
+package main  import "external"
 
 type myint struct {
     A int
 }
 
 func (m myint) Yolo() {
-    printf("yoloyolo = %d\n", m.A)
+    external.Printf("yoloyolo = %d\n", m.A)
     m.A = 200
 }
 

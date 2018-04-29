@@ -1,4 +1,4 @@
-package main
+package main  import "external"
 
 // a
 // 1
@@ -8,8 +8,8 @@ package main
 // 3
 
 func myfunc(yolo string) int64 {
-    printf("%s\n", yolo)
-    printf("%d\n", len(yolo))
+    external.Printf("%s\n", yolo)
+    external.Printf("%d\n", len(yolo))
     return 0
 }
 

@@ -1,4 +1,4 @@
-package main
+package main  import "external"
 
 // 0
 // 1
@@ -9,7 +9,7 @@ package main
 func main() {
     
     for i := 0; i < 10; i = i + 1 {
-        printf("%d\n", i)
+        external.Printf("%d\n", i)
 
         if i == 4 {
             break
