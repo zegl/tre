@@ -59,10 +59,10 @@ func (c *Compiler) compileOperatorNode(v parser.OperatorNode) value.Value {
 			backingArray.NElems = sumLen
 
 			// Copy left to new backing array
-			c.contextBlock.NewCall(c.externalFuncs["strcpy"], backingArray, c.contextBlock.NewExtractValue(leftLLVM, []int64{1}))
+			c.contextBlock.NewCall(c.externalFuncs.Strcpy.LlvmFunction, backingArray, c.contextBlock.NewExtractValue(leftLLVM, []int64{1}))
 
 			// Append right to backing array
-			c.contextBlock.NewCall(c.externalFuncs["strcat"], backingArray, c.contextBlock.NewExtractValue(rightLLVM, []int64{1}))
+			c.contextBlock.NewCall(c.externalFuncs.Strcat.LlvmFunction, backingArray, c.contextBlock.NewExtractValue(rightLLVM, []int64{1}))
 
 			alloc := c.contextBlock.NewAlloca(typeConvertMap["string"].LLVM())
 

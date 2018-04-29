@@ -85,6 +85,7 @@ type Function struct {
 	LlvmFunction *ir.Function
 	ReturnType   Type
 	FunctionName string
+	IsExternal   bool
 }
 
 func (f Function) LLVM() types.Type {

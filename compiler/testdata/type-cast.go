@@ -1,4 +1,4 @@
-package main
+package main  import "external"
 
 func otherfunc(num int32) int32 {
     if num > int32(50) {
@@ -10,7 +10,7 @@ func otherfunc(num int32) int32 {
 
 func main() {
     // 20
-    printf("%d\n", otherfunc(int32(20)))
+    external.Printf("%d\n", otherfunc(int32(20)))
     // 500
-    printf("%d\n", otherfunc(int32(100)))
+    external.Printf("%d\n", otherfunc(int32(100)))
 }

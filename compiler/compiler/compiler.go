@@ -15,14 +15,14 @@ import (
 
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
-	llvmTypes "github.com/llir/llvm/ir/types"
 )
 
 type Compiler struct {
 	module *ir.Module
 
-	// functions provided by the OS, such as printf
-	externalFuncs map[string]*ir.Function
+	// functions provided by the OS, such as printf and malloc
+	// externalFuncs map[string]*ir.Function
+	externalFuncs ExternalFuncs
 
 	// functions provided by the language, such as println
 	globalFuncs map[string]*types.Function
@@ -55,9 +55,8 @@ var (
 
 func NewCompiler() *Compiler {
 	c := &Compiler{
-		module:        ir.NewModule(),
-		externalFuncs: make(map[string]*ir.Function),
-		globalFuncs:   make(map[string]*types.Function),
+		module:      ir.NewModule(),
+		globalFuncs: make(map[string]*types.Function),
 
 		packages: make(map[string]*types.PackageInstance),
 
@@ -69,7 +68,7 @@ func NewCompiler() *Compiler {
 		stringConstants: make(map[string]*ir.Global),
 	}
 
-	c.addExternal()
+	c.createExternalPackage()
 	c.addGlobal()
 
 	// Triple examples:
@@ -134,59 +133,21 @@ func (c *Compiler) GetIR() string {
 	return fmt.Sprintln(c.module)
 }
 
-func (c *Compiler) addExternal() {
-	printfFunc := c.module.NewFunction("printf", i32.LLVM(), ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())))
-	printfFunc.Sig.Variadic = true
-	c.externalFuncs["printf"] = printfFunc
-
-	c.externalFuncs["malloc"] = c.module.NewFunction("malloc", llvmTypes.NewPointer(i8.LLVM()), ir.NewParam("", i64.LLVM()))
-	c.externalFuncs["realloc"] = c.module.NewFunction("realloc", llvmTypes.NewPointer(i8.LLVM()), ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())), ir.NewParam("", i64.LLVM()))
-	c.externalFuncs["memcpy"] = c.module.NewFunction("memcpy", llvmTypes.NewPointer(i8.LLVM()), ir.NewParam("dest", llvmTypes.NewPointer(i8.LLVM())), ir.NewParam("src", llvmTypes.NewPointer(i8.LLVM())), ir.NewParam("n", i64.LLVM()))
-
-	c.externalFuncs["strcat"] = c.module.NewFunction("strcat",
-		llvmTypes.NewPointer(i8.LLVM()),
-		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())))
-
-	c.externalFuncs["strcpy"] = c.module.NewFunction("strcpy",
-		llvmTypes.NewPointer(i8.LLVM()),
-		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())))
-
-	c.externalFuncs["strncpy"] = c.module.NewFunction("strncpy",
-		llvmTypes.NewPointer(i8.LLVM()),
-		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-		ir.NewParam("", i64.LLVM()),
-	)
-
-	c.externalFuncs["strndup"] = c.module.NewFunction("strndup",
-		llvmTypes.NewPointer(i8.LLVM()),
-		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-		ir.NewParam("", i64.LLVM()),
-	)
-
-	c.externalFuncs["exit"] = c.module.NewFunction("exit",
-		llvmTypes.Void,
-		ir.NewParam("", i32.LLVM()),
-	)
-}
-
 func (c *Compiler) addGlobal() {
 	types.ModuleStringType = c.module.NewType("string", internal.String())
 
-	// printf
-	c.globalFuncs["printf"] = &types.Function{
-		LlvmFunction: c.externalFuncs["printf"],
-		FunctionName: "printf",
-	}
-
-	// println
-	c.globalFuncs["println"] = &types.Function{
-		LlvmFunction: internal.Println(types.ModuleStringType, c.externalFuncs["printf"], c.module),
-		FunctionName: "println",
-	}
-	c.module.AppendFunction(c.globalFuncs["println"].LlvmFunction)
+	//	// printf
+	//	c.globalFuncs["printf"] = &types.Function{
+	//		LlvmFunction: c.externalFuncs.Pz["printf"],
+	//		FunctionName: "printf",
+	//	}
+	//
+	//	// println
+	//	c.globalFuncs["println"] = &types.Function{
+	//		LlvmFunction: internal.Println(types.ModuleStringType, c.externalFuncs["printf"], c.module),
+	//		FunctionName: "println",
+	//	}
+	//	c.module.AppendFunction(c.globalFuncs["println"].LlvmFunction)
 
 	// len_string
 	strLen := internal.StringLen(types.ModuleStringType)
@@ -315,8 +276,8 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 func (c *Compiler) panic(block *ir.BasicBlock, message string) {
 	globMsg := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant("runtime panic: "+message+"\n"))
 	globMsg.IsConst = true
-	block.NewCall(c.externalFuncs["printf"], strings.Toi8Ptr(block, globMsg))
-	block.NewCall(c.externalFuncs["exit"], constant.NewInt(1, i32.LLVM()))
+	block.NewCall(c.externalFuncs.Printf.LlvmFunction, strings.Toi8Ptr(block, globMsg))
+	block.NewCall(c.externalFuncs.Exit.LlvmFunction, constant.NewInt(1, i32.LLVM()))
 }
 
 type Panic string

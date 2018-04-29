@@ -1,5 +1,7 @@
 package main
 
+import "external"
+
 func main() {
 	// 1
 	// 0
@@ -8,10 +10,10 @@ func main() {
 	// 0
 
 	a := true
-	printf("%d\n", a)
+	external.Printf("%d\n", a)
 
 	a = false
-	printf("%d\n", a)
+	external.Printf("%d\n", a)
 
 	a = true
 	if a {
@@ -31,5 +33,5 @@ func main() {
 
 	var c bool
 	c = false
-	printf("%d\n", c)
+	external.Printf("%d\n", c)
 }
