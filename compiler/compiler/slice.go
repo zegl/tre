@@ -19,7 +19,7 @@ func (c *Compiler) compileSubstring(src value.Value, v parser.SliceArrayNode) va
 	var originalLength *ir.InstExtractValue
 
 	// Get backing array from string type
-	if src.PointerLevel > 0 {
+	if src.IsVariable {
 		srcVal = c.contextBlock.NewLoad(srcVal)
 	}
 	if src.Type.Name() == "string" {
@@ -64,9 +64,9 @@ func (c *Compiler) compileSubstring(src value.Value, v parser.SliceArrayNode) va
 	safeBlock.NewStore(dst, strItem)
 
 	return value.Value{
-		Value:        safeBlock.NewLoad(alloc),
-		Type:         typeConvertMap["string"],
-		PointerLevel: 0,
+		Value:      safeBlock.NewLoad(alloc),
+		Type:       typeConvertMap["string"],
+		IsVariable: false,
 	}
 }
 
@@ -254,9 +254,9 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 		)
 
 		sliceToAppendTo = value.Value{
-			Type:         input.Type,
-			Value:        newSlice,
-			PointerLevel: 1,
+			Type:       input.Type,
+			Value:      newSlice,
+			IsVariable: true,
 		}
 
 		c.contextBlock.NewBr(appendToSliceBlock)
@@ -286,7 +286,7 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 
 	addItem := c.compileValue(v.Arguments[1])
 	addItemVal := addItem.Value
-	if addItem.PointerLevel > 0 {
+	if addItem.IsVariable {
 		addItemVal = c.contextBlock.NewLoad(addItemVal)
 	}
 
@@ -348,8 +348,8 @@ func (c *Compiler) compileInitializeSliceNode(v parser.InitializeSliceNode) valu
 	c.contextBlock.NewStore(constant.NewInt(int64(len(v.Items)), i32.LLVM()), lenPtr)
 
 	return value.Value{
-		Value:        allocSlice,
-		Type:         sliceType,
-		PointerLevel: 1, // This is probably not correct
+		Value:      allocSlice,
+		Type:       sliceType,
+		IsVariable: true,
 	}
 }

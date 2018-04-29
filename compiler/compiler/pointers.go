@@ -19,7 +19,7 @@ func (c *Compiler) compileGetReferenceNode(v parser.GetReferenceNode) value.Valu
 	// and val is not of type Pointer
 	//
 	// TODO: Get rid of the whole PointerLevel mess
-	if val.PointerLevel > 0 {
+	if val.IsVariable {
 		if _, ok := val.Type.(*types.Pointer); !ok {
 			newType = llvmTypes.NewPointer(newType)
 		}
@@ -33,8 +33,8 @@ func (c *Compiler) compileGetReferenceNode(v parser.GetReferenceNode) value.Valu
 			Type:     val.Type,
 			LlvmType: newSrc.Type(),
 		},
-		Value:        newSrc,
-		PointerLevel: 1,
+		Value:      newSrc,
+		IsVariable: true,
 	}
 }
 
@@ -43,9 +43,9 @@ func (c *Compiler) compileDereferenceNode(v parser.DereferenceNode) value.Value 
 
 	if ptrVal, ok := val.Type.(*types.Pointer); ok {
 		return value.Value{
-			Value:        c.contextBlock.NewLoad(val.Value),
-			Type:         ptrVal.Type,
-			PointerLevel: 1, // Is this correct?
+			Value:      c.contextBlock.NewLoad(val.Value),
+			Type:       ptrVal.Type,
+			IsVariable: true,
 		}
 	}
 

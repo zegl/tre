@@ -36,11 +36,11 @@ func (c *Compiler) compileOperatorNode(v parser.OperatorNode) value.Value {
 	right := c.compileValue(v.Right)
 	rightLLVM := right.Value
 
-	if left.PointerLevel > 0 {
+	if left.IsVariable {
 		leftLLVM = c.contextBlock.NewLoad(leftLLVM)
 	}
 
-	if right.PointerLevel > 0 {
+	if right.IsVariable {
 		rightLLVM = c.contextBlock.NewLoad(rightLLVM)
 	}
 
@@ -75,9 +75,9 @@ func (c *Compiler) compileOperatorNode(v parser.OperatorNode) value.Value {
 			c.contextBlock.NewStore(backingArray, strItem)
 
 			return value.Value{
-				Value:        c.contextBlock.NewLoad(alloc),
-				Type:         types.String,
-				PointerLevel: 0,
+				Value:      c.contextBlock.NewLoad(alloc),
+				Type:       types.String,
+				IsVariable: false,
 			}
 		}
 
@@ -98,16 +98,16 @@ func (c *Compiler) compileOperatorNode(v parser.OperatorNode) value.Value {
 	default:
 		// Boolean operations
 		return value.Value{
-			Type:         types.Bool,
-			Value:        c.contextBlock.NewICmp(getConditionLLVMpred(v.Operator), leftLLVM, rightLLVM),
-			PointerLevel: 0,
+			Type:       types.Bool,
+			Value:      c.contextBlock.NewICmp(getConditionLLVMpred(v.Operator), leftLLVM, rightLLVM),
+			IsVariable: false,
 		}
 	}
 
 	return value.Value{
-		Value:        opRes,
-		Type:         left.Type,
-		PointerLevel: 0,
+		Value:      opRes,
+		Type:       left.Type,
+		IsVariable: false,
 	}
 }
 

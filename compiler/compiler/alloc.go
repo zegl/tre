@@ -24,9 +24,9 @@ func (c *Compiler) compileAllocNode(v parser.AllocNode) {
 		alloc.SetName(v.Name)
 
 		c.contextBlockVariables[v.Name] = value.Value{
-			Value:        alloc,
-			Type:         treType,
-			PointerLevel: 1, // This is probably not always correct
+			Value:      alloc,
+			Type:       treType,
+			IsVariable: true,
 		}
 		return
 	}
@@ -35,7 +35,7 @@ func (c *Compiler) compileAllocNode(v parser.AllocNode) {
 	val := c.compileValue(v.Val)
 	llvmVal := val.Value
 
-	if val.PointerLevel > 0 {
+	if val.IsVariable {
 		llvmVal = c.contextBlock.NewLoad(llvmVal)
 	}
 
@@ -44,9 +44,9 @@ func (c *Compiler) compileAllocNode(v parser.AllocNode) {
 	c.contextBlock.NewStore(llvmVal, alloc)
 
 	c.contextBlockVariables[v.Name] = value.Value{
-		Type:         val.Type,
-		Value:        alloc,
-		PointerLevel: 1, // TODO
+		Type:       val.Type,
+		Value:      alloc,
+		IsVariable: true,
 	}
 }
 
@@ -82,7 +82,7 @@ func (c *Compiler) compileAssignNode(v parser.AssignNode) {
 	val := c.compileValue(v.Val)
 	llvmV := val.Value
 
-	if val.PointerLevel > 0 {
+	if val.IsVariable {
 		llvmV = c.contextBlock.NewLoad(llvmV)
 	}
 
