@@ -1,4 +1,4 @@
-package main
+package main  import "external"
 
 // 0
 // 1
@@ -12,7 +12,7 @@ func main() {
             continue
         }
 
-        printf("%d\n", i)
+        external.Printf("%d\n", i)
     }
 
 }

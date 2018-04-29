@@ -1,5 +1,5 @@
-package main
+package main  import "external"
 
 func bar() {
-	printf("bar\n")
+	external.Printf("bar\n")
 }

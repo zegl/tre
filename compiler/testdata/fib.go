@@ -1,4 +1,4 @@
-package main
+package main  import "external"
 
 func fib(num int) int {
     if num < 2 {
@@ -10,5 +10,5 @@ func fib(num int) int {
 
 func main() {
     // fib = 5702887
-    printf("fib = %d\n", fib(34))
+    external.Printf("fib = %d\n", fib(34))
 }
