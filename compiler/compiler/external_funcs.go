@@ -65,7 +65,7 @@ func (c *Compiler) createExternalPackage() {
 	}
 
 	{
-		c.externalFuncs.Realloc = &types.Function{
+		c.externalFuncs.Memcpy = &types.Function{
 			ReturnType:   types.Void,
 			FunctionName: "memcpy",
 			LlvmFunction: c.module.NewFunction("memcpy",
