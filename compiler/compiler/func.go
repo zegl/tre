@@ -149,40 +149,6 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		return c.appendFuncCall(v)
 	}
 
-	isExternal := false
-	if isNameNode {
-		_, isExternal = c.externalFuncs[name.Name]
-	}
-
-	for _, vv := range v.Arguments {
-		treVal := c.compileValue(vv)
-		val := treVal.Value
-
-		// Convert %string* to i8* when calling external functions
-		if isExternal {
-			if treVal.Type.Name() == "string" {
-				if treVal.IsVariable {
-					val = c.contextBlock.NewLoad(val)
-				}
-				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
-				continue
-			}
-
-			if treVal.Type.Name() == "array" {
-				if treVal.IsVariable {
-					val = c.contextBlock.NewLoad(val)
-				}
-				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
-				continue
-			}
-		}
-
-		if treVal.IsVariable {
-			val = c.contextBlock.NewLoad(val)
-		}
-		args = append(args, val)
-	}
-
 	var fn *types.Function
 
 	if isNameNode {
@@ -207,6 +173,35 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		} else {
 			panic("expected function or method, got something else")
 		}
+	}
+
+	for _, vv := range v.Arguments {
+		treVal := c.compileValue(vv)
+		val := treVal.Value
+
+		// Convert %string* to i8* when calling external functions
+		if fn.IsExternal {
+			if treVal.Type.Name() == "string" {
+				if treVal.IsVariable {
+					val = c.contextBlock.NewLoad(val)
+				}
+				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
+				continue
+			}
+
+			if treVal.Type.Name() == "array" {
+				if treVal.IsVariable {
+					val = c.contextBlock.NewLoad(val)
+				}
+				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
+				continue
+			}
+		}
+
+		if treVal.IsVariable {
+			val = c.contextBlock.NewLoad(val)
+		}
+		args = append(args, val)
 	}
 
 	// Call function and return the result
