@@ -374,3 +374,12 @@ type InitializeStructNode struct {
 func (i InitializeStructNode) String() string {
 	return fmt.Sprintf("%s{%+v}", i.Type, i.Items)
 }
+
+type DeVariadicSliceNode struct {
+	baseNode
+	Item Node
+}
+
+func (i DeVariadicSliceNode) String() string {
+	return fmt.Sprintf("%+v...", i.Item)
+}
