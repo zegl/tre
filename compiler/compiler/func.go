@@ -208,7 +208,6 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 	for _, vv := range v.Arguments {
 		if devVar, ok := vv.(parser.DeVariadicSliceNode); ok {
 			lastIsVariadicSlice = true
-			// val := c.contextBlock.NewLoad(c.compileValue(devVar.Item).Value)
 			args = append(args, c.compileValue(devVar.Item))
 			continue
 		}
@@ -249,6 +248,24 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 			if v.Type.Name() == "array" {
 				llvmArgs[i] = c.contextBlock.NewExtractValue(val, []int64{1})
 				continue
+			}
+		}
+
+		if len(fn.ArgumentTypes) > i {
+			fnArgumentType := fn.ArgumentTypes[i]
+			if _, isInterface := fnArgumentType.(*types.Interface); isInterface {
+				// Convert to pointer variable
+				if !v.IsVariable {
+					ptrAlloca := c.contextBlock.NewAlloca(v.Type.LLVM())
+					c.contextBlock.NewStore(val, ptrAlloca)
+					val = ptrAlloca
+				}
+
+				ifaceStruct := c.contextBlock.NewAlloca(internal.Interface())
+				dataPtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+				bitcastedVal := c.contextBlock.NewBitCast(val, llvmTypes.NewPointer(llvmTypes.I8))
+				c.contextBlock.NewStore(bitcastedVal, dataPtr)
+				val = c.contextBlock.NewLoad(ifaceStruct)
 			}
 		}
 
