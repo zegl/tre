@@ -33,13 +33,12 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 	isVariadicFunc := false
 
 	for k, par := range v.Arguments {
-
 		paramType := parserTypeToType(par.Type)
 
 		// Variadic arguments are converted into a slice
 		// The function takes a slice as the argument, the caller has to convert
 		// the arguments to a slice before calling
-		if par.Type.IsVariadic {
+		if par.Type.Variadic() {
 			paramType = &types.Slice{
 				Type:     paramType,
 				LlvmType: internal.Slice(paramType.LLVM()),
@@ -49,7 +48,7 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 		param := ir.NewParam(par.Name, paramType.LLVM())
 
 		// TODO: Should only be possible on the last argument
-		if par.Type.IsVariadic {
+		if par.Type.Variadic() {
 			isVariadicFunc = true
 		}
 
@@ -202,13 +201,38 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		}
 	}
 
+	var fn *types.Function
+
+	if isNameNode {
+		fn = c.funcByName(name.Name)
+	} else {
+		funcByVal := c.compileValue(v.Function)
+		if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
+			fn = checkIfFunc
+		} else if checkIfMethod, ok := funcByVal.Type.(*types.Method); ok {
+			fn = checkIfMethod.Function
+			var methodCallArgs []llvmValue.Value
+
+			instance := funcByVal.Value
+			if !checkIfMethod.PointerReceiver {
+				instance = c.contextBlock.NewLoad(instance)
+			}
+
+			// Add instance as the first argument
+			methodCallArgs = append(methodCallArgs, instance)
+			methodCallArgs = append(methodCallArgs, args...)
+			args = methodCallArgs
+		} else {
+			panic("expected function or method, got something else")
+		}
+	}
+
 	// If the last argument is a slice that is "de variadicified"
 	// Eg: foo...
 	// When this is the case we don't have to convert the arguments to a slice when calling the func
 	lastIsVariadicSlice := false
 
-	for _, vv := range v.Arguments {
-
+	for argIndex, vv := range v.Arguments {
 		if devVar, ok := vv.(parser.DeVariadicSliceNode); ok {
 			lastIsVariadicSlice = true
 			val := c.contextBlock.NewLoad(c.compileValue(devVar.Item).Value)
@@ -241,6 +265,24 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		if treVal.IsVariable {
 			val = c.contextBlock.NewLoad(val)
 		}
+
+		fnArgumentType := fn.ArgumentTypes[argIndex]
+		if _, isInterface := fnArgumentType.(*types.Interface); isInterface {
+
+			// Convert to pointer variable
+			if !treVal.IsVariable {
+				ptrAlloca := c.contextBlock.NewAlloca(treVal.Type.LLVM())
+				c.contextBlock.NewStore(val, ptrAlloca)
+				val = ptrAlloca
+			}
+
+			ifaceStruct := c.contextBlock.NewAlloca(internal.Interface())
+			dataPtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+			bitcastedVal := c.contextBlock.NewBitCast(val, llvmTypes.NewPointer(llvmTypes.I8))
+			c.contextBlock.NewStore(bitcastedVal, dataPtr)
+			val = c.contextBlock.NewLoad(ifaceStruct)
+		}
+
 		args = append(args, val)
 	}
 

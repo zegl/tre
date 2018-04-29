@@ -6,6 +6,7 @@ import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
+	"github.com/zegl/tre/compiler/compiler/internal"
 )
 
 type Type interface {
@@ -244,4 +245,16 @@ func (p Pointer) LLVM() types.Type {
 
 func (p Pointer) Name() string {
 	return "pointer"
+}
+
+type Interface struct {
+	backingType
+}
+
+func (i Interface) Name() string {
+	return "interface"
+}
+
+func (i Interface) LLVM() types.Type {
+	return internal.Interface()
 }

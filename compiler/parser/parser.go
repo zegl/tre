@@ -683,7 +683,7 @@ func (p *parser) parseFunctionArguments() []NameNode {
 
 		res = append(res, NameNode{
 			Name: name.Val,
-			Type: argType.(SingleTypeNode),
+			Type: argType,
 		})
 
 		i++
@@ -748,6 +748,15 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		}
 
 		return res, nil
+	}
+
+	if current.Type == lexer.KEYWORD && current.Val == "interface" {
+		p.i++
+		p.expect(p.lookAhead(0), lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
+		p.i++
+		p.expect(p.lookAhead(0), lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+
+		return InterfaceTypeNode{}, nil
 	}
 
 	if current.Type == lexer.IDENTIFIER {

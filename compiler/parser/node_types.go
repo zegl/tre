@@ -9,6 +9,7 @@ type TypeNode interface {
 	Node() // must also implement the Node interface
 	Type() string
 	String() string
+	Variadic() bool
 }
 
 // SingleTypeNode refers to an existing type. Such as "string".
@@ -27,12 +28,17 @@ func (stn SingleTypeNode) String() string {
 	return "type(" + stn.Type() + ")"
 }
 
+func (stn SingleTypeNode) Variadic() bool {
+	return stn.IsVariadic
+}
+
 // StructTypeNode refers to a struct type
 type StructTypeNode struct {
 	baseNode
 
-	Types []TypeNode
-	Names map[string]int
+	Types      []TypeNode
+	Names      map[string]int
+	IsVariadic bool
 }
 
 func (stn StructTypeNode) Type() string {
@@ -43,12 +49,17 @@ func (stn StructTypeNode) String() string {
 	return fmt.Sprintf("StructTypeNode(%+v)", stn.Types)
 }
 
+func (stn StructTypeNode) Variadic() bool {
+	return stn.IsVariadic
+}
+
 // ArrayTypeNode refers to an array
 type ArrayTypeNode struct {
 	baseNode
 
-	ItemType TypeNode
-	Len      int64
+	ItemType   TypeNode
+	Len        int64
+	IsVariadic bool
 }
 
 func (atn ArrayTypeNode) Type() string {
@@ -59,9 +70,14 @@ func (atn ArrayTypeNode) String() string {
 	return atn.Type()
 }
 
+func (atn ArrayTypeNode) Variadic() bool {
+	return atn.IsVariadic
+}
+
 type SliceTypeNode struct {
 	baseNode
-	ItemType TypeNode
+	ItemType   TypeNode
+	IsVariadic bool
 }
 
 func (stn SliceTypeNode) Type() string {
@@ -70,4 +86,26 @@ func (stn SliceTypeNode) Type() string {
 
 func (stn SliceTypeNode) String() string {
 	return stn.Type()
+}
+
+func (stn SliceTypeNode) Variadic() bool {
+	return stn.IsVariadic
+}
+
+type InterfaceTypeNode struct {
+	baseNode
+	// TODO list of required methods
+	IsVariadic bool
+}
+
+func (itn InterfaceTypeNode) Type() string {
+	return fmt.Sprintf("interface{}")
+}
+
+func (itn InterfaceTypeNode) String() string {
+	return itn.Type()
+}
+
+func (itn InterfaceTypeNode) Variadic() bool {
+	return itn.IsVariadic
 }
