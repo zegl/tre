@@ -1,12 +1,14 @@
 package main
 
+import "external"
+
 func variadic(num ...int) int {
-	printf("len = %d\n", len(num))
+	external.Printf("len = %d\n", len(num))
 	return 123
 }
 
 func variadicWithOtherArgs(preArg int, num ...int) int {
-	printf("pre = %d + len = %d\n", preArg, len(num))
+	external.Printf("pre = %d + len = %d\n", preArg, len(num))
 	return 123
 }
 
