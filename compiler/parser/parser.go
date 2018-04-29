@@ -689,6 +689,14 @@ func (p *parser) parseFunctionArguments() []NameNode {
 func (p *parser) parseOneType() (TypeNode, error) {
 	current := p.lookAhead(0)
 
+	isVariadic := false
+	if current.Type == lexer.OPERATOR && current.Val == "..." {
+		isVariadic = true
+
+		p.i++
+		current = p.lookAhead(0)
+	}
+
 	// struct parsing
 	if current.Type == lexer.KEYWORD && current.Val == "struct" {
 		p.i++
@@ -740,7 +748,8 @@ func (p *parser) parseOneType() (TypeNode, error) {
 
 	if current.Type == lexer.IDENTIFIER {
 		return SingleTypeNode{
-			TypeName: current.Val,
+			TypeName:   current.Val,
+			IsVariadic: isVariadic,
 		}, nil
 	}
 

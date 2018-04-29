@@ -5,6 +5,7 @@ import (
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
@@ -26,9 +27,34 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 		compiledName = c.currentPackageName + "_" + v.Name
 	}
 
-	params := make([]*llvmTypes.Param, len(v.Arguments))
+	llvmParams := make([]*llvmTypes.Param, len(v.Arguments))
+	treParams := make([]types.Type, len(v.Arguments))
+
+	isVariadicFunc := false
+
 	for k, par := range v.Arguments {
-		params[k] = ir.NewParam(par.Name, parserTypeToType(par.Type).LLVM())
+
+		paramType := parserTypeToType(par.Type)
+
+		// Variadic arguments are converted into a slice
+		// The function takes a slice as the argument, the caller has to convert
+		// the arguments to a slice before calling
+		if par.Type.IsVariadic {
+			paramType = &types.Slice{
+				Type:     paramType,
+				LlvmType: internal.Slice(paramType.LLVM()),
+			}
+		}
+
+		param := ir.NewParam(par.Name, paramType.LLVM())
+
+		// TODO: Should only be possible on the last argument
+		if par.Type.IsVariadic {
+			isVariadicFunc = true
+		}
+
+		llvmParams[k] = param
+		treParams[k] = paramType
 	}
 
 	var funcRetType types.Type = types.Void
@@ -47,12 +73,14 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 	}
 
 	// Create a new function, and add it to the list of global functions
-	fn := c.module.NewFunction(compiledName, funcRetType.LLVM(), params...)
+	fn := c.module.NewFunction(compiledName, funcRetType.LLVM(), llvmParams...)
 
 	typesFunc := &types.Function{
-		LlvmFunction: fn,
-		ReturnType:   funcRetType,
-		FunctionName: v.Name,
+		LlvmFunction:  fn,
+		ReturnType:    funcRetType,
+		FunctionName:  v.Name,
+		IsVariadic:    isVariadicFunc,
+		ArgumentTypes: treParams,
 	}
 
 	// Save as a method on the type
@@ -78,9 +106,9 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 	c.contextBlockVariables = make(map[string]value.Value)
 
 	// Save all parameters in the block mapping
-	for i, param := range params {
+	for i, param := range llvmParams {
 		paramName := v.Arguments[i].Name
-		dataType := parserTypeToType(v.Arguments[i].Type)
+		dataType := treParams[i]
 
 		// Structs needs to be pointer-allocated
 		if _, ok := param.Type().(*llvmTypes.StructType); ok {
@@ -96,7 +124,6 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 			continue
 		}
 
-		// TODO: Using 0 as the pointer level here might not be correct
 		c.contextBlockVariables[paramName] = value.Value{
 			Value:      param,
 			Type:       dataType,
@@ -207,6 +234,21 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		} else {
 			panic("expected function or method, got something else")
 		}
+	}
+
+	if fn.IsVariadic {
+		// Only the last argument can be variadic
+		variadicArgIndex := len(fn.ArgumentTypes) - 1
+		variadicType := fn.ArgumentTypes[variadicArgIndex].(*types.Slice)
+
+		// Convert last argument to a slice.
+		variadicSlice := c.compileInitializeSliceWithValues(variadicType.Type, args[variadicArgIndex:]...)
+
+		// Remove "pre-sliceified" arguments from the list of arguments
+		args = args[0:variadicArgIndex]
+
+		loaded := c.contextBlock.NewLoad(variadicSlice.Value)
+		args = append(args, loaded)
 	}
 
 	// Call function and return the result

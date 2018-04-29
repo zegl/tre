@@ -85,6 +85,9 @@ type Function struct {
 	LlvmFunction *ir.Function
 	ReturnType   Type
 	FunctionName string
+
+	IsVariadic    bool
+	ArgumentTypes []Type
 }
 
 func (f Function) LLVM() types.Type {

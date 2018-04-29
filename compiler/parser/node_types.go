@@ -15,7 +15,8 @@ type TypeNode interface {
 type SingleTypeNode struct {
 	baseNode
 
-	TypeName string
+	TypeName   string
+	IsVariadic bool
 }
 
 func (stn SingleTypeNode) Type() string {
