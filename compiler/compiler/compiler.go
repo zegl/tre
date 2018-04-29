@@ -47,7 +47,6 @@ type Compiler struct {
 }
 
 var (
-	i1  = types.I1
 	i8  = types.I8
 	i32 = types.I32
 	i64 = types.I64
