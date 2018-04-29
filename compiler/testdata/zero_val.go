@@ -1,4 +1,6 @@
-package main  import "external"
+package main
+
+import "external"
 
 func main() {
 	var b bool

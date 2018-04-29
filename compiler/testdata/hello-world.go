@@ -1,4 +1,4 @@
-package main  import "external"
+package main
 
 import "fmt"
 

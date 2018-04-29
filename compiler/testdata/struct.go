@@ -1,8 +1,10 @@
-package main  import "external"
+package main
+
+import "external"
 
 type Book struct {
-    book_id1 int
-    book_id2 int
+	book_id1 int
+	book_id2 int
 }
 
 // main id1: 1111
@@ -18,28 +20,27 @@ type Book struct {
 // res id2: 2222
 
 func bookInfo(book Book) Book {
-    external.Printf("info id1: %d\n", book.book_id1)
-    external.Printf("info id2: %d\n", book.book_id2)
+	external.Printf("info id1: %d\n", book.book_id1)
+	external.Printf("info id2: %d\n", book.book_id2)
 
-    book.book_id1 = 3333
+	book.book_id1 = 3333
 
-    external.Printf("info id1: %d\n", book.book_id1)
+	external.Printf("info id1: %d\n", book.book_id1)
 
-    return book
+	return book
 }
 
 func main() {
-    var bookiboy Book
-    bookiboy.book_id1 = 1111
-    bookiboy.book_id2 = 2222
+	var bookiboy Book
+	bookiboy.book_id1 = 1111
+	bookiboy.book_id2 = 2222
 
-    external.Printf("main id1: %d\n", bookiboy.book_id1)
-    external.Printf("main id2: %d\n", bookiboy.book_id2)
+	external.Printf("main id1: %d\n", bookiboy.book_id1)
+	external.Printf("main id2: %d\n", bookiboy.book_id2)
 
+	external.Printf("main id1: %d\n", bookInfo(bookiboy).book_id1)
+	res := bookInfo(bookiboy)
 
-    external.Printf("main id1: %d\n", bookInfo(bookiboy).book_id1)
-    res := bookInfo(bookiboy)
-
-    external.Printf("res id1: %d\n", res.book_id1)
-    external.Printf("res id2: %d\n", res.book_id2)
+	external.Printf("res id1: %d\n", res.book_id1)
+	external.Printf("res id2: %d\n", res.book_id2)
 }

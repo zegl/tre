@@ -258,3 +258,7 @@ func (i Interface) Name() string {
 func (i Interface) LLVM() types.Type {
 	return internal.Interface()
 }
+
+func (Interface) Size() int64 {
+	return 1 // 1 pointer
+}

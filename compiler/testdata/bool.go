@@ -1,6 +1,7 @@
 package main
 
 import "external"
+import "fmt"
 
 func main() {
 	// 1
@@ -17,18 +18,18 @@ func main() {
 
 	a = true
 	if a {
-		println("a was true")
+		fmt.Println("a was true")
 	}
 	if !a {
-		println("a was not true")
+		fmt.Println("a was not true")
 	}
 
 	b := false
 	if b {
-		println("b was true")
+		fmt.Println("b was true")
 	}
 	if !b {
-		println("b was not true")
+		fmt.Println("b was not true")
 	}
 
 	var c bool

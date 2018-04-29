@@ -1,4 +1,6 @@
-package main  import "external"
+package main
+
+import "external"
 
 // 0
 // 1
@@ -12,7 +14,7 @@ package main  import "external"
 // 9
 
 func main() {
-    for i := 0; i < 10; i = i + 1 {
-        external.Printf("%d\n", i)
-    }
+	for i := 0; i < 10; i = i + 1 {
+		external.Printf("%d\n", i)
+	}
 }

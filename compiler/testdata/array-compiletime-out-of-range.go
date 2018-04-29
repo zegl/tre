@@ -1,4 +1,4 @@
-package main  import "external"
+package main
 
 import "external"
 
@@ -6,5 +6,5 @@ func main() {
 	var array [4]int
 
 	// compile panic: index out of range
-	external.external.Printf("%d\n", array[10])
+	external.Printf("%d\n", array[10])
 }

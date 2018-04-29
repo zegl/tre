@@ -1,5 +1,6 @@
-package main  import "external"
+package main
 
+import "external"
 import "fmt"
 
 func otherfunc() int {

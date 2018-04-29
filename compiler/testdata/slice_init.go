@@ -1,4 +1,6 @@
-package main  import "external"
+package main
+
+import "external"
 
 func main() {
 	foo := []int{1, 2, 3}
