@@ -50,24 +50,26 @@ func (i Item) String() string {
 }
 
 var operations = map[string]struct{}{
-	"+":  {},
-	"-":  {},
-	"*":  {}, // Multiplication and dereferencing
-	"/":  {},
-	"<":  {},
-	">":  {},
-	"<=": {},
-	">=": {},
-	"==": {},
-	"!=": {},
-	"=":  {},
-	"!":  {},
-	":":  {}, // is not really a operation. Is only defined here so that := can be found.
-	":=": {},
-	".":  {},
-	"[":  {},
-	"]":  {},
-	"&":  {},
+	"+":   {},
+	"-":   {},
+	"*":   {}, // Multiplication and dereferencing
+	"/":   {},
+	"<":   {},
+	">":   {},
+	"<=":  {},
+	">=":  {},
+	"==":  {},
+	"!=":  {},
+	"=":   {},
+	"!":   {},
+	":":   {}, // is not really a operation. Is only defined here so that := can be found.
+	":=":  {},
+	".":   {},
+	"[":   {},
+	"]":   {},
+	"&":   {},
+	"..":  {}, // is not a real operation. Is there so that ... can be found.
+	"...": {},
 }
 
 var separators = map[string]struct{}{
@@ -101,17 +103,26 @@ func Lex(inputFullSource string) []Item {
 
 			if _, ok := operations[string(input[i])]; ok {
 
-				// Operators can be 1 or 2 characters
-				if len(input) > i+1 {
-					if _, ok := operations[string(input[i])+string(input[i+1])]; ok {
-						res = append(res, Item{Type: OPERATOR, Val: string(input[i]) + string(input[i+1]), Line: line})
-						i++
+				operator := string(input[i])
+
+				// Parse till end of the operator
+				// Can be up to 3 characters long
+				for {
+					if len(input) == i+1 {
+						break
+					}
+
+					checkIfOperator := operator + string(input[i+1])
+					if _, ok := operations[checkIfOperator]; ok {
+						operator = checkIfOperator
 						i++
 						continue
+					} else {
+						break
 					}
 				}
 
-				res = append(res, Item{Type: OPERATOR, Val: string(input[i]), Line: line})
+				res = append(res, Item{Type: OPERATOR, Val: operator, Line: line})
 				i++
 				continue
 			}

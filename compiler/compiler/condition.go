@@ -45,7 +45,7 @@ func (c *Compiler) compileOperatorNode(v parser.OperatorNode) value.Value {
 	}
 
 	if !leftLLVM.Type().Equal(rightLLVM.Type()) {
-		panic(fmt.Sprintf("Different types in operation: %T and %T", left, right))
+		panic(fmt.Sprintf("Different types in operation: %T and %T", left.Type, right.Type))
 	}
 
 	switch leftLLVM.Type().GetName() {

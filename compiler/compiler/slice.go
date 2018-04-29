@@ -308,13 +308,30 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 func (c *Compiler) compileInitializeSliceNode(v parser.InitializeSliceNode) value.Value {
 	itemType := parserTypeToType(v.Type)
 
+	var values []llvmValue.Value
+
+	// Add items
+	for _, val := range v.Items {
+		// Push assigng type stack
+		c.contextAssignDest = append(c.contextAssignDest, value.Value{Type: itemType})
+
+		values = append(values, c.compileValue(val).Value)
+
+		// Pop assigng type stack
+		c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
+	}
+
+	return c.compileInitializeSliceWithValues(itemType, values...)
+}
+
+func (c *Compiler) compileInitializeSliceWithValues(itemType types.Type, values ...llvmValue.Value) value.Value {
 	sliceType := &types.Slice{
 		Type:     itemType,
 		LlvmType: internal.Slice(itemType.LLVM()),
 	}
 
 	// Create slice with cap set to the requested size
-	allocSlice := sliceType.SliceZero(c.contextBlock, c.externalFuncs["malloc"], len(v.Items))
+	allocSlice := sliceType.SliceZero(c.contextBlock, c.externalFuncs["malloc"], len(values))
 
 	backingArrayPtr := c.contextBlock.NewGetElementPtr(allocSlice,
 		constant.NewInt(0, i32.LLVM()),
@@ -325,19 +342,10 @@ func (c *Compiler) compileInitializeSliceNode(v parser.InitializeSliceNode) valu
 	loadedPtr.SetName(getVarName("loadedbackingarrayptr"))
 
 	// Add items
-	for i, val := range v.Items {
+	for i, val := range values {
 		storePtr := c.contextBlock.NewGetElementPtr(loadedPtr, constant.NewInt(int64(i), i32.LLVM()))
 		storePtr.SetName(getVarName(fmt.Sprintf("storeptr-%d", i)))
-
-		// Push assigng type stack
-		c.contextAssignDest = append(c.contextAssignDest, value.Value{Type: itemType})
-
-		itemVal := c.compileValue(val)
-
-		// Pop assigng type stack
-		c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
-
-		c.contextBlock.NewStore(itemVal.Value, storePtr)
+		c.contextBlock.NewStore(val, storePtr)
 	}
 
 	// Set len
@@ -345,7 +353,7 @@ func (c *Compiler) compileInitializeSliceNode(v parser.InitializeSliceNode) valu
 		constant.NewInt(0, i32.LLVM()),
 		constant.NewInt(0, i32.LLVM()),
 	)
-	c.contextBlock.NewStore(constant.NewInt(int64(len(v.Items)), i32.LLVM()), lenPtr)
+	c.contextBlock.NewStore(constant.NewInt(int64(len(values)), i32.LLVM()), lenPtr)
 
 	return value.Value{
 		Value:      allocSlice,
