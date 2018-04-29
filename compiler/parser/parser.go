@@ -706,8 +706,9 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		p.i++
 
 		res := StructTypeNode{
-			Types: make([]TypeNode, 0),
-			Names: make(map[string]int),
+			Types:      make([]TypeNode, 0),
+			Names:      make(map[string]int),
+			IsVariadic: isVariadic,
 		}
 
 		current = p.lookAhead(0)
@@ -756,7 +757,9 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		p.i++
 		p.expect(p.lookAhead(0), lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
 
-		return InterfaceTypeNode{}, nil
+		return InterfaceTypeNode{
+			IsVariadic: isVariadic,
+		}, nil
 	}
 
 	if current.Type == lexer.IDENTIFIER {
@@ -780,7 +783,8 @@ func (p *parser) parseOneType() (TypeNode, error) {
 			}
 
 			return SliceTypeNode{
-				ItemType: sliceItemType,
+				ItemType:   sliceItemType,
+				IsVariadic: isVariadic,
 			}, nil
 		}
 
@@ -805,8 +809,9 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		}
 
 		return ArrayTypeNode{
-			ItemType: arrayItemType,
-			Len:      int64(arrayLengthInt),
+			ItemType:   arrayItemType,
+			Len:        int64(arrayLengthInt),
+			IsVariadic: isVariadic,
 		}, nil
 	}
 
