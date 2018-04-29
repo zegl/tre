@@ -14,7 +14,7 @@ import (
 )
 
 var typeConvertMap = map[string]types.Type{
-	"bool":   types.I1,
+	"bool":   types.Bool,
 	"int":    types.I64, // TODO: Size based on arch
 	"int8":   types.I8,
 	"int16":  types.I16,
