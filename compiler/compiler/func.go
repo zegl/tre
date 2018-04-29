@@ -176,53 +176,6 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		return c.appendFuncCall(v)
 	}
 
-	isExternal := false
-	if isNameNode {
-		_, isExternal = c.externalFuncs[name.Name]
-	}
-
-	// If the last argument is a slice that is "de variadicified"
-	// Eg: foo...
-	// When this is the case we don't have to convert the arguments to a slice when calling the func
-	lastIsVariadicSlice := false
-
-	for _, vv := range v.Arguments {
-
-		if devVar, ok := vv.(parser.DeVariadicSliceNode); ok {
-			lastIsVariadicSlice = true
-			val := c.contextBlock.NewLoad(c.compileValue(devVar.Item).Value)
-			args = append(args, val)
-			continue
-		}
-
-		treVal := c.compileValue(vv)
-		val := treVal.Value
-
-		// Convert %string* to i8* when calling external functions
-		if isExternal {
-			if treVal.Type.Name() == "string" {
-				if treVal.IsVariable {
-					val = c.contextBlock.NewLoad(val)
-				}
-				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
-				continue
-			}
-
-			if treVal.Type.Name() == "array" {
-				if treVal.IsVariable {
-					val = c.contextBlock.NewLoad(val)
-				}
-				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
-				continue
-			}
-		}
-
-		if treVal.IsVariable {
-			val = c.contextBlock.NewLoad(val)
-		}
-		args = append(args, val)
-	}
-
 	var fn *types.Function
 
 	if isNameNode {
@@ -247,6 +200,48 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		} else {
 			panic("expected function or method, got something else")
 		}
+	}
+
+	// If the last argument is a slice that is "de variadicified"
+	// Eg: foo...
+	// When this is the case we don't have to convert the arguments to a slice when calling the func
+	lastIsVariadicSlice := false
+
+	for _, vv := range v.Arguments {
+
+		if devVar, ok := vv.(parser.DeVariadicSliceNode); ok {
+			lastIsVariadicSlice = true
+			val := c.contextBlock.NewLoad(c.compileValue(devVar.Item).Value)
+			args = append(args, val)
+			continue
+		}
+
+		treVal := c.compileValue(vv)
+		val := treVal.Value
+
+		// Convert %string* to i8* when calling external functions
+		if fn.IsExternal {
+			if treVal.Type.Name() == "string" {
+				if treVal.IsVariable {
+					val = c.contextBlock.NewLoad(val)
+				}
+				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
+				continue
+			}
+
+			if treVal.Type.Name() == "array" {
+				if treVal.IsVariable {
+					val = c.contextBlock.NewLoad(val)
+				}
+				args = append(args, c.contextBlock.NewExtractValue(val, []int64{1}))
+				continue
+			}
+		}
+
+		if treVal.IsVariable {
+			val = c.contextBlock.NewLoad(val)
+		}
+		args = append(args, val)
 	}
 
 	if fn.IsVariadic && !lastIsVariadicSlice {

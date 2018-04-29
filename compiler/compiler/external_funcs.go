@@ -1,0 +1,155 @@
+package compiler
+
+import (
+	"github.com/llir/llvm/ir"
+	llvmTypes "github.com/llir/llvm/ir/types"
+	"github.com/zegl/tre/compiler/compiler/types"
+)
+
+type ExternalFuncs struct {
+	Printf  *types.Function
+	Malloc  *types.Function
+	Realloc *types.Function
+	Memcpy  *types.Function
+	Strcat  *types.Function
+	Strcpy  *types.Function
+	Strncpy *types.Function
+	Strndup *types.Function
+	Exit    *types.Function
+}
+
+func (c *Compiler) createExternalPackage() {
+	externalPackageFuncs := make(map[string]*types.Function)
+
+	{
+		printfFunc := c.module.NewFunction("printf",
+			i32.LLVM(),
+			ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		)
+		printfFunc.Sig.Variadic = true
+
+		c.externalFuncs.Printf = &types.Function{
+			ReturnType:   types.Void,
+			FunctionName: "printf",
+			LlvmFunction: printfFunc,
+			IsExternal:   true,
+		}
+		externalPackageFuncs["Printf"] = c.externalFuncs.Printf
+	}
+
+	{
+		c.externalFuncs.Malloc = &types.Function{
+			ReturnType:   types.Void,
+			FunctionName: "malloc",
+			LlvmFunction: c.module.NewFunction("malloc",
+				llvmTypes.NewPointer(i8.LLVM()),
+				ir.NewParam("", i64.LLVM()),
+			),
+			IsExternal: true,
+		}
+		externalPackageFuncs["malloc"] = c.externalFuncs.Malloc
+	}
+
+	{
+		c.externalFuncs.Realloc = &types.Function{
+			ReturnType:   types.Void,
+			FunctionName: "realloc",
+			LlvmFunction: c.module.NewFunction("realloc",
+				llvmTypes.NewPointer(i8.LLVM()),
+				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+				ir.NewParam("", i64.LLVM()),
+			),
+			IsExternal: true,
+		}
+		externalPackageFuncs["realloc"] = c.externalFuncs.Realloc
+	}
+
+	{
+		c.externalFuncs.Realloc = &types.Function{
+			ReturnType:   types.Void,
+			FunctionName: "memcpy",
+			LlvmFunction: c.module.NewFunction("memcpy",
+				llvmTypes.NewPointer(i8.LLVM()),
+				ir.NewParam("dest", llvmTypes.NewPointer(i8.LLVM())),
+				ir.NewParam("src", llvmTypes.NewPointer(i8.LLVM())),
+				ir.NewParam("n", i64.LLVM()),
+			),
+			IsExternal: true,
+		}
+		externalPackageFuncs["memcpy"] = c.externalFuncs.Memcpy
+	}
+
+	{
+		c.externalFuncs.Strcat = &types.Function{
+			ReturnType:   types.Void,
+			FunctionName: "strcat",
+			LlvmFunction: c.module.NewFunction("strcat",
+				llvmTypes.NewPointer(i8.LLVM()),
+				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+			),
+			IsExternal: true,
+		}
+		externalPackageFuncs["strcat"] = c.externalFuncs.Strcat
+	}
+
+	{
+		c.externalFuncs.Strcpy = &types.Function{
+			ReturnType:   types.Void,
+			FunctionName: "strcpy",
+			LlvmFunction: c.module.NewFunction("strcpy",
+				llvmTypes.NewPointer(i8.LLVM()),
+				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+			),
+			IsExternal: true,
+		}
+		externalPackageFuncs["strcpy"] = c.externalFuncs.Strcpy
+	}
+
+	{
+		c.externalFuncs.Strncpy = &types.Function{
+			ReturnType:   types.Void,
+			FunctionName: "strncpy",
+			LlvmFunction: c.module.NewFunction("strncpy",
+				llvmTypes.NewPointer(i8.LLVM()),
+				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+				ir.NewParam("", i64.LLVM()),
+			),
+			IsExternal: true,
+		}
+		externalPackageFuncs["strncpy"] = c.externalFuncs.Strncpy
+	}
+
+	{
+		c.externalFuncs.Strndup = &types.Function{
+			ReturnType:   types.Void,
+			FunctionName: "strndup",
+			LlvmFunction: c.module.NewFunction("strndup",
+				llvmTypes.NewPointer(i8.LLVM()),
+				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+				ir.NewParam("", i64.LLVM()),
+			),
+			IsExternal: true,
+		}
+		externalPackageFuncs["strndup"] = c.externalFuncs.Strndup
+	}
+
+	{
+		c.externalFuncs.Exit = &types.Function{
+			ReturnType:   types.Void,
+			FunctionName: "exit",
+			LlvmFunction: c.module.NewFunction("exit",
+				llvmTypes.Void,
+				ir.NewParam("", i32.LLVM()),
+			),
+			IsExternal: true,
+		}
+		externalPackageFuncs["Exit"] = c.externalFuncs.Exit
+	}
+
+	c.packages["external"] = &types.PackageInstance{
+		Funcs: externalPackageFuncs,
+	}
+}
