@@ -181,7 +181,20 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		_, isExternal = c.externalFuncs[name.Name]
 	}
 
+	// If the last argument is a slice that is "de variadicified"
+	// Eg: foo...
+	// When this is the case we don't have to convert the arguments to a slice when calling the func
+	lastIsVariadicSlice := false
+
 	for _, vv := range v.Arguments {
+
+		if devVar, ok := vv.(parser.DeVariadicSliceNode); ok {
+			lastIsVariadicSlice = true
+			val := c.contextBlock.NewLoad(c.compileValue(devVar.Item).Value)
+			args = append(args, val)
+			continue
+		}
+
 		treVal := c.compileValue(vv)
 		val := treVal.Value
 
@@ -236,7 +249,7 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		}
 	}
 
-	if fn.IsVariadic {
+	if fn.IsVariadic && !lastIsVariadicSlice {
 		// Only the last argument can be variadic
 		variadicArgIndex := len(fn.ArgumentTypes) - 1
 		variadicType := fn.ArgumentTypes[variadicArgIndex].(*types.Slice)

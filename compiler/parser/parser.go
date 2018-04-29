@@ -141,6 +141,9 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 				Type:  sliceItemType,
 				Items: items,
 			}
+			if withAheadParse {
+				res = p.aheadParse(res)
+			}
 			return
 		}
 
@@ -401,7 +404,6 @@ func (p *parser) aheadParse(input Node) Node {
 	}
 
 	if next.Type == lexer.OPERATOR {
-
 		if next.Val == "." {
 			p.i++
 
@@ -458,6 +460,13 @@ func (p *parser) aheadParse(input Node) Node {
 			}
 
 			panic(fmt.Sprintf("%s can only be used after a name. Got: %+v", next.Val, input))
+		}
+
+		if next.Val == "..." {
+			p.i++
+			return DeVariadicSliceNode{
+				Item: input,
+			}
 		}
 
 		// Array slicing
@@ -543,10 +552,6 @@ func (p *parser) aheadParse(input Node) Node {
 		if isNamedNode {
 			_, isType := types[nameNode.Name]
 			if isType {
-
-				log.Printf("%+v", input)
-				log.Printf("%T", input)
-
 				inputType := SingleTypeNode{
 					TypeName: nameNode.Name,
 				}
@@ -598,7 +603,6 @@ func (p *parser) aheadParse(input Node) Node {
 					Type:  inputType,
 					Items: items,
 				})
-
 			}
 		}
 	}
