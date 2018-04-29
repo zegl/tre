@@ -364,3 +364,13 @@ type InitializeSliceNode struct {
 func (i InitializeSliceNode) String() string {
 	return fmt.Sprintf("[]%s{%+v}", i.Type, i.Items)
 }
+
+type InitializeStructNode struct {
+	baseNode
+	Type  TypeNode
+	Items map[string]Node
+}
+
+func (i InitializeStructNode) String() string {
+	return fmt.Sprintf("%s{%+v}", i.Type, i.Items)
+}

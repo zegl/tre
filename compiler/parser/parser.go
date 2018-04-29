@@ -507,7 +507,6 @@ func (p *parser) aheadParse(input Node) Node {
 	}
 
 	if next.Type == lexer.SEPARATOR && next.Val == "(" {
-
 		current := p.lookAhead(0)
 
 		p.i += 2 // identifier and left paren
@@ -528,6 +527,68 @@ func (p *parser) aheadParse(input Node) Node {
 		return p.aheadParse(CallNode{
 			Function:  input,
 			Arguments: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"}),
+		})
+	}
+
+	// Initialize structs with values:
+	//   Foo{Bar: 123}
+	//   Foo{Bar: 123, Bax: hello(123)}
+	if next.Type == lexer.SEPARATOR && next.Val == "{" {
+		nameNode, ok := input.(NameNode)
+		if !ok {
+			panic("Expected NameNode before {")
+		}
+
+		inputType := SingleTypeNode{
+			TypeName: nameNode.Name,
+		}
+
+		p.i += 2
+
+		items := make(map[string]Node)
+
+		for {
+			// Skip EOLs
+			checkIfEOL := p.lookAhead(0)
+			if checkIfEOL.Type == lexer.EOL {
+				p.i++
+			}
+
+			// Find end of parsing
+			checkIfEndBracket := p.lookAhead(0)
+			if checkIfEndBracket.Type == lexer.SEPARATOR && checkIfEndBracket.Val == "}" {
+				p.i++
+				break
+			}
+
+			key := p.lookAhead(0)
+			if key.Type != lexer.IDENTIFIER {
+				panic("Expected IDENTIFIER in struct initialization")
+			}
+
+			col := p.lookAhead(1)
+			p.expect(col, lexer.Item{Type: lexer.OPERATOR, Val: ":"})
+
+			p.i += 2
+
+			items[key.Val] = p.parseOne(true)
+
+			p.i++
+
+			commaOrEnd := p.lookAhead(0)
+			if commaOrEnd.Type == lexer.SEPARATOR && commaOrEnd.Val == "," {
+				p.i++
+				continue
+			}
+
+			if commaOrEnd.Type == lexer.SEPARATOR && commaOrEnd.Val == "}" {
+				break
+			}
+		}
+
+		return p.aheadParse(InitializeStructNode{
+			Type:  inputType,
+			Items: items,
 		})
 	}
 
