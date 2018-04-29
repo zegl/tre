@@ -1,5 +1,11 @@
 package fmt
 
+import "external"
+
 func Println(a string) {
-	printf("%s\n", a)
+	external.printf("%s\n", a)
+}
+
+func Printf(a) {
+
 }

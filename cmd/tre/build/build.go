@@ -104,6 +104,11 @@ func compilePackage(c *compiler.Compiler, path, name string) error {
 
 			if importNode, ok := i.(parser.ImportNode); ok {
 
+				// Is built in to the compiler
+				if importNode.PackagePath == "external" {
+					continue
+				}
+
 				searchPaths := []string{
 					path + "/vendor/" + importNode.PackagePath,
 

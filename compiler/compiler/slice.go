@@ -50,7 +50,7 @@ func (c *Compiler) compileSubstring(src value.Value, v parser.SliceArrayNode) va
 		length = constant.NewInt(1, i64.LLVM())
 	}
 
-	dst := safeBlock.NewCall(c.externalFuncs["strndup"], offset, length)
+	dst := safeBlock.NewCall(c.externalFuncs.Strndup.LlvmFunction, offset, length)
 
 	// Convert *i8 to %string
 	alloc := safeBlock.NewAlloca(typeConvertMap["string"].LLVM())
@@ -184,7 +184,7 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 		castedPrevBacking := growSliceAllocBlock.NewBitCast(loadedPrevBacking, llvmTypes.NewPointer(llvmTypes.I8))
 		castedPrevBacking.SetName(getVarName("casted-prev-backing-ptr"))
 
-		reallocatedSpaceRaw := growSliceAllocBlock.NewCall(c.externalFuncs["realloc"], castedPrevBacking, reallocSize)
+		reallocatedSpaceRaw := growSliceAllocBlock.NewCall(c.externalFuncs.Realloc.LlvmFunction, castedPrevBacking, reallocSize)
 		reallocatedSpaceRaw.SetName(getVarName("reallocatedspace-raw"))
 
 		reallocatedSpace := growSliceAllocBlock.NewBitCast(reallocatedSpaceRaw, llvmTypes.NewPointer(inputSlice.Type.LLVM()))
@@ -230,7 +230,7 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 		// Allocate a new backing array, and copy the data from the previous one to the new
 		// TODO: Make sure that cap is large enough for the new data
 		cap64 := c.contextBlock.NewZExt(loadedPrevCap, i64.LLVM())
-		mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs["malloc"], cap64)
+		mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs.Malloc.LlvmFunction, cap64)
 		bitcasted := c.contextBlock.NewBitCast(mallocatedSpaceRaw, llvmTypes.NewPointer(inputSlice.Type.LLVM()))
 		c.contextBlock.NewStore(bitcasted, backingArray)
 
@@ -244,7 +244,7 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 		loadedPrevLen64 := c.contextBlock.NewZExt(loadedPrevLen, i64.LLVM())
 		copyBytesSize := c.contextBlock.NewMul(loadedPrevLen64, constant.NewInt(inputSlice.Type.Size(), i64.LLVM()))
 
-		c.contextBlock.NewCall(c.externalFuncs["memcpy"],
+		c.contextBlock.NewCall(c.externalFuncs.Memcpy.LlvmFunction,
 			// Dest
 			mallocatedSpaceRaw,
 			// Src
@@ -331,7 +331,7 @@ func (c *Compiler) compileInitializeSliceWithValues(itemType types.Type, values 
 	}
 
 	// Create slice with cap set to the requested size
-	allocSlice := sliceType.SliceZero(c.contextBlock, c.externalFuncs["malloc"], len(values))
+	allocSlice := sliceType.SliceZero(c.contextBlock, c.externalFuncs.Malloc.LlvmFunction, len(values))
 
 	backingArrayPtr := c.contextBlock.NewGetElementPtr(allocSlice,
 		constant.NewInt(0, i32.LLVM()),

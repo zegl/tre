@@ -82,12 +82,12 @@ func (m Method) Name() string {
 type Function struct {
 	backingType
 
-	LlvmFunction *ir.Function
-	ReturnType   Type
-	FunctionName string
-
+	LlvmFunction  *ir.Function
+	ReturnType    Type
+	FunctionName  string
 	IsVariadic    bool
 	ArgumentTypes []Type
+	IsExternal    bool
 }
 
 func (f Function) LLVM() types.Type {
