@@ -1,4 +1,4 @@
-package main
+package main  import "external"
 
 type Book struct {
     book_id int
@@ -19,8 +19,8 @@ func main() {
     shelf.book1.book_id = 2000
 
     // 1000
-    printf("%d\n", shelf.book0.book_id)
+    external.Printf("%d\n", shelf.book0.book_id)
 
     // 2000
-    printf("%d\n", shelf.book1.book_id)
+    external.Printf("%d\n", shelf.book1.book_id)
 }

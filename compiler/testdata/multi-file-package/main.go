@@ -1,9 +1,9 @@
-package main
+package main  import "external"
 
 // foo
 // bar
 
 func main() {
-	printf("foo\n")
+	external.Printf("foo\n")
 	bar()
 }

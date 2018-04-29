@@ -1,4 +1,4 @@
-package main
+package main  import "external"
 
 import "sub"
 
@@ -6,6 +6,6 @@ import "sub"
 // World
 
 func main() {
-	printf("Hello\n")
-	printf("%s\n", sub.World())
+	external.Printf("Hello\n")
+	external.Printf("%s\n", sub.World())
 }

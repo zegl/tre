@@ -1,4 +1,4 @@
-package main
+package main  import "external"
 
 func main() {
 	var arr [10]int
@@ -10,5 +10,5 @@ func main() {
 	slice := arr[2:5]
 
 	// 3
-	printf("%d\n", len(slice))
+	external.Printf("%d\n", len(slice))
 }
