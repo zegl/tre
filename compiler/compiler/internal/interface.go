@@ -6,7 +6,10 @@ import (
 
 func Interface() *types.StructType {
 	return types.NewStruct(
-		// TODO: Type information
-		types.NewPointer(types.I8), // Backing data
+		// Pointer to the backing data
+		types.NewPointer(types.I8),
+
+		// Backing data type
+		types.I32,
 	)
 }

@@ -33,8 +33,24 @@ func (c *Compiler) compileAllocNode(v parser.AllocNode) {
 
 	// Allocate from value
 	val := c.compileValue(v.Val)
-	llvmVal := val.Value
 
+	if _, ok := val.Type.(*types.MultiValue); ok {
+
+		if len(v.MultiNames.Names) != len(val.MultiValues) {
+			panic("Variable count on left and right side does not match")
+		}
+
+		// Is currently expecting that the variables are already allocated in this block.
+		// Will only add the vars to the map of variables
+		for i, multiVal := range val.MultiValues {
+			c.contextBlockVariables[v.MultiNames.Names[i].Name] = multiVal
+		}
+
+		return
+	}
+
+	// Single variable allocation
+	llvmVal := val.Value
 	if val.IsVariable {
 		llvmVal = c.contextBlock.NewLoad(llvmVal)
 	}

@@ -9,6 +9,8 @@ import (
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/parser"
 
+	"github.com/llir/llvm/ir"
+	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
 )
@@ -21,6 +23,13 @@ var typeConvertMap = map[string]types.Type{
 	"int32":  types.I32,
 	"int64":  types.I64,
 	"string": types.String,
+}
+
+// Is used in interfaces to keep track of the backing data type
+var typeID = map[string]int64{
+	"bool":  1,
+	"int":   2,
+	"int64": 3,
 }
 
 func parserTypeToType(typeNode parser.TypeNode) types.Type {
@@ -119,5 +128,61 @@ func (c *Compiler) compileTypeCastNode(v parser.TypeCastNode) value.Value {
 		Value:      res,
 		Type:       targetType,
 		IsVariable: true,
+	}
+}
+
+func (c *Compiler) compileTypeCastInterfaceNode(v parser.TypeCastInterfaceNode) value.Value {
+	tryCastToType := parserTypeToType(v.Type)
+
+	// Allocate the OK variable
+	okVal := c.contextBlock.NewAlloca(types.Bool.LLVM())
+	types.Bool.Zero(c.contextBlock, okVal)
+	okVal.SetName(getVarName("ok"))
+
+	resCastedVal := c.contextBlock.NewAlloca(tryCastToType.LLVM())
+	tryCastToType.Zero(c.contextBlock, resCastedVal)
+	resCastedVal.SetName(getVarName("rescastedval"))
+
+	interfaceVal := c.compileValue(v.Item)
+
+	interfaceDataType := c.contextBlock.NewGetElementPtr(interfaceVal.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
+	loadedInterfaceDataType := c.contextBlock.NewLoad(interfaceDataType)
+
+	backingTypeID, ok := typeID[tryCastToType.Name()]
+	if !ok {
+		panic(tryCastToType.Name() + " has no typeID")
+	}
+
+	trueBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-was-correct-type")
+	falseBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-was-other-type")
+	afterBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-after-type-check")
+
+	trueBlock.NewBr(afterBlock)
+	falseBlock.NewBr(afterBlock)
+
+	cmp := c.contextBlock.NewICmp(ir.IntEQ, loadedInterfaceDataType, constant.NewInt(backingTypeID, i32.LLVM()))
+	c.contextBlock.NewCondBr(cmp, trueBlock, falseBlock)
+
+	trueBlock.NewStore(constant.NewInt(1, types.Bool.LLVM()), okVal)
+
+	backingDataPtr := trueBlock.NewGetElementPtr(interfaceVal.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+	loadedBackingDataPtr := trueBlock.NewLoad(backingDataPtr)
+	casted := trueBlock.NewBitCast(loadedBackingDataPtr, llvmTypes.NewPointer(tryCastToType.LLVM()))
+	loadedCasted := trueBlock.NewLoad(casted)
+	trueBlock.NewStore(loadedCasted, resCastedVal)
+
+	c.contextBlock = afterBlock
+
+	return value.Value{
+		Type: &types.MultiValue{
+			Types: []types.Type{
+				tryCastToType,
+				types.Bool,
+			},
+		},
+		MultiValues: []value.Value{
+			value.Value{Type: tryCastToType, Value: resCastedVal, IsVariable: true},
+			value.Value{Type: types.Bool, Value: okVal, IsVariable: true},
+		},
 	}
 }
