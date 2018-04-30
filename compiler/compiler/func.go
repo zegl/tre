@@ -262,9 +262,20 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 				}
 
 				ifaceStruct := c.contextBlock.NewAlloca(internal.Interface())
+
 				dataPtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
 				bitcastedVal := c.contextBlock.NewBitCast(val, llvmTypes.NewPointer(llvmTypes.I8))
 				c.contextBlock.NewStore(bitcastedVal, dataPtr)
+
+				dataTypePtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
+
+				backingTypID, ok := typeID[v.Type.Name()]
+				if !ok {
+					panic(v.Type.Name() + " has no typeID")
+				}
+
+				c.contextBlock.NewStore(constant.NewInt(backingTypID, i32.LLVM()), dataTypePtr)
+
 				val = c.contextBlock.NewLoad(ifaceStruct)
 			}
 		}

@@ -172,6 +172,15 @@ func (nn NameNode) String() string {
 	return fmt.Sprintf("var(%s)", nn.Name)
 }
 
+type MultiNameNode struct {
+	baseNode
+	Names []NameNode
+}
+
+func (n MultiNameNode) String() string {
+	return fmt.Sprintf("vars(%+v)", n.Names)
+}
+
 // ReturnNode returns Val from within the current function
 type ReturnNode struct {
 	baseNode
@@ -187,11 +196,17 @@ func (rn ReturnNode) String() string {
 type AllocNode struct {
 	baseNode
 
-	Name string
-	Val  Node
+	Name       string
+	MultiNames MultiNameNode
+
+	Val Node
 }
 
 func (an AllocNode) String() string {
+	if len(an.MultiNames.Names) > 0 {
+		return fmt.Sprintf("allocMulti(%+v) = %v", an.MultiNames, an.Val)
+	}
+
 	return fmt.Sprintf("alloc(%s) = %v", an.Name, an.Val)
 }
 
@@ -382,4 +397,14 @@ type DeVariadicSliceNode struct {
 
 func (i DeVariadicSliceNode) String() string {
 	return fmt.Sprintf("%+v...", i.Item)
+}
+
+type TypeCastInterfaceNode struct {
+	baseNode
+	Item Node
+	Type TypeNode
+}
+
+func (i TypeCastInterfaceNode) String() string {
+	return fmt.Sprintf("cast(%s(%+v))", i.Type, i.Item)
 }

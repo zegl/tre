@@ -262,3 +262,17 @@ func (i Interface) LLVM() types.Type {
 func (Interface) Size() int64 {
 	return 1 // 1 pointer
 }
+
+// MultiValue is used when returning multiple values from a function
+type MultiValue struct {
+	backingType
+	Types []Type
+}
+
+func (m MultiValue) Name() string {
+	return "multivalue"
+}
+
+func (m MultiValue) LLVM() types.Type {
+	panic("MutliValue has no LLVM type")
+}

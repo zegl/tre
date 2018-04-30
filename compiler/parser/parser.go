@@ -53,9 +53,13 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 	case lexer.IDENTIFIER:
 		res = NameNode{Name: current.Val}
 
+		log.Printf("IDENT BEFORE: %+v", res)
+
 		if withAheadParse {
 			res = p.aheadParse(res)
 		}
+
+		log.Printf("IDENT AFTER: %+v", res)
 
 		return
 
@@ -408,16 +412,37 @@ func (p *parser) aheadParse(input Node) Node {
 			p.i++
 
 			next = p.lookAhead(1)
-			if next.Type != lexer.IDENTIFIER {
-				panic(fmt.Sprintf("Expected IDENTFIER after . Got: %+v", next))
+			if next.Type == lexer.IDENTIFIER {
+				p.i++
+				return p.aheadParse(StructLoadElementNode{
+					Struct:      input,
+					ElementName: next.Val,
+				})
 			}
 
-			p.i++
+			if next.Type == lexer.SEPARATOR && next.Val == "(" {
+				p.i++
+				p.i++
 
-			return p.aheadParse(StructLoadElementNode{
-				Struct:      input,
-				ElementName: next.Val,
-			})
+				castToType, err := p.parseOneType()
+				if err != nil {
+					panic(err)
+				}
+
+				p.i++
+
+				expectEndParen := p.lookAhead(0)
+				p.expect(expectEndParen, lexer.Item{Type: lexer.SEPARATOR, Val: ")"})
+
+				p.i++
+
+				return p.aheadParse(TypeCastInterfaceNode{
+					Item: input,
+					Type: castToType,
+				})
+			}
+
+			panic(fmt.Sprintf("Expected IDENTFIER or ( after . Got: %+v", next))
 		}
 
 		if next.Val == ":=" || next.Val == "=" {
@@ -603,6 +628,32 @@ func (p *parser) aheadParse(input Node) Node {
 					Type:  inputType,
 					Items: items,
 				})
+			}
+		}
+	}
+
+	if next.Type == lexer.SEPARATOR && next.Val == "," {
+		if inputNamedNode, ok := input.(NameNode); ok {
+			p.i++
+			p.i++
+
+			nextName := p.parseOne(true)
+
+			if nextAlloc, ok := nextName.(AllocNode); ok {
+				if len(nextAlloc.MultiNames.Names) == 0 {
+					nextAlloc.MultiNames = MultiNameNode{
+						Names: []NameNode{inputNamedNode, NameNode{Name: nextAlloc.Name}},
+					}
+					nextAlloc.Name = ""
+				} else {
+					// Add the current one to the beging of the list
+					newMultiNames := []NameNode{inputNamedNode}
+					newMultiNames = append(newMultiNames, nextAlloc.MultiNames.Names...)
+
+					nextAlloc.MultiNames = MultiNameNode{Names: newMultiNames}
+				}
+
+				return p.aheadParse(nextAlloc)
 			}
 		}
 	}
