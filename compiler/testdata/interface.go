@@ -3,19 +3,32 @@ package main
 import "external"
 
 func foo(bar interface{}) {
-	real, ok := bar.(int64)
+	realInt64, ok := bar.(int64)
 	if ok {
-		external.Printf("%d\n", real)
+		external.Printf("is int64: %d\n", realInt64)
 	}
 
-	external.Printf("after\n")
+	realString, ok := bar.(string)
+	if ok {
+		external.Printf("is string: %s\n", realString)
+	}
+
+	external.Printf("alwaysstring: %s\n", realString)
 }
 
 func main() {
-	// 123
-	// after
+	// is string: foostring
+	// alwaysstring: foostring
+	foo("foostring")
+
+	// is int64: 123
+	// alwaysstring:
 	foo(123)
 
-	// after
+	// alwaysstring:
 	foo(false)
+
+	// is string: barstring
+	// alwaysstring: barstring
+	foo("barstring")
 }
