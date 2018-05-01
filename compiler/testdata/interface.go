@@ -13,22 +13,22 @@ func foo(bar interface{}) {
 		external.Printf("is string: %s\n", realString)
 	}
 
-	external.Printf("alwaysstring: %s\n", realString)
+	external.Printf("alwaysstring: \"%s\"\n", realString)
 }
 
 func main() {
 	// is string: foostring
-	// alwaysstring: foostring
+	// alwaysstring: "foostring"
 	foo("foostring")
 
 	// is int64: 123
-	// alwaysstring:
+	// alwaysstring: ""
 	foo(123)
 
-	// alwaysstring:
+	// alwaysstring: ""
 	foo(false)
 
 	// is string: barstring
-	// alwaysstring: barstring
+	// alwaysstring: "barstring"
 	foo("barstring")
 }
