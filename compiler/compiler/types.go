@@ -27,9 +27,13 @@ var typeConvertMap = map[string]types.Type{
 
 // Is used in interfaces to keep track of the backing data type
 var typeID = map[string]int64{
-	"bool":  1,
-	"int":   2,
-	"int64": 3,
+	"bool":   1,
+	"int":    2,
+	"int8":   3,
+	"int16":  4,
+	"int32":  5,
+	"int64":  6,
+	"string": 7,
 }
 
 func parserTypeToType(typeNode parser.TypeNode) types.Type {
