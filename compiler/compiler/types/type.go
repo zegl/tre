@@ -7,6 +7,7 @@ import (
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
 	"github.com/zegl/tre/compiler/compiler/internal"
+	"github.com/zegl/tre/compiler/compiler/strings"
 )
 
 type Type interface {
@@ -166,6 +167,7 @@ type StringType struct {
 
 // Populated by compiler.go
 var ModuleStringType types.Type
+var EmptyStringConstant *ir.Global
 
 func (s StringType) LLVM() types.Type {
 	return ModuleStringType
@@ -173,6 +175,13 @@ func (s StringType) LLVM() types.Type {
 
 func (s StringType) Name() string {
 	return "string"
+}
+
+func (s StringType) Zero(block *ir.BasicBlock, alloca *ir.InstAlloca) {
+	lenPtr := block.NewGetElementPtr(alloca, constant.NewInt(0, types.I32), constant.NewInt(0, types.I32))
+	backingDataPtr := block.NewGetElementPtr(alloca, constant.NewInt(0, types.I32), constant.NewInt(1, types.I32))
+	block.NewStore(constant.NewInt(0, types.I64), lenPtr)
+	block.NewStore(strings.Toi8Ptr(block, EmptyStringConstant), backingDataPtr)
 }
 
 type Array struct {

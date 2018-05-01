@@ -135,18 +135,9 @@ func (c *Compiler) GetIR() string {
 func (c *Compiler) addGlobal() {
 	types.ModuleStringType = c.module.NewType("string", internal.String())
 
-	//	// printf
-	//	c.globalFuncs["printf"] = &types.Function{
-	//		LlvmFunction: c.externalFuncs.Pz["printf"],
-	//		FunctionName: "printf",
-	//	}
-	//
-	//	// println
-	//	c.globalFuncs["println"] = &types.Function{
-	//		LlvmFunction: internal.Println(types.ModuleStringType, c.externalFuncs["printf"], c.module),
-	//		FunctionName: "println",
-	//	}
-	//	c.module.AppendFunction(c.globalFuncs["println"].LlvmFunction)
+	// Create empty string constant
+	types.EmptyStringConstant = c.module.NewGlobalDef(strings.NextStringName(), strings.Constant(""))
+	types.EmptyStringConstant.IsConst = true
 
 	// len_string
 	strLen := internal.StringLen(types.ModuleStringType)
