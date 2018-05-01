@@ -52,15 +52,9 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 	// - a NodeName (variables)
 	case lexer.IDENTIFIER:
 		res = NameNode{Name: current.Val}
-
-		log.Printf("IDENT BEFORE: %+v", res)
-
 		if withAheadParse {
 			res = p.aheadParse(res)
 		}
-
-		log.Printf("IDENT AFTER: %+v", res)
-
 		return
 
 		// NUMBER always returns a ConstantNode
@@ -634,6 +628,13 @@ func (p *parser) aheadParse(input Node) Node {
 
 	if next.Type == lexer.SEPARATOR && next.Val == "," {
 		if inputNamedNode, ok := input.(NameNode); ok {
+
+			// This bit of parsing is specualtive
+			//
+			// The parser will restore it's position to this index in case it
+			// turns out that we can not convert this into a MultiNameNode
+			preIndex := p.i
+
 			p.i++
 			p.i++
 
@@ -655,6 +656,10 @@ func (p *parser) aheadParse(input Node) Node {
 
 				return p.aheadParse(nextAlloc)
 			}
+
+			// A MultiNameNode could not be created
+			// Reset the parsing index
+			p.i = preIndex
 		}
 	}
 
