@@ -285,6 +285,10 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 	c.contextAssignDest = append(c.contextAssignDest, value.Value{Type: inputSlice.Type})
 
 	addItem := c.compileValue(v.Arguments[1])
+
+	// Convert type if neccesary
+	addItem = c.valueToInterfaceValue(addItem, inputSlice.Type)
+
 	addItemVal := addItem.Value
 	if addItem.IsVariable {
 		addItemVal = c.contextBlock.NewLoad(addItemVal)

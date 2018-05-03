@@ -96,6 +96,10 @@ func (c *Compiler) compileAssignNode(v parser.AssignNode) {
 
 	// Allocate from value
 	val := c.compileValue(v.Val)
+
+	// Cast to interface if needed
+	val = c.valueToInterfaceValue(val, dst.Type)
+
 	llvmV := val.Value
 
 	if val.IsVariable {
