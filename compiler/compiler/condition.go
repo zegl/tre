@@ -45,7 +45,7 @@ func (c *Compiler) compileOperatorNode(v parser.OperatorNode) value.Value {
 	}
 
 	if !leftLLVM.Type().Equal(rightLLVM.Type()) {
-		panic(fmt.Sprintf("Different types in operation: %T and %T", left.Type, right.Type))
+		panic(fmt.Sprintf("Different types in operation: %T and %T (%+v and %+v)", left.Type, right.Type, leftLLVM.Type(), rightLLVM.Type()))
 	}
 
 	switch leftLLVM.Type().GetName() {
@@ -114,12 +114,12 @@ func (c *Compiler) compileOperatorNode(v parser.OperatorNode) value.Value {
 func (c *Compiler) compileConditionNode(v parser.ConditionNode) {
 	cond := c.compileOperatorNode(v.Cond)
 
-	afterBlock := c.contextFunc.NewBlock(getBlockName() + "-after")
-	trueBlock := c.contextFunc.NewBlock(getBlockName() + "-true")
+	afterBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-after")
+	trueBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-true")
 	falseBlock := afterBlock
 
 	if len(v.False) > 0 {
-		falseBlock = c.contextFunc.NewBlock(getBlockName() + "-false")
+		falseBlock = c.contextBlock.Parent.NewBlock(getBlockName() + "-false")
 	}
 
 	c.contextBlock.NewCondBr(cond.Value, trueBlock, falseBlock)

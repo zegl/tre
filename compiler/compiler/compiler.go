@@ -31,7 +31,7 @@ type Compiler struct {
 	currentPackage     *types.PackageInstance
 	currentPackageName string
 
-	contextFunc           *ir.Function
+	contextFunc           *types.Function
 	contextBlock          *ir.BasicBlock
 	contextBlockVariables map[string]value.Value
 
