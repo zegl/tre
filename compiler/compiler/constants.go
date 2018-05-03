@@ -15,9 +15,16 @@ func (c *Compiler) compileConstantNode(v parser.ConstantNode) value.Value {
 	case parser.NUMBER:
 		var intType types.Type = i64
 
-		// Use context to detect which integer type we should create
+		// Use context to detect which type that should be returned
+		// Is used to detect if a number should be i32 or i64 etc...
+		var wantedType types.Type
 		if len(c.contextAssignDest) > 0 {
-			intType = c.contextAssignDest[len(c.contextAssignDest)-1].Type
+			wantedType = c.contextAssignDest[len(c.contextAssignDest)-1].Type
+		}
+
+		// Create the correct type of int based on context
+		if _, ok := wantedType.(*types.Int); ok {
+			intType = wantedType
 		}
 
 		return value.Value{

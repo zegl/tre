@@ -232,6 +232,12 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 	// Load the variable if needed
 	llvmArgs := make([]llvmValue.Value, len(args))
 	for i, v := range args {
+
+		// Convert type to interface type if needed
+		if len(fn.ArgumentTypes) > i {
+			v = c.valueToInterfaceValue(v, fn.ArgumentTypes[i])
+		}
+
 		val := v.Value
 
 		if v.IsVariable {
@@ -248,35 +254,6 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 			if v.Type.Name() == "array" {
 				llvmArgs[i] = c.contextBlock.NewExtractValue(val, []int64{1})
 				continue
-			}
-		}
-
-		if len(fn.ArgumentTypes) > i {
-			fnArgumentType := fn.ArgumentTypes[i]
-			if _, isInterface := fnArgumentType.(*types.Interface); isInterface {
-				// Convert to pointer variable
-				if !v.IsVariable {
-					ptrAlloca := c.contextBlock.NewAlloca(v.Type.LLVM())
-					c.contextBlock.NewStore(val, ptrAlloca)
-					val = ptrAlloca
-				}
-
-				ifaceStruct := c.contextBlock.NewAlloca(internal.Interface())
-
-				dataPtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
-				bitcastedVal := c.contextBlock.NewBitCast(val, llvmTypes.NewPointer(llvmTypes.I8))
-				c.contextBlock.NewStore(bitcastedVal, dataPtr)
-
-				dataTypePtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
-
-				backingTypID, ok := typeID[v.Type.Name()]
-				if !ok {
-					panic(v.Type.Name() + " has no typeID")
-				}
-
-				c.contextBlock.NewStore(constant.NewInt(backingTypID, i32.LLVM()), dataTypePtr)
-
-				val = c.contextBlock.NewLoad(ifaceStruct)
 			}
 		}
 
