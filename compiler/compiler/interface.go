@@ -11,11 +11,16 @@ import (
 )
 
 func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) value.Value {
-	_, isInterface := targetType.(*types.Interface)
 
 	// Don't do anything if the target is not an interface
-	if !isInterface {
-		log.Printf("valueToInterfaceValue: not converting to interface")
+	if _, isInterface := targetType.(*types.Interface); !isInterface {
+		log.Printf("valueToInterfaceValue: not converting to interface (dst is not iface)")
+		return v
+	}
+
+	// Don't do anything if the src already is an interface
+	if _, sourceIsInterface := v.Type.(*types.Interface); sourceIsInterface {
+		log.Printf("valueToInterfaceValue: not converting to interface (src is iface)")
 		return v
 	}
 
