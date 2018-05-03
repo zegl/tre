@@ -1,8 +1,6 @@
 package compiler
 
 import (
-	"log"
-
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	"github.com/zegl/tre/compiler/compiler/internal"
@@ -14,17 +12,13 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 
 	// Don't do anything if the target is not an interface
 	if _, isInterface := targetType.(*types.Interface); !isInterface {
-		log.Printf("valueToInterfaceValue: not converting to interface (dst is not iface)")
 		return v
 	}
 
 	// Don't do anything if the src already is an interface
 	if _, sourceIsInterface := v.Type.(*types.Interface); sourceIsInterface {
-		log.Printf("valueToInterfaceValue: not converting to interface (src is iface)")
 		return v
 	}
-
-	log.Printf("valueToInterfaceValue: converting to interface")
 
 	val := v.Value
 
@@ -49,8 +43,6 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 	}
 
 	c.contextBlock.NewStore(constant.NewInt(backingTypID, i32.LLVM()), dataTypePtr)
-
-	// val = c.contextBlock.NewLoad(ifaceStruct)
 
 	return value.Value{
 		Type:       &types.Interface{},
