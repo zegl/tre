@@ -6,6 +6,10 @@ func fromFunc() interface{} {
 	return 135
 }
 
+type myInterfaceType struct {
+	A interface{}
+}
+
 func main() {
 	var target interface{}
 
@@ -30,4 +34,9 @@ func main() {
 	targetSlice = append(targetSlice, 789)
 	realSliceInt, ok := targetSlice[0].(int64)
 	external.Printf("%d %d\n", ok, realSliceInt) // 1 789
+
+	var targetStruct myInterfaceType
+	targetStruct.A = 654
+	realStructTarget, ok := targetStruct.A.(int64)
+	external.Printf("%d %d\n", ok, realStructTarget) // 1 654
 }
