@@ -266,7 +266,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 					panic(err)
 				}
 				retTypesNodeNames = append(retTypesNodeNames, NameNode{
-					Type: retType.(SingleTypeNode),
+					Type: retType,
 				})
 				p.i++
 			}

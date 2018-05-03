@@ -100,7 +100,7 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 
 	entry := fn.NewBlock(getBlockName())
 
-	c.contextFunc = fn
+	c.contextFunc = typesFunc
 	c.contextBlock = entry
 	c.contextBlockVariables = make(map[string]value.Value)
 
@@ -146,6 +146,9 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 func (c *Compiler) compileReturnNode(v parser.ReturnNode) {
 	// Set value and jump to return block
 	val := c.compileValue(v.Val)
+
+	// Type cast if neccesary
+	val = c.valueToInterfaceValue(val, c.contextFunc.ReturnType)
 
 	if val.IsVariable {
 		c.contextBlock.NewRet(c.contextBlock.NewLoad(val.Value))

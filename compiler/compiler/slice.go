@@ -143,10 +143,10 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 	var sliceToAppendTo value.Value
 
 	// Create blocks that are needed lager
-	appendToSliceBlock := c.contextFunc.NewBlock(getBlockName() + "-append-to-slice")
+	appendToSliceBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-append-to-slice")
 
 	if isSelfAssign {
-		growSliceAllocBlock := c.contextFunc.NewBlock(getBlockName() + "-grow-slice-alloc")
+		growSliceAllocBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-grow-slice-alloc")
 
 		preAppendContextBlock := c.contextBlock
 
