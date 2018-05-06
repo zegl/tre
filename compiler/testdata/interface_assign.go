@@ -2,10 +2,6 @@ package main
 
 import "external"
 
-func fromFunc() interface{} {
-	return 135
-}
-
 type myInterfaceType struct {
 	A interface{}
 }
@@ -25,10 +21,6 @@ func main() {
 	target = foo
 	realVarInt, ok := target.(int64)
 	external.Printf("%d %d\n", ok, realVarInt) // 1 456
-
-	target = fromFunc()
-	realFuncInt, ok := target.(int64)
-	external.Printf("%d %d\n", ok, realFuncInt) // 1 135
 
 	var targetSlice []interface{}
 	targetSlice = append(targetSlice, 789)
