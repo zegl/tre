@@ -94,12 +94,13 @@ func (stn SliceTypeNode) Variadic() bool {
 
 type InterfaceTypeNode struct {
 	baseNode
-	// TODO list of required methods
+
+	Methods    map[string]InterfaceMethod
 	IsVariadic bool
 }
 
 func (itn InterfaceTypeNode) Type() string {
-	return fmt.Sprintf("interface{}")
+	return fmt.Sprintf("interface{%+v}", itn.Methods)
 }
 
 func (itn InterfaceTypeNode) String() string {
@@ -108,4 +109,9 @@ func (itn InterfaceTypeNode) String() string {
 
 func (itn InterfaceTypeNode) Variadic() bool {
 	return itn.IsVariadic
+}
+
+type InterfaceMethod struct {
+	ArgumentTypes []TypeNode
+	ReturnTypes   []TypeNode
 }

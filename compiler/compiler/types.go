@@ -26,14 +26,17 @@ var typeConvertMap = map[string]types.Type{
 }
 
 // Is used in interfaces to keep track of the backing data type
-var typeID = map[string]int64{
-	"bool":   1,
-	"int":    2,
-	"int8":   3,
-	"int16":  4,
-	"int32":  5,
-	"int64":  6,
-	"string": 7,
+var typeIDs = map[string]int64{}
+var nextTypeID int64
+
+func getTypeID(typeName string) int64 {
+	if id, ok := typeIDs[typeName]; ok {
+		return id
+	}
+
+	nextTypeID++
+	typeIDs[typeName] = nextTypeID
+	return nextTypeID
 }
 
 func parserTypeToType(typeNode parser.TypeNode) types.Type {
@@ -83,7 +86,25 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 		}
 
 	case parser.InterfaceTypeNode:
-		return &types.Interface{}
+		requiredMethods := make(map[string]types.InterfaceMethod)
+
+		for name, def := range t.Methods {
+			ifaceMethod := types.InterfaceMethod{
+				ArgumentTypes: make([]types.Type, 0),
+				ReturnTypes:   make([]types.Type, 0),
+			}
+
+			for _, arg := range def.ArgumentTypes {
+				ifaceMethod.ArgumentTypes = append(ifaceMethod.ArgumentTypes, parserTypeToType(arg))
+			}
+			for _, ret := range def.ReturnTypes {
+				ifaceMethod.ReturnTypes = append(ifaceMethod.ReturnTypes, parserTypeToType(ret))
+			}
+
+			requiredMethods[name] = ifaceMethod
+		}
+
+		return &types.Interface{RequiredMethods: requiredMethods}
 	}
 
 	panic(fmt.Sprintf("unknown typeNode: %T", typeNode))
@@ -152,11 +173,6 @@ func (c *Compiler) compileTypeCastInterfaceNode(v parser.TypeCastInterfaceNode) 
 	interfaceDataType := c.contextBlock.NewGetElementPtr(interfaceVal.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
 	loadedInterfaceDataType := c.contextBlock.NewLoad(interfaceDataType)
 
-	backingTypeID, ok := typeID[tryCastToType.Name()]
-	if !ok {
-		panic(tryCastToType.Name() + " has no typeID")
-	}
-
 	trueBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-was-correct-type")
 	falseBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-was-other-type")
 	afterBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-after-type-check")
@@ -164,6 +180,7 @@ func (c *Compiler) compileTypeCastInterfaceNode(v parser.TypeCastInterfaceNode) 
 	trueBlock.NewBr(afterBlock)
 	falseBlock.NewBr(afterBlock)
 
+	backingTypeID := getTypeID(tryCastToType.Name())
 	cmp := c.contextBlock.NewICmp(ir.IntEQ, loadedInterfaceDataType, constant.NewInt(backingTypeID, i32.LLVM()))
 	c.contextBlock.NewCondBr(cmp, trueBlock, falseBlock)
 

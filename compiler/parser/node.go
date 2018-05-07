@@ -406,5 +406,5 @@ type TypeCastInterfaceNode struct {
 }
 
 func (i TypeCastInterfaceNode) String() string {
-	return fmt.Sprintf("cast(%s(%+v))", i.Type, i.Item)
+	return fmt.Sprintf("castInterface(%s(%+v))", i.Type, i.Item)
 }
