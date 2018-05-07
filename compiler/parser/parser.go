@@ -811,11 +811,78 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		p.i++
 		p.expect(p.lookAhead(0), lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
 		p.i++
-		p.expect(p.lookAhead(0), lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
 
-		return InterfaceTypeNode{
+		ifaceType := InterfaceTypeNode{
 			IsVariadic: isVariadic,
-		}, nil
+		}
+
+		// Parse methods if set
+		for {
+			current := p.lookAhead(0)
+			if current.Type == lexer.EOL {
+				p.i++
+				continue
+			}
+			if current.Type == lexer.SEPARATOR && current.Val == "}" {
+				p.i++
+				break
+			}
+
+			// Expect method name
+			p.expect(current, lexer.Item{Type: lexer.IDENTIFIER})
+
+			methodName := current.Val
+			methodDef := InterfaceMethod{}
+
+			p.i++
+			p.expect(p.lookAhead(0), lexer.Item{Type: lexer.SEPARATOR, Val: "("})
+
+			// Check if the method takes any arguments
+			for {
+				p.i++
+				current = p.lookAhead(0)
+				if current.Type == lexer.SEPARATOR && current.Val == ")" {
+					p.i++
+					break
+				}
+
+				current = p.lookAhead(0)
+				if current.Type == lexer.SEPARATOR && current.Val == "," {
+					continue
+				}
+
+				argumentType, err := p.parseOneType()
+				if err != nil {
+					panic(err)
+				}
+
+				methodDef.ArgumentTypes = append(methodDef.ArgumentTypes, argumentType)
+			}
+
+			// Function return types
+			for {
+				current = p.lookAhead(0)
+				if current.Type == lexer.EOL {
+					p.i++
+					break
+				}
+
+				returnType, err := p.parseOneType()
+				if err != nil {
+					panic(err)
+				}
+
+				methodDef.ReturnTypes = append(methodDef.ReturnTypes, returnType)
+				p.i++
+			}
+
+			if ifaceType.Methods == nil {
+				ifaceType.Methods = make(map[string]InterfaceMethod)
+			}
+			ifaceType.Methods[methodName] = methodDef
+		}
+
+		return ifaceType, nil
 	}
 
 	if current.Type == lexer.IDENTIFIER {

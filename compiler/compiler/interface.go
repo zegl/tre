@@ -3,7 +3,6 @@ package compiler
 import (
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
-	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 )
@@ -29,7 +28,7 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 		val = ptrAlloca
 	}
 
-	ifaceStruct := c.contextBlock.NewAlloca(internal.Interface())
+	ifaceStruct := c.contextBlock.NewAlloca(targetType.LLVM())
 
 	dataPtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
 	bitcastedVal := c.contextBlock.NewBitCast(val, llvmTypes.NewPointer(llvmTypes.I8))
@@ -37,15 +36,14 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 
 	dataTypePtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
 
-	backingTypID, ok := typeID[v.Type.Name()]
-	if !ok {
-		panic(v.Type.Name() + " has no typeID")
-	}
-
+	backingTypID := getTypeID(v.Type.Name())
 	c.contextBlock.NewStore(constant.NewInt(backingTypID, i32.LLVM()), dataTypePtr)
 
+	// Add methods to the iface table
+	// TODO
+
 	return value.Value{
-		Type:       &types.Interface{},
+		Type:       targetType,
 		Value:      ifaceStruct,
 		IsVariable: true,
 	}
