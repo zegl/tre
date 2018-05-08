@@ -16,10 +16,12 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 
 	if v.IsMethod {
 		// Add the type that we're a method on as the first argument
-		v.Arguments = append(v.Arguments, parser.NameNode{
-			Name: v.InstanceName,
-			Type: v.MethodOnType,
-		})
+		v.Arguments = append([]parser.NameNode{
+			parser.NameNode{
+				Name: v.InstanceName,
+				Type: v.MethodOnType,
+			},
+		}, v.Arguments...)
 
 		// Change the name of our function
 		compiledName = c.currentPackageName + "_method_" + v.MethodOnType.TypeName + "_" + v.Name
