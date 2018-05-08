@@ -96,6 +96,8 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 			panic("save method on type failed")
 		}
 
+		// Make this method available in interfaces via a jump function
+		typesFunc.JumpFunction = c.compileInterfaceMethodJump(fn)
 	} else {
 		c.currentPackage.Funcs[v.Name] = typesFunc
 	}
@@ -143,6 +145,42 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 	if v.Name == "main" {
 		c.contextBlock.NewRet(constant.NewInt(0, types.I32.LLVM()))
 	}
+}
+
+func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Function) *ir.Function {
+	// Copy parameter types so that we can modify them
+	params := make([]*llvmTypes.Param, len(targetFunc.Sig.Params))
+	for i, p := range targetFunc.Sig.Params {
+		params[i] = ir.NewParam("", p.Type())
+	}
+
+	originalType := targetFunc.Sig.Params[0].Type()
+	_, isPointerType := originalType.(*llvmTypes.PointerType)
+	if !isPointerType {
+		originalType = llvmTypes.NewPointer(originalType)
+	}
+
+	// Replace the first parameter type with an *i8
+	// Will be bitcasted later to the target type
+	params[0] = ir.NewParam("unsafe-ptr", llvmTypes.NewPointer(llvmTypes.I8))
+
+	fn := c.module.NewFunction(targetFunc.Name+"_jump", targetFunc.Sig.Ret, params...)
+	block := fn.NewBlock(getBlockName())
+
+	var bitcasted llvmValue.Value = block.NewBitCast(params[0], originalType)
+
+	// TODO: Don't do this if the method has a pointer receiver
+	bitcasted = block.NewLoad(bitcasted)
+
+	callArgs := []llvmValue.Value{bitcasted}
+	for _, p := range params[1:] {
+		callArgs = append(callArgs, p)
+	}
+
+	resVal := block.NewCall(targetFunc, callArgs...)
+	block.NewRet(resVal)
+
+	return fn
 }
 
 func (c *Compiler) compileReturnNode(v parser.ReturnNode) {

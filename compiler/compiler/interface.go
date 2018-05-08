@@ -10,7 +10,8 @@ import (
 func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) value.Value {
 
 	// Don't do anything if the target is not an interface
-	if _, isInterface := targetType.(*types.Interface); !isInterface {
+	iface, isInterface := targetType.(*types.Interface)
+	if !isInterface {
 		return v
 	}
 
@@ -41,6 +42,24 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 
 	// Add methods to the iface table
 	// TODO
+	funcTablePtr := c.contextBlock.NewGetElementPtr(ifaceStruct,
+		constant.NewInt(0, i32.LLVM()),
+		constant.NewInt(2, i32.LLVM()),
+	)
+
+	funcTableAlloca := c.contextBlock.NewAlloca(iface.JumpTable())
+	c.contextBlock.NewStore(funcTableAlloca, funcTablePtr)
+
+	fp2 := c.contextBlock.NewGetElementPtr(funcTableAlloca,
+		constant.NewInt(0, i32.LLVM()),
+		constant.NewInt(0, i32.LLVM()),
+	)
+
+	m, ok := v.Type.GetMethod("Foo")
+	if !ok {
+		panic("Foo method does not exist")
+	}
+	c.contextBlock.NewStore(m.Function.JumpFunction, fp2)
 
 	return value.Value{
 		Type:       targetType,
