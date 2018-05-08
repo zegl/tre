@@ -18,7 +18,7 @@ func (i Interface) Name() string {
 	return fmt.Sprintf("interface(%s)", i.SourceName)
 }
 
-func (i Interface) LLVM() types.Type {
+func (i Interface) JumpTable() *types.StructType {
 	var orderedMethods []string
 	for methodName := range i.RequiredMethods {
 		orderedMethods = append(orderedMethods, methodName)
@@ -37,13 +37,16 @@ func (i Interface) LLVM() types.Type {
 
 		var paramTypes []*types.Param
 		for _, argType := range methodSignature.ReturnTypes {
-			paramTypes = append(paramTypes, types.NewParam("", argType.LLVM()))
+			paramTypes = append(paramTypes, types.NewParam("instance", types.NewPointer(types.I8)), types.NewParam("", argType.LLVM()))
 		}
 
 		ifaceTableMethods = append(ifaceTableMethods, types.NewPointer(types.NewFunc(retType, paramTypes...)))
 	}
 
-	// return internal.Interface(i.RequiredMethods)
+	return types.NewStruct(ifaceTableMethods...)
+}
+
+func (i Interface) LLVM() types.Type {
 	return types.NewStruct(
 		// Pointer to the backing data
 		types.NewPointer(types.I8),
@@ -53,7 +56,7 @@ func (i Interface) LLVM() types.Type {
 
 		// Interface table
 		// Used for method resolving
-		types.NewPointer(types.NewStruct(ifaceTableMethods...)),
+		types.NewPointer(i.JumpTable()),
 	)
 }
 

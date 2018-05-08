@@ -89,6 +89,9 @@ type Function struct {
 	IsVariadic    bool
 	ArgumentTypes []Type
 	IsExternal    bool
+
+	// Is used when calling an interface method
+	JumpFunction *ir.Function
 }
 
 func (f Function) LLVM() types.Type {
