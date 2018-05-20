@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/llir/llvm/ir/types"
+	llvmValue "github.com/llir/llvm/ir/value"
 )
 
 type Interface struct {
@@ -65,6 +66,18 @@ func (Interface) Size() int64 {
 }
 
 type InterfaceMethod struct {
+	backingType
+
+	LlvmJumpFunction llvmValue.Named
+
 	ArgumentTypes []Type
 	ReturnTypes   []Type
+}
+
+func (InterfaceMethod) LLVM() types.Type {
+	panic("InterfaceMethod has no LLVM value")
+}
+
+func (InterfaceMethod) Name() string {
+	return "InterfaceMethod"
 }

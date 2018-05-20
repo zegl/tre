@@ -6,6 +6,8 @@ import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
+	llvmValue "github.com/llir/llvm/ir/value"
+
 	"github.com/zegl/tre/compiler/compiler/strings"
 )
 
@@ -83,7 +85,7 @@ func (m Method) Name() string {
 type Function struct {
 	backingType
 
-	LlvmFunction  *ir.Function
+	LlvmFunction  llvmValue.Named
 	ReturnType    Type
 	FunctionName  string
 	IsVariadic    bool
@@ -218,7 +220,7 @@ func (Slice) Size() int64 {
 	return 3*4 + 4 // 3 int32s and a pointer
 }
 
-func (s Slice) SliceZero(block *ir.BasicBlock, mallocFunc *ir.Function, initCap int) *ir.InstAlloca {
+func (s Slice) SliceZero(block *ir.BasicBlock, mallocFunc llvmValue.Named, initCap int) *ir.InstAlloca {
 	// The cap must always be larger than 0
 	// Use 2 as the default value
 	if initCap < 2 {
