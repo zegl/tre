@@ -62,9 +62,12 @@ More examples of what's possible can be found in the [compiler testdata](https:/
 - - [x] cap (slice)
 - - [x] append (slice)
 - [ ] Packages
-- [ ] Methods
+- [x] Methods
 - [ ] Pointers
 - [ ] Interfaces
+- - [x] Empty interfaces
+- - [x] Values receiver methods
+- - [ ] Pointer receiver methods
 
 ## Dependencies
 
