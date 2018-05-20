@@ -237,6 +237,23 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 			methodCallArgs = append(methodCallArgs, funcByVal)
 			methodCallArgs = append(methodCallArgs, args...)
 			args = methodCallArgs
+		} else if ifaceMethod, ok := funcByVal.Type.(*types.InterfaceMethod); ok {
+
+			ifaceInstance := c.contextBlock.NewGetElementPtr(funcByVal.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+			ifaceInstanceLoad := c.contextBlock.NewLoad(ifaceInstance)
+
+			// Add instance as the first argument
+			var methodCallArgs []value.Value
+			methodCallArgs = append(methodCallArgs, value.Value{
+				Value: ifaceInstanceLoad,
+			})
+			methodCallArgs = append(methodCallArgs, args...)
+			args = methodCallArgs
+
+			fn = &types.Function{
+				LlvmFunction: ifaceMethod.LlvmJumpFunction,
+				ReturnType:   ifaceMethod.ReturnTypes[0],
+			}
 		} else {
 			panic("expected function or method, got something else")
 		}

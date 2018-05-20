@@ -55,6 +55,27 @@ func (c *Compiler) compileStructLoadElementNode(v parser.StructLoadElementNode) 
 		}
 	}
 
+	// Check if it's a interface method
+	if iface, ok := src.Type.(*types.Interface); ok {
+		if ifaceMethod, ok := iface.RequiredMethods[v.ElementName]; ok {
+
+			// Load jump function
+			jumpTable := c.contextBlock.NewGetElementPtr(src.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(2, i32.LLVM()))
+			jumpLoad := c.contextBlock.NewLoad(jumpTable)
+			jumpFunc := c.contextBlock.NewGetElementPtr(jumpLoad, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+			jumpFuncLoad := c.contextBlock.NewLoad(jumpFunc)
+
+			// Set jump function
+			ifaceMethod.LlvmJumpFunction = jumpFuncLoad
+
+			return value.Value{
+				Type:       &ifaceMethod,
+				Value:      src.Value,
+				IsVariable: false,
+			}
+		}
+	}
+
 	panic(fmt.Sprintf("%T internal error: no such type map indexing: %s", src, v.ElementName))
 }
 
