@@ -1,6 +1,9 @@
 package compiler
 
 import (
+	"fmt"
+
+	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	"github.com/zegl/tre/compiler/compiler/types"
@@ -40,26 +43,29 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 	backingTypID := getTypeID(v.Type.Name())
 	c.contextBlock.NewStore(constant.NewInt(backingTypID, i32.LLVM()), dataTypePtr)
 
-	// Add methods to the iface table
-	for methodIndex, methodName := range iface.SortedRequiredMethods() {
+	// Create interface jump table if needed
+	var funcTableAlloca *ir.InstAlloca
+	if len(iface.RequiredMethods) > 0 {
 		funcTablePtr := c.contextBlock.NewGetElementPtr(ifaceStruct,
 			constant.NewInt(0, i32.LLVM()),
 			constant.NewInt(2, i32.LLVM()),
 		)
-
-		funcTableAlloca := c.contextBlock.NewAlloca(iface.JumpTable())
+		funcTableAlloca = c.contextBlock.NewAlloca(iface.JumpTable())
 		c.contextBlock.NewStore(funcTableAlloca, funcTablePtr)
+	}
 
-		fp2 := c.contextBlock.NewGetElementPtr(funcTableAlloca,
+	// Add methods to the iface table
+	for methodIndex, methodName := range iface.SortedRequiredMethods() {
+		functionPointer := c.contextBlock.NewGetElementPtr(funcTableAlloca,
 			constant.NewInt(0, i32.LLVM()),
 			constant.NewInt(int64(methodIndex), i32.LLVM()),
 		)
 
 		m, ok := v.Type.GetMethod(methodName)
 		if !ok {
-			panic(methodName + " method does not exist")
+			panic(fmt.Sprintf("%s can not be used as %s, is missing %s method", v.Type.Name(), targetType.Name(), methodName))
 		}
-		c.contextBlock.NewStore(m.Function.JumpFunction, fp2)
+		c.contextBlock.NewStore(m.Function.JumpFunction, functionPointer)
 	}
 
 	return value.Value{

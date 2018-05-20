@@ -43,9 +43,11 @@ func (i Interface) JumpTable() *types.StructType {
 			retType = methodSignature.ReturnTypes[0].LLVM()
 		}
 
-		var paramTypes []*types.Param
-		for _, argType := range methodSignature.ReturnTypes {
-			paramTypes = append(paramTypes, types.NewParam("instance", types.NewPointer(types.I8)), types.NewParam("", argType.LLVM()))
+		paramTypes := []*types.Param{
+			types.NewParam("instance", types.NewPointer(types.I8)),
+		}
+		for _, argType := range methodSignature.ArgumentTypes {
+			paramTypes = append(paramTypes, types.NewParam("", argType.LLVM()))
 		}
 
 		ifaceTableMethods = append(ifaceTableMethods, types.NewPointer(types.NewFunc(retType, paramTypes...)))

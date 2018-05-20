@@ -72,7 +72,7 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 		}
 
 		return &types.Struct{
-			SourceName:    t.Type(),
+			SourceName:    t.GetName(),
 			Members:       members,
 			MemberIndexes: memberIndexes,
 			Type:          llvmTypes.NewStruct(structTypes...),

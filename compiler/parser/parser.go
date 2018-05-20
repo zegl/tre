@@ -308,6 +308,9 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 				panic(err)
 			}
 
+			// Save the name of the type
+			typeType.SetName(name.Val)
+
 			res = DefineTypeNode{
 				Name: name.Val,
 				Type: typeType,

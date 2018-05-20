@@ -10,12 +10,15 @@ type TypeNode interface {
 	Type() string
 	String() string
 	Variadic() bool
+	SetName(string)
+	GetName() string
 }
 
 // SingleTypeNode refers to an existing type. Such as "string".
 type SingleTypeNode struct {
 	baseNode
 
+	SourceName string
 	TypeName   string
 	IsVariadic bool
 }
@@ -32,10 +35,19 @@ func (stn SingleTypeNode) Variadic() bool {
 	return stn.IsVariadic
 }
 
+func (stn SingleTypeNode) SetName(name string) {
+	stn.SourceName = name
+}
+
+func (stn SingleTypeNode) GetName() string {
+	return stn.SourceName
+}
+
 // StructTypeNode refers to a struct type
 type StructTypeNode struct {
 	baseNode
 
+	SourceName string
 	Types      []TypeNode
 	Names      map[string]int
 	IsVariadic bool
@@ -53,10 +65,19 @@ func (stn StructTypeNode) Variadic() bool {
 	return stn.IsVariadic
 }
 
+func (stn StructTypeNode) SetName(name string) {
+	stn.SourceName = name
+}
+
+func (stn StructTypeNode) GetName() string {
+	return stn.SourceName
+}
+
 // ArrayTypeNode refers to an array
 type ArrayTypeNode struct {
 	baseNode
 
+	SourceName string
 	ItemType   TypeNode
 	Len        int64
 	IsVariadic bool
@@ -74,8 +95,18 @@ func (atn ArrayTypeNode) Variadic() bool {
 	return atn.IsVariadic
 }
 
+func (atn ArrayTypeNode) SetName(name string) {
+	atn.SourceName = name
+}
+
+func (atn ArrayTypeNode) GetName() string {
+	return atn.SourceName
+}
+
 type SliceTypeNode struct {
 	baseNode
+
+	SourceName string
 	ItemType   TypeNode
 	IsVariadic bool
 }
@@ -92,9 +123,18 @@ func (stn SliceTypeNode) Variadic() bool {
 	return stn.IsVariadic
 }
 
+func (stn SliceTypeNode) SetName(name string) {
+	stn.SourceName = name
+}
+
+func (stn SliceTypeNode) GetName() string {
+	return stn.SourceName
+}
+
 type InterfaceTypeNode struct {
 	baseNode
 
+	SourceName string
 	Methods    map[string]InterfaceMethod
 	IsVariadic bool
 }
@@ -109,6 +149,13 @@ func (itn InterfaceTypeNode) String() string {
 
 func (itn InterfaceTypeNode) Variadic() bool {
 	return itn.IsVariadic
+}
+func (itn InterfaceTypeNode) SetName(name string) {
+	itn.SourceName = name
+}
+
+func (itn InterfaceTypeNode) GetName() string {
+	return itn.SourceName
 }
 
 type InterfaceMethod struct {
