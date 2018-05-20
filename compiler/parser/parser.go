@@ -824,7 +824,6 @@ func (p *parser) parseOneType() (TypeNode, error) {
 				continue
 			}
 			if current.Type == lexer.SEPARATOR && current.Val == "}" {
-				p.i++
 				break
 			}
 

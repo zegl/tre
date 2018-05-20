@@ -19,12 +19,19 @@ func (i Interface) Name() string {
 	return fmt.Sprintf("interface(%s)", i.SourceName)
 }
 
-func (i Interface) JumpTable() *types.StructType {
+// SortedRequiredMethods returns a sorted slice of all method names
+// The returned order is the order the methods will be layed out in the JumpTable
+func (i Interface) SortedRequiredMethods() []string {
 	var orderedMethods []string
 	for methodName := range i.RequiredMethods {
 		orderedMethods = append(orderedMethods, methodName)
 	}
 	sort.Strings(orderedMethods)
+	return orderedMethods
+}
+
+func (i Interface) JumpTable() *types.StructType {
+	orderedMethods := i.SortedRequiredMethods()
 
 	var ifaceTableMethods []types.Type
 
