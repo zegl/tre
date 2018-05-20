@@ -169,7 +169,7 @@ type NameNode struct {
 }
 
 func (nn NameNode) String() string {
-	return fmt.Sprintf("var(%s)", nn.Name)
+	return fmt.Sprintf("var(%s %s)", nn.Type, nn.Name)
 }
 
 type MultiNameNode struct {
