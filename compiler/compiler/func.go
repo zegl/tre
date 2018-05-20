@@ -255,9 +255,16 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 			methodCallArgs = append(methodCallArgs, args...)
 			args = methodCallArgs
 
+			var returnType types.Type
+			if len(ifaceMethod.ReturnTypes) > 0 {
+				returnType = ifaceMethod.ReturnTypes[0]
+			} else {
+				returnType = types.Void
+			}
+
 			fn = &types.Function{
 				LlvmFunction: ifaceMethod.LlvmJumpFunction,
-				ReturnType:   ifaceMethod.ReturnTypes[0],
+				ReturnType:   returnType,
 			}
 		} else {
 			panic("expected function or method, got something else")

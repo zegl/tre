@@ -58,11 +58,20 @@ func (c *Compiler) compileStructLoadElementNode(v parser.StructLoadElementNode) 
 	// Check if it's a interface method
 	if iface, ok := src.Type.(*types.Interface); ok {
 		if ifaceMethod, ok := iface.RequiredMethods[v.ElementName]; ok {
+			// Find method index
+			// TODO: This can be much smarter
+			var methodIndex int64
+			for i, name := range iface.SortedRequiredMethods() {
+				if name == v.ElementName {
+					methodIndex = int64(i)
+					break
+				}
+			}
 
 			// Load jump function
 			jumpTable := c.contextBlock.NewGetElementPtr(src.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(2, i32.LLVM()))
 			jumpLoad := c.contextBlock.NewLoad(jumpTable)
-			jumpFunc := c.contextBlock.NewGetElementPtr(jumpLoad, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+			jumpFunc := c.contextBlock.NewGetElementPtr(jumpLoad, constant.NewInt(0, i32.LLVM()), constant.NewInt(methodIndex, i32.LLVM()))
 			jumpFuncLoad := c.contextBlock.NewLoad(jumpFunc)
 
 			// Set jump function
