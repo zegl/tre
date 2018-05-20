@@ -178,7 +178,12 @@ func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Function) *ir.Funct
 	}
 
 	resVal := block.NewCall(targetFunc, callArgs...)
-	block.NewRet(resVal)
+
+	if _, ok := targetFunc.Sig.Ret.(*llvmTypes.VoidType); ok {
+		block.NewRet(nil)
+	} else {
+		block.NewRet(resVal)
+	}
 
 	return fn
 }
