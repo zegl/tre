@@ -15,11 +15,17 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 	var compiledName string
 
 	if v.IsMethod {
+		var methodOnType parser.TypeNode = v.MethodOnType
+
+		if v.IsPointerReceiver {
+			methodOnType = parser.PointerTypeNode{ValueType: methodOnType}
+		}
+
 		// Add the type that we're a method on as the first argument
 		v.Arguments = append([]parser.NameNode{
 			parser.NameNode{
 				Name: v.InstanceName,
-				Type: v.MethodOnType,
+				Type: methodOnType,
 			},
 		}, v.Arguments...)
 
@@ -89,7 +95,7 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 		if t, ok := typeConvertMap[v.MethodOnType.TypeName]; ok {
 			t.AddMethod(v.Name, &types.Method{
 				Function:        typesFunc,
-				PointerReceiver: false,
+				PointerReceiver: v.IsPointerReceiver,
 				MethodName:      v.Name,
 			})
 		} else {
@@ -170,7 +176,9 @@ func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Function) *ir.Funct
 	var bitcasted llvmValue.Value = block.NewBitCast(params[0], originalType)
 
 	// TODO: Don't do this if the method has a pointer receiver
-	bitcasted = block.NewLoad(bitcasted)
+	if !isPointerType {
+		bitcasted = block.NewLoad(bitcasted)
+	}
 
 	callArgs := []llvmValue.Value{bitcasted}
 	for _, p := range params[1:] {

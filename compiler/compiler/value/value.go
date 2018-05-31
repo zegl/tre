@@ -12,6 +12,7 @@ type Value struct {
 	// Is true when Value points to an LLVM Allocated variable, and is false
 	// when the value is a constant.
 	// This is used to know if a "load" instruction is neccesary or not.
+	// Pointers are not considered "variables" in this context.
 	IsVariable bool
 
 	// Is used when returning multiple types from a function

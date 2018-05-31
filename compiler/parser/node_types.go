@@ -150,6 +150,7 @@ func (itn InterfaceTypeNode) String() string {
 func (itn InterfaceTypeNode) Variadic() bool {
 	return itn.IsVariadic
 }
+
 func (itn InterfaceTypeNode) SetName(name string) {
 	itn.SourceName = name
 }
@@ -161,4 +162,32 @@ func (itn InterfaceTypeNode) GetName() string {
 type InterfaceMethod struct {
 	ArgumentTypes []TypeNode
 	ReturnTypes   []TypeNode
+}
+
+type PointerTypeNode struct {
+	baseNode
+
+	SourceName string
+	IsVariadic bool
+	ValueType  TypeNode
+}
+
+func (ptn PointerTypeNode) Type() string {
+	return fmt.Sprintf("pointer(%+v)", ptn.ValueType.Type())
+}
+
+func (ptn PointerTypeNode) String() string {
+	return ptn.Type()
+}
+
+func (ptn PointerTypeNode) SetName(name string) {
+	ptn.SourceName = name
+}
+
+func (ptn PointerTypeNode) GetName() string {
+	return ptn.SourceName
+}
+
+func (ptn PointerTypeNode) Variadic() bool {
+	return ptn.IsVariadic
 }

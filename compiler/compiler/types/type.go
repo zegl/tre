@@ -253,11 +253,11 @@ type Pointer struct {
 }
 
 func (p Pointer) LLVM() types.Type {
-	return p.LlvmType
+	return types.NewPointer(p.Type.LLVM())
 }
 
 func (p Pointer) Name() string {
-	return "pointer"
+	return fmt.Sprintf("pointer(%s)", p.Type.Name())
 }
 
 // MultiValue is used when returning multiple values from a function

@@ -22,7 +22,15 @@ func (c *Compiler) compileStructLoadElementNode(v parser.StructLoadElementNode) 
 		panic(fmt.Sprintf("Package %s has no such method %s", packageRef.Name(), v.ElementName))
 	}
 
-	if !src.IsVariable {
+	// Use this type, or the type behind the pointer
+	targetType := src.Type
+	var isPointer bool
+	if pointerType, ok := src.Type.(*types.Pointer); ok {
+		targetType = pointerType.Type
+		isPointer = true
+	}
+
+	if !src.IsVariable && !isPointer {
 		// GetElementPtr only works on pointer types, and we don't have a pointer to our object.
 		// Allocate it and use the pointer instead
 		dst := c.contextBlock.NewAlloca(src.Type.LLVM())
@@ -35,7 +43,7 @@ func (c *Compiler) compileStructLoadElementNode(v parser.StructLoadElementNode) 
 	}
 
 	// Check if it is a struct member
-	if structType, ok := src.Type.(*types.Struct); ok {
+	if structType, ok := targetType.(*types.Struct); ok {
 		if memberIndex, ok := structType.MemberIndexes[v.ElementName]; ok {
 			retVal := c.contextBlock.NewGetElementPtr(src.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(memberIndex), i32.LLVM()))
 			return value.Value{
@@ -47,7 +55,7 @@ func (c *Compiler) compileStructLoadElementNode(v parser.StructLoadElementNode) 
 	}
 
 	// Check if it's a method
-	if method, ok := src.Type.GetMethod(v.ElementName); ok {
+	if method, ok := targetType.GetMethod(v.ElementName); ok {
 		return value.Value{
 			Type:       method,
 			Value:      src.Value,
