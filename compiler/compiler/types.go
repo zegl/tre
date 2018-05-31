@@ -105,6 +105,11 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 		}
 
 		return &types.Interface{RequiredMethods: requiredMethods}
+
+	case parser.PointerTypeNode:
+		return &types.Pointer{
+			Type: parserTypeToType(t.ValueType),
+		}
 	}
 
 	panic(fmt.Sprintf("unknown typeNode: %T", typeNode))

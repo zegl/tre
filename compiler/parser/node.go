@@ -141,9 +141,10 @@ type DefineFuncNode struct {
 
 	Name string
 
-	IsMethod     bool
-	MethodOnType SingleTypeNode
-	InstanceName string
+	IsMethod          bool
+	MethodOnType      SingleTypeNode
+	IsPointerReceiver bool
+	InstanceName      string
 
 	Arguments    []NameNode
 	ReturnValues []NameNode

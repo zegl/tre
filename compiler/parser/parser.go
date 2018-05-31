@@ -88,7 +88,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 	case lexer.OPERATOR:
 		if current.Val == "&" {
 			p.i++
-			res = GetReferenceNode{Item: p.parseOne(false)}
+			res = GetReferenceNode{Item: p.parseOne(true)}
 			if withAheadParse {
 				res = p.aheadParse(res)
 			}
@@ -221,10 +221,15 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 					panic(err)
 				}
 
+				if pointerSingleTypeNode, ok := methodOnType.(PointerTypeNode); ok {
+					defineFunc.IsPointerReceiver = true
+					methodOnType = pointerSingleTypeNode.ValueType
+				}
+
 				if singleTypeNode, ok := methodOnType.(SingleTypeNode); ok {
 					defineFunc.MethodOnType = singleTypeNode
 				} else {
-					panic("could not find type in method defitition")
+					panic(fmt.Sprintf("could not find type in method defitition: %T", methodOnType))
 				}
 
 				p.i++
@@ -758,6 +763,19 @@ func (p *parser) parseOneType() (TypeNode, error) {
 
 		p.i++
 		current = p.lookAhead(0)
+	}
+
+	// pointer types
+	if current.Type == lexer.OPERATOR && current.Val == "*" {
+		p.i++
+		valType, err := p.parseOneType()
+		if err != nil {
+			panic(err)
+		}
+		return PointerTypeNode{
+			ValueType:  valType,
+			IsVariadic: isVariadic,
+		}, nil
 	}
 
 	// struct parsing
