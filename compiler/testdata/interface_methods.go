@@ -40,5 +40,4 @@ func main() {
 	res2 := face.Foo1(600)              // FaceImpl2: foo1=600
 	external.Printf("res2: %d\n", res2) // res2: 200
 	face.Foo2(606)                      // FaceImpl2: foo2=606
-
 }
