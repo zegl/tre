@@ -79,7 +79,9 @@ func compilePackage(c *compiler.Compiler, path, name string) error {
 
 		for _, file := range files {
 			if !file.IsDir() {
-				if strings.HasSuffix(file.Name(), ".go") {
+				// Tre files doesn't have to contain valid Go code, and is used to prevent issues
+				// with some of the go tools (like vgo)
+				if strings.HasSuffix(file.Name(), ".go") || strings.HasSuffix(file.Name(), ".tre") {
 					parsedFiles = append(parsedFiles, parseFile(path+"/"+file.Name()))
 				}
 			}
