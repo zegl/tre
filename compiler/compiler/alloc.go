@@ -1,6 +1,8 @@
 package compiler
 
 import (
+	"log"
+
 	"github.com/llir/llvm/ir"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -55,8 +57,11 @@ func (c *Compiler) compileAllocNode(v parser.AllocNode) {
 		return
 	}
 
+	log.Printf("allocValue: %+v %+v %+v", val, val.Type, val.Value)
+
 	// Single variable allocation
 	llvmVal := val.Value
+
 	if val.IsVariable {
 		llvmVal = c.contextBlock.NewLoad(llvmVal)
 	}
@@ -64,6 +69,21 @@ func (c *Compiler) compileAllocNode(v parser.AllocNode) {
 	alloc := c.contextBlock.NewAlloca(llvmVal.Type())
 	alloc.SetName(v.Name)
 	c.contextBlock.NewStore(llvmVal, alloc)
+	/*var targetVal llvmValue.Value
+
+	_, fromPointer :=
+
+	if !val.IsVariable &&
+
+	if val.IsVariable {
+		loaded := c.contextBlock.NewLoad(val.Value)
+		alloc := c.contextBlock.NewAlloca(loaded.Type())
+		alloc.SetName(v.Name)
+		c.contextBlock.NewStore(loaded, alloc)
+		targetVal = alloc
+	} else {
+		targetVal = val.Value
+	}*/
 
 	c.contextBlockVariables[v.Name] = value.Value{
 		Type:       val.Type,
