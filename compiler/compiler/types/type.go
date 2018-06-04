@@ -21,7 +21,7 @@ type Type interface {
 	AddMethod(string, *Method)
 	GetMethod(string) (*Method, bool)
 
-	Zero(*ir.BasicBlock, *ir.InstAlloca)
+	Zero(*ir.BasicBlock, llvmValue.Value)
 }
 
 type backingType struct {
@@ -44,7 +44,7 @@ func (backingType) Size() int64 {
 	panic("Type does not have size set")
 }
 
-func (backingType) Zero(*ir.BasicBlock, *ir.InstAlloca) {
+func (backingType) Zero(*ir.BasicBlock, llvmValue.Value) {
 	// NOOP
 }
 
@@ -64,6 +64,16 @@ func (s Struct) LLVM() types.Type {
 
 func (s Struct) Name() string {
 	return fmt.Sprintf("struct(%s)", s.SourceName)
+}
+
+func (s Struct) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
+	for key, valType := range s.Members {
+		ptr := block.NewGetElementPtr(alloca,
+			constant.NewInt(0, I32.LLVM()),
+			constant.NewInt(int64(s.MemberIndexes[key]), I32.LLVM()),
+		)
+		valType.Zero(block, ptr)
+	}
 }
 
 type Method struct {
@@ -120,7 +130,7 @@ func (BoolType) Size() int64 {
 	return 1
 }
 
-func (b BoolType) Zero(block *ir.BasicBlock, alloca *ir.InstAlloca) {
+func (b BoolType) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
 	block.NewStore(constant.NewInt(0, b.LLVM()), alloca)
 }
 
@@ -160,7 +170,7 @@ func (i Int) Size() int64 {
 	return i.TypeSize
 }
 
-func (i Int) Zero(block *ir.BasicBlock, alloca *ir.InstAlloca) {
+func (i Int) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
 	block.NewStore(constant.NewInt(0, i.Type), alloca)
 }
 
@@ -181,7 +191,7 @@ func (s StringType) Name() string {
 	return "string"
 }
 
-func (s StringType) Zero(block *ir.BasicBlock, alloca *ir.InstAlloca) {
+func (s StringType) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
 	lenPtr := block.NewGetElementPtr(alloca, constant.NewInt(0, types.I32), constant.NewInt(0, types.I32))
 	backingDataPtr := block.NewGetElementPtr(alloca, constant.NewInt(0, types.I32), constant.NewInt(1, types.I32))
 	block.NewStore(constant.NewInt(0, types.I64), lenPtr)
