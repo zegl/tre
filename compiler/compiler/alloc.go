@@ -1,8 +1,6 @@
 package compiler
 
 import (
-	"log"
-
 	"github.com/llir/llvm/ir"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -56,12 +54,11 @@ func (c *Compiler) compileAllocNode(v parser.AllocNode) {
 		return
 	}
 
-	log.Printf("allocValue: %+v %+v %+v", val, val.Type, val.Value)
-
 	// Single variable allocation
 	llvmVal := val.Value
 
-	if val.IsNonAllocDereference {
+	// Non-allocation needed pointers
+	if ptrVal, ok := val.Type.(*types.Pointer); ok && ptrVal.IsNonAllocDereference {
 		c.contextBlockVariables[v.Name] = value.Value{
 			Type:       val.Type,
 			Value:      llvmVal,

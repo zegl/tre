@@ -17,10 +17,10 @@ func (c *Compiler) compileGetReferenceNode(v parser.GetReferenceNode) value.Valu
 			return value.Value{
 				Type: &types.Pointer{
 					Type: val.Type,
+					IsNonAllocDereference: true,
 				},
-				Value:                 val.Value,
-				IsVariable:            false,
-				IsNonAllocDereference: true,
+				Value:      val.Value,
+				IsVariable: false,
 			}
 		}
 	}
@@ -44,10 +44,18 @@ func (c *Compiler) compileDereferenceNode(v parser.DereferenceNode) value.Value 
 	val := c.compileValue(v.Item)
 
 	if ptrVal, ok := val.Type.(*types.Pointer); ok {
+		if ptrVal.IsNonAllocDereference {
+			return value.Value{
+				Value:      val.Value,
+				Type:       ptrVal.Type,
+				IsVariable: true,
+			}
+		}
+
 		return value.Value{
 			Value:      c.contextBlock.NewLoad(val.Value),
 			Type:       ptrVal.Type,
-			IsVariable: false, // ?
+			IsVariable: false,
 		}
 	}
 
