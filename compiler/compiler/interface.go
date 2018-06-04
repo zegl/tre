@@ -54,6 +54,13 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 		c.contextBlock.NewStore(funcTableAlloca, funcTablePtr)
 	}
 
+	useFuncsFromType := v.Type
+
+	// Pointer receiver methods are added to their "parent" type
+	if ptrType, ok := useFuncsFromType.(*types.Pointer); ok {
+		useFuncsFromType = ptrType.Type
+	}
+
 	// Add methods to the iface table
 	for methodIndex, methodName := range iface.SortedRequiredMethods() {
 		functionPointer := c.contextBlock.NewGetElementPtr(funcTableAlloca,
@@ -61,9 +68,9 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 			constant.NewInt(int64(methodIndex), i32.LLVM()),
 		)
 
-		m, ok := v.Type.GetMethod(methodName)
+		m, ok := useFuncsFromType.GetMethod(methodName)
 		if !ok {
-			panic(fmt.Sprintf("%s can not be used as %s, is missing %s method", v.Type.Name(), targetType.Name(), methodName))
+			panic(fmt.Sprintf("%s can not be used as %s, is missing %s method", useFuncsFromType.Name(), targetType.Name(), methodName))
 		}
 		c.contextBlock.NewStore(m.Function.JumpFunction, functionPointer)
 	}
