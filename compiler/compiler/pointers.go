@@ -11,37 +11,33 @@ import (
 func (c *Compiler) compileGetReferenceNode(v parser.GetReferenceNode) value.Value {
 	val := c.compileValue(v.Item)
 
-	//if val.IsVariable {
-
-	// Dereference a pointer
-	if _, ok := val.Type.(*types.Pointer); ok {
-		return value.Value{
-			Type: &types.Pointer{
-				Type: val.Type,
-			},
-			Value:      val.Value,
-			IsVariable: false,
+	// Case where allocation is not neccesary, as all LLVM values are pointers by default
+	if val.IsVariable {
+		if _, ok := val.Type.(*types.Pointer); !ok {
+			return value.Value{
+				Type: &types.Pointer{
+					Type: val.Type,
+				},
+				Value:                 val.Value,
+				IsVariable:            false,
+				IsNonAllocDereference: true,
+			}
 		}
 	}
 
-	// Dereference a value
+	// One extra allocation is neccesary
+	newSrc := c.contextBlock.NewAlloca(val.Type.LLVM())
+	newSrc.SetName(getVarName("reference-alloca"))
+	c.contextBlock.NewStore(val.Value, newSrc)
 
-	// }
-
-	panic("unknown getreference")
-	/*
-		newSrc := c.contextBlock.NewAlloca(newType)
-		c.contextBlock.NewStore(val.Value, newSrc)
-
-		return value.Value{
-			Type: &types.Pointer{
-				Type:     val.Type,
-				LlvmType: newSrc.Type(),
-			},
-			Value:      newSrc,
-			IsVariable: false,
-		}
-	*/
+	return value.Value{
+		Type: &types.Pointer{
+			Type:     val.Type,
+			LlvmType: newSrc.Type(),
+		},
+		Value:      newSrc,
+		IsVariable: true,
+	}
 }
 
 func (c *Compiler) compileDereferenceNode(v parser.DereferenceNode) value.Value {
@@ -51,7 +47,7 @@ func (c *Compiler) compileDereferenceNode(v parser.DereferenceNode) value.Value 
 		return value.Value{
 			Value:      c.contextBlock.NewLoad(val.Value),
 			Type:       ptrVal.Type,
-			IsVariable: true,
+			IsVariable: false, // ?
 		}
 	}
 
