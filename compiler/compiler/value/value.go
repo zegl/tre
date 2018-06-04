@@ -15,8 +15,6 @@ type Value struct {
 	// Pointers are not considered "variables" in this context.
 	IsVariable bool
 
-	IsNonAllocDereference bool
-
 	// Is used when returning multiple types from a function
 	// Type is set to MultiValue when this is case, and will also contain the
 	// type information

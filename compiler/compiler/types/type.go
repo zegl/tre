@@ -248,7 +248,9 @@ func (s Slice) SliceZero(block *ir.BasicBlock, mallocFunc llvmValue.Named, initC
 type Pointer struct {
 	backingType
 
-	Type     Type
+	Type                  Type
+	IsNonAllocDereference bool
+
 	LlvmType types.Type
 }
 
