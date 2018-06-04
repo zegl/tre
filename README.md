@@ -63,11 +63,11 @@ More examples of what's possible can be found in the [compiler testdata](https:/
 - - [x] append (slice)
 - [ ] Packages
 - [x] Methods
-- [ ] Pointers
-- [ ] Interfaces
+- [x] Pointers
+- [x] Interfaces
 - - [x] Empty interfaces
 - - [x] Values receiver methods
-- - [ ] Pointer receiver methods
+- - [x] Pointer receiver methods
 
 ## Dependencies
 
