@@ -23,6 +23,17 @@ func (c *Compiler) compileGetReferenceNode(v parser.GetReferenceNode) value.Valu
 				IsVariable: false,
 			}
 		}
+
+		if structType, ok := val.Type.(*types.Struct); ok && structType.IsHeapAllocated {
+			return value.Value{
+				Type: &types.Pointer{
+					Type: val.Type,
+					IsNonAllocDereference: true,
+				},
+				Value:      val.Value,
+				IsVariable: false,
+			}
+		}
 	}
 
 	// One extra allocation is neccesary
