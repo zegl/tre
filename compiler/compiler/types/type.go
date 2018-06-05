@@ -54,6 +54,8 @@ type Struct struct {
 	Members       map[string]Type
 	MemberIndexes map[string]int
 
+	IsHeapAllocated bool
+
 	SourceName string
 	Type       types.Type
 }
@@ -74,6 +76,14 @@ func (s Struct) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
 		)
 		valType.Zero(block, ptr)
 	}
+}
+
+func (s Struct) Size() int64 {
+	var sum int64
+	for _, valType := range s.Members {
+		sum += valType.Size()
+	}
+	return sum
 }
 
 type Method struct {
@@ -183,12 +193,16 @@ type StringType struct {
 var ModuleStringType types.Type
 var EmptyStringConstant *ir.Global
 
-func (s StringType) LLVM() types.Type {
+func (StringType) LLVM() types.Type {
 	return ModuleStringType
 }
 
-func (s StringType) Name() string {
+func (StringType) Name() string {
 	return "string"
+}
+
+func (StringType) Size() int64 {
+	return 16
 }
 
 func (s StringType) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
@@ -270,6 +284,10 @@ func (p Pointer) LLVM() types.Type {
 
 func (p Pointer) Name() string {
 	return fmt.Sprintf("pointer(%s)", p.Type.Name())
+}
+
+func (p Pointer) Size() int64 {
+	return 8
 }
 
 // MultiValue is used when returning multiple values from a function

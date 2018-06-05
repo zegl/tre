@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/llir/llvm/ir/constant"
+	llvmTypes "github.com/llir/llvm/ir/types"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
@@ -25,8 +26,10 @@ func (c *Compiler) compileStructLoadElementNode(v parser.StructLoadElementNode) 
 	// Use this type, or the type behind the pointer
 	targetType := src.Type
 	var isPointer bool
+	var isPointerNonAllocDereference bool
 	if pointerType, ok := src.Type.(*types.Pointer); ok {
 		targetType = pointerType.Type
+		isPointerNonAllocDereference = pointerType.IsNonAllocDereference
 		isPointer = true
 	}
 
@@ -45,7 +48,13 @@ func (c *Compiler) compileStructLoadElementNode(v parser.StructLoadElementNode) 
 	// Check if it is a struct member
 	if structType, ok := targetType.(*types.Struct); ok {
 		if memberIndex, ok := structType.MemberIndexes[v.ElementName]; ok {
-			retVal := c.contextBlock.NewGetElementPtr(src.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(memberIndex), i32.LLVM()))
+
+			val := src.Value
+			if isPointer && !isPointerNonAllocDereference && structType.IsHeapAllocated {
+				val = c.contextBlock.NewLoad(src.Value)
+			}
+
+			retVal := c.contextBlock.NewGetElementPtr(val, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(memberIndex), i32.LLVM()))
 			return value.Value{
 				Type:       structType.Members[v.ElementName],
 				Value:      retVal,
@@ -104,7 +113,12 @@ func (c *Compiler) compileInitStructWithValues(v parser.InitializeStructNode) va
 		panic("Expected struct type in compileInitStructWithValues")
 	}
 
-	alloc := c.contextBlock.NewAlloca(treType.LLVM())
+	// Allocate on the heap
+	// TODO: Allocate on the stack if it's safe to do so
+	mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs.Malloc.LlvmFunction, constant.NewInt(structType.Size(), i64.LLVM()))
+	alloc := c.contextBlock.NewBitCast(mallocatedSpaceRaw, llvmTypes.NewPointer(structType.LLVM()))
+	structType.IsHeapAllocated = true
+
 	treType.Zero(c.contextBlock, alloc)
 
 	for key, val := range v.Items {
@@ -122,7 +136,7 @@ func (c *Compiler) compileInitStructWithValues(v parser.InitializeStructNode) va
 	}
 
 	return value.Value{
-		Type:       treType,
+		Type:       structType,
 		Value:      alloc,
 		IsVariable: true,
 	}
