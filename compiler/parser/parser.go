@@ -324,7 +324,28 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 		// "return" creates a ReturnNode
 		if current.Val == "return" {
 			p.i++
-			res = ReturnNode{Val: p.parseOne(true)}
+
+			var retVals []Node
+
+			for {
+				checkIfEOL := p.lookAhead(0)
+				if checkIfEOL.Type == lexer.EOL {
+					break
+				}
+
+				retVals = append(retVals, p.parseOne(true))
+				p.i++
+
+				checkIfComma := p.lookAhead(0)
+				if checkIfComma.Type == lexer.SEPARATOR && checkIfComma.Val == "," {
+					p.i++
+					continue
+				}
+
+				break
+			}
+
+			res = ReturnNode{Vals: retVals}
 			if withAheadParse {
 				res = p.aheadParse(res)
 			}
