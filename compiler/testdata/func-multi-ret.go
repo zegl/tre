@@ -1,11 +1,13 @@
 package main
 
+import "external"
+
 func otherfunc() (int, int) {
-	// return 100, 200
-	return 0, 0
+	return 100, 200
 }
 
 func main() {
-	otherfunc()
-
+	a, b := otherfunc()
+	external.Printf("a: %d\n", a) // a: 100
+	external.Printf("b: %d\n", b) // b: 200
 }
