@@ -22,7 +22,7 @@ func (c *Compiler) lenFuncCall(v parser.CallNode) value.Value {
 
 		return value.Value{
 			Value:      c.contextBlock.NewCall(f.LlvmFunction, val),
-			Type:       f.ReturnType,
+			Type:       f.LlvmReturnType,
 			IsVariable: false,
 		}
 	}

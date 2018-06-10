@@ -31,7 +31,12 @@ type Compiler struct {
 	currentPackage     *types.PackageInstance
 	currentPackageName string
 
-	contextFunc           *types.Function
+	contextFunc *types.Function
+
+	// Stack of return values pointers, is only used if a function returns more
+	// than one value
+	contextFuncRetVals [][]value.Value
+
 	contextBlock          *ir.BasicBlock
 	contextBlockVariables map[string]value.Value
 
@@ -58,6 +63,8 @@ func NewCompiler() *Compiler {
 		globalFuncs: make(map[string]*types.Function),
 
 		packages: make(map[string]*types.PackageInstance),
+
+		contextFuncRetVals: make([][]value.Value, 0),
 
 		contextLoopBreak:    make([]*ir.BasicBlock, 0),
 		contextLoopContinue: make([]*ir.BasicBlock, 0),
@@ -142,8 +149,8 @@ func (c *Compiler) addGlobal() {
 	// len_string
 	strLen := internal.StringLen(types.ModuleStringType)
 	c.globalFuncs["len_string"] = &types.Function{
-		LlvmFunction: strLen,
-		ReturnType:   types.I64,
+		LlvmFunction:   strLen,
+		LlvmReturnType: types.I64,
 	}
 	c.module.AppendFunction(strLen)
 }

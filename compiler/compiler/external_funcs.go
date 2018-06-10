@@ -29,18 +29,18 @@ func (c *Compiler) createExternalPackage() {
 		printfFunc.Sig.Variadic = true
 
 		c.externalFuncs.Printf = &types.Function{
-			ReturnType:   types.Void,
-			FunctionName: "printf",
-			LlvmFunction: printfFunc,
-			IsExternal:   true,
+			LlvmReturnType: types.Void,
+			FunctionName:   "printf",
+			LlvmFunction:   printfFunc,
+			IsExternal:     true,
 		}
 		externalPackageFuncs["Printf"] = c.externalFuncs.Printf
 	}
 
 	{
 		c.externalFuncs.Malloc = &types.Function{
-			ReturnType:   types.Void,
-			FunctionName: "malloc",
+			LlvmReturnType: types.Void,
+			FunctionName:   "malloc",
 			LlvmFunction: c.module.NewFunction("malloc",
 				llvmTypes.NewPointer(i8.LLVM()),
 				ir.NewParam("", i64.LLVM()),
@@ -52,8 +52,8 @@ func (c *Compiler) createExternalPackage() {
 
 	{
 		c.externalFuncs.Realloc = &types.Function{
-			ReturnType:   types.Void,
-			FunctionName: "realloc",
+			LlvmReturnType: types.Void,
+			FunctionName:   "realloc",
 			LlvmFunction: c.module.NewFunction("realloc",
 				llvmTypes.NewPointer(i8.LLVM()),
 				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
@@ -66,8 +66,8 @@ func (c *Compiler) createExternalPackage() {
 
 	{
 		c.externalFuncs.Memcpy = &types.Function{
-			ReturnType:   types.Void,
-			FunctionName: "memcpy",
+			LlvmReturnType: types.Void,
+			FunctionName:   "memcpy",
 			LlvmFunction: c.module.NewFunction("memcpy",
 				llvmTypes.NewPointer(i8.LLVM()),
 				ir.NewParam("dest", llvmTypes.NewPointer(i8.LLVM())),
@@ -81,8 +81,8 @@ func (c *Compiler) createExternalPackage() {
 
 	{
 		c.externalFuncs.Strcat = &types.Function{
-			ReturnType:   types.Void,
-			FunctionName: "strcat",
+			LlvmReturnType: types.Void,
+			FunctionName:   "strcat",
 			LlvmFunction: c.module.NewFunction("strcat",
 				llvmTypes.NewPointer(i8.LLVM()),
 				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
@@ -95,8 +95,8 @@ func (c *Compiler) createExternalPackage() {
 
 	{
 		c.externalFuncs.Strcpy = &types.Function{
-			ReturnType:   types.Void,
-			FunctionName: "strcpy",
+			LlvmReturnType: types.Void,
+			FunctionName:   "strcpy",
 			LlvmFunction: c.module.NewFunction("strcpy",
 				llvmTypes.NewPointer(i8.LLVM()),
 				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
@@ -109,8 +109,8 @@ func (c *Compiler) createExternalPackage() {
 
 	{
 		c.externalFuncs.Strncpy = &types.Function{
-			ReturnType:   types.Void,
-			FunctionName: "strncpy",
+			LlvmReturnType: types.Void,
+			FunctionName:   "strncpy",
 			LlvmFunction: c.module.NewFunction("strncpy",
 				llvmTypes.NewPointer(i8.LLVM()),
 				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
@@ -124,8 +124,8 @@ func (c *Compiler) createExternalPackage() {
 
 	{
 		c.externalFuncs.Strndup = &types.Function{
-			ReturnType:   types.Void,
-			FunctionName: "strndup",
+			LlvmReturnType: types.Void,
+			FunctionName:   "strndup",
 			LlvmFunction: c.module.NewFunction("strndup",
 				llvmTypes.NewPointer(i8.LLVM()),
 				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
@@ -138,8 +138,8 @@ func (c *Compiler) createExternalPackage() {
 
 	{
 		c.externalFuncs.Exit = &types.Function{
-			ReturnType:   types.Void,
-			FunctionName: "exit",
+			LlvmReturnType: types.Void,
+			FunctionName:   "exit",
 			LlvmFunction: c.module.NewFunction("exit",
 				llvmTypes.Void,
 				ir.NewParam("", i32.LLVM()),

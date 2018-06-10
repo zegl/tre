@@ -105,8 +105,13 @@ func (m Method) Name() string {
 type Function struct {
 	backingType
 
-	LlvmFunction  llvmValue.Named
-	ReturnType    Type
+	LlvmFunction llvmValue.Named
+
+	// The return type of the LLVM function (is always 1)
+	LlvmReturnType Type
+	// Return types of the Tre function
+	ReturnTypes []Type
+
 	FunctionName  string
 	IsVariadic    bool
 	ArgumentTypes []Type

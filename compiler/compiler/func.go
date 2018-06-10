@@ -66,8 +66,30 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 
 	var funcRetType types.Type = types.Void
 
+	// Amount of values returned via argument pointers
+	var argumentReturnValuesCount int
+	var treReturnTypes []types.Type
+
+	// Use LLVM function return value if there's only one return value
 	if len(v.ReturnValues) == 1 {
 		funcRetType = parserTypeToType(v.ReturnValues[0].Type)
+		treReturnTypes = []types.Type{funcRetType}
+	} else if len(v.ReturnValues) > 0 {
+		// Return values via argument pointers
+		// The return values goes first
+		var llvmReturnTypesParams []*llvmTypes.Param
+
+		for _, ret := range v.ReturnValues {
+			t := parserTypeToType(ret.Type)
+			treReturnTypes = append(treReturnTypes, t)
+			llvmReturnTypesParams = append(llvmReturnTypesParams, ir.NewParam(getVarName("ret"), llvmTypes.NewPointer(t.LLVM())))
+		}
+
+		// Add return values to the start
+		treParams = append(treReturnTypes, treParams...)
+		llvmParams = append(llvmReturnTypesParams, llvmParams...)
+
+		argumentReturnValuesCount = len(v.ReturnValues)
 	}
 
 	if c.currentPackageName == "main" && v.Name == "main" {
@@ -83,11 +105,12 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 	fn := c.module.NewFunction(compiledName, funcRetType.LLVM(), llvmParams...)
 
 	typesFunc := &types.Function{
-		LlvmFunction:  fn,
-		ReturnType:    funcRetType,
-		FunctionName:  v.Name,
-		IsVariadic:    isVariadicFunc,
-		ArgumentTypes: treParams,
+		LlvmFunction:   fn,
+		LlvmReturnType: funcRetType,
+		ReturnTypes:    treReturnTypes,
+		FunctionName:   v.Name,
+		IsVariadic:     isVariadicFunc,
+		ArgumentTypes:  treParams,
 	}
 
 	// Save as a method on the type
@@ -114,8 +137,24 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 	c.contextBlock = entry
 	c.contextBlockVariables = make(map[string]value.Value)
 
+	// Push to the return values stack
+	if argumentReturnValuesCount > 0 {
+		var retVals []value.Value
+
+		for i, retType := range treParams[:argumentReturnValuesCount] {
+			retVals = append(retVals, value.Value{
+				Value: llvmParams[i],
+				Type:  retType,
+				// IsVariable: true,
+			})
+		}
+
+		c.contextFuncRetVals = append(c.contextFuncRetVals, retVals)
+	}
+
 	// Save all parameters in the block mapping
-	for i, param := range llvmParams {
+	// Return value arguments are ignored
+	for i, param := range llvmParams[argumentReturnValuesCount:] {
 		paramName := v.Arguments[i].Name
 		dataType := treParams[i]
 
@@ -145,6 +184,11 @@ func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
 	// Return void if there is no return type explicitly set
 	if len(v.ReturnValues) == 0 {
 		c.contextBlock.NewRet(nil)
+	}
+
+	// Pop func ret vals stack
+	if argumentReturnValuesCount > 0 {
+		c.contextFuncRetVals = c.contextFuncRetVals[0 : len(c.contextFuncRetVals)-1]
 	}
 
 	// Return 0 by default in main func
@@ -197,18 +241,38 @@ func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Function) *ir.Funct
 }
 
 func (c *Compiler) compileReturnNode(v parser.ReturnNode) {
-	// Set value and jump to return block
-	val := c.compileValue(v.Val)
+	// Single variable return
+	if len(v.Vals) == 1 {
+		// Set value and jump to return block
+		val := c.compileValue(v.Vals[0])
 
-	// Type cast if neccesary
-	val = c.valueToInterfaceValue(val, c.contextFunc.ReturnType)
+		// Type cast if neccesary
+		val = c.valueToInterfaceValue(val, c.contextFunc.LlvmReturnType)
 
-	if val.IsVariable {
-		c.contextBlock.NewRet(c.contextBlock.NewLoad(val.Value))
+		if val.IsVariable {
+			c.contextBlock.NewRet(c.contextBlock.NewLoad(val.Value))
+			return
+		}
+
+		c.contextBlock.NewRet(val.Value)
 		return
 	}
 
-	c.contextBlock.NewRet(val.Value)
+	// Multiple value returns
+	for i, val := range v.Vals {
+		compVal := c.compileValue(val)
+
+		// Type cast if neccesary
+		// compVal = c.valueToInterfaceValue(compVal, c.contextFunc.ReturnType)
+
+		// Assign to ptr
+		retValPtr := c.contextFuncRetVals[len(c.contextFuncRetVals)-1][i]
+
+		c.contextBlock.NewStore(compVal.Value, retValPtr.Value)
+	}
+
+	// Return void in LLVM function
+	c.contextBlock.NewRet(nil)
 }
 
 func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
@@ -271,8 +335,8 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 			}
 
 			fn = &types.Function{
-				LlvmFunction: ifaceMethod.LlvmJumpFunction,
-				ReturnType:   returnType,
+				LlvmFunction:   ifaceMethod.LlvmJumpFunction,
+				LlvmReturnType: returnType,
 			}
 		} else {
 			panic("expected function or method, got something else")
@@ -340,10 +404,55 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		llvmArgs[i] = val
 	}
 
-	// Call function and return the result
-	return value.Value{
-		Value:      c.contextBlock.NewCall(fn.LlvmFunction, llvmArgs...),
-		Type:       fn.ReturnType,
-		IsVariable: false,
+	// Functions with multiple return values are using pointers via arguments
+	// Alloc the values here and add pointers to the list of arguments
+	var multiValues []value.Value
+	if len(fn.ReturnTypes) > 1 {
+		var retValAllocas []llvmValue.Value
+
+		for _, retType := range fn.ReturnTypes {
+			alloca := c.contextBlock.NewAlloca(retType.LLVM())
+			retValAllocas = append(retValAllocas, alloca)
+
+			multiValues = append(multiValues, value.Value{
+				Type:       retType,
+				Value:      alloca,
+				IsVariable: true,
+			})
+		}
+
+		// Add to start of argument list
+		llvmArgs = append(retValAllocas, llvmArgs...)
 	}
+
+	funcCallRes := c.contextBlock.NewCall(fn.LlvmFunction, llvmArgs...)
+
+	// 0 or 1 return variables
+	if len(fn.ReturnTypes) < 2 {
+		return value.Value{
+			Value: funcCallRes,
+			Type:  fn.LlvmReturnType,
+		}
+	}
+
+	// 2 ore more return variables
+
+	return value.Value{
+		Type:        &types.MultiValue{Types: fn.ReturnTypes},
+		MultiValues: multiValues,
+	}
+
+	// Call function and return the result
+	/*compileRes := value.Value{
+		Value: funcCallRes,
+		// Type:  fn.LlvmReturnType,
+	}
+
+	if len(fn.ReturnTypes) > 1 {
+		compileRes.MultiValues = multiValues
+	} else {
+		compileRes.Type = fn.LlvmReturnType
+	}
+
+	return compileRes*/
 }
