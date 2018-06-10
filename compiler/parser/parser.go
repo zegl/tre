@@ -266,14 +266,46 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 
 			checkIfOpeningCurly := p.lookAhead(0)
 			if checkIfOpeningCurly.Type != lexer.SEPARATOR || checkIfOpeningCurly.Val != "{" {
-				retType, err := p.parseOneType()
-				if err != nil {
-					panic(err)
+
+				// Check if next is an opening parenthesis
+				// Is optional if there's only one return type, is required
+				// if there is multiple ones
+				var allowMultiRetVals bool
+
+				checkIfOpenParen := p.lookAhead(0)
+				if checkIfOpenParen.Type == lexer.SEPARATOR && checkIfOpenParen.Val == "(" {
+					allowMultiRetVals = true
+					p.i++
 				}
-				retTypesNodeNames = append(retTypesNodeNames, NameNode{
-					Type: retType,
-				})
-				p.i++
+
+				for {
+					retType, err := p.parseOneType()
+					if err != nil {
+						panic(err)
+					}
+					retTypesNodeNames = append(retTypesNodeNames, NameNode{
+						Type: retType,
+					})
+					p.i++
+
+					if !allowMultiRetVals {
+						break
+					}
+
+					// Require comma or end parenthesis
+					commaOrEnd := p.lookAhead(0)
+					if commaOrEnd.Type == lexer.SEPARATOR && commaOrEnd.Val == "," {
+						p.i++
+						continue
+					}
+
+					if commaOrEnd.Type == lexer.SEPARATOR && commaOrEnd.Val == ")" {
+						p.i++
+						break
+					}
+
+					panic("Could not parse function return types")
+				}
 			}
 			defineFunc.ReturnValues = retTypesNodeNames
 
