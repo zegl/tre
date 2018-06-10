@@ -50,7 +50,7 @@ More examples of what's possible can be found in the [compiler testdata](https:/
 - [ ] Functions
 - - [x] Named functions
 - - [x] Methods
-- - [ ] More than 1 return variable
+- - [x] More than 1 return variable
 - - [ ] First class functions: Assign a function to a variable, functions as arguments etc.
 - [x] Strings
 - [x] Arrays
