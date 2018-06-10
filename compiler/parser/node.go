@@ -186,11 +186,11 @@ func (n MultiNameNode) String() string {
 type ReturnNode struct {
 	baseNode
 
-	Val Node
+	Vals []Node
 }
 
 func (rn ReturnNode) String() string {
-	return fmt.Sprintf("return(%v)", rn.Val)
+	return fmt.Sprintf("return(%v)", rn.Vals)
 }
 
 // AllocNode creates a new variable Name with the value Val
