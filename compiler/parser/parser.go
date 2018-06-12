@@ -51,7 +51,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 	// - a CallNode if followed by an opening parenthesis (a function call), or
 	// - a NodeName (variables)
 	case lexer.IDENTIFIER:
-		res = NameNode{Name: current.Val}
+		res = &NameNode{Name: current.Val}
 		if withAheadParse {
 			res = p.aheadParse(res)
 		}
@@ -65,7 +65,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 			panic(err)
 		}
 
-		res = ConstantNode{
+		res = &ConstantNode{
 			Type:  NUMBER,
 			Value: val,
 		}
@@ -76,7 +76,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 
 		// STRING is always a ConstantNode, the value is not modified
 	case lexer.STRING:
-		res = ConstantNode{
+		res = &ConstantNode{
 			Type:     STRING,
 			ValueStr: current.Val,
 		}
@@ -88,7 +88,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 	case lexer.OPERATOR:
 		if current.Val == "&" {
 			p.i++
-			res = GetReferenceNode{Item: p.parseOne(true)}
+			res = &GetReferenceNode{Item: p.parseOne(true)}
 			if withAheadParse {
 				res = p.aheadParse(res)
 			}
@@ -96,7 +96,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 		}
 		if current.Val == "*" {
 			p.i++
-			res = DereferenceNode{Item: p.parseOne(false)}
+			res = &DereferenceNode{Item: p.parseOne(false)}
 			if withAheadParse {
 				res = p.aheadParse(res)
 			}
@@ -105,7 +105,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 
 		if current.Val == "!" {
 			p.i++
-			res = NegateNode{Item: p.parseOne(false)}
+			res = &NegateNode{Item: p.parseOne(false)}
 			return
 		}
 
@@ -135,7 +135,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 
 			items := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
 
-			res = InitializeSliceNode{
+			res = &InitializeSliceNode{
 				Type:  sliceItemType,
 				Items: items,
 			}
@@ -161,15 +161,15 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 				panic("could not parse if-condition")
 			}
 
-			var opNode OperatorNode
+			var opNode *OperatorNode
 
-			if cond, ok := condNodes[0].(OperatorNode); ok {
+			if cond, ok := condNodes[0].(*OperatorNode); ok {
 				opNode = cond
 			} else {
 				// Add implicit == true
-				opNode = OperatorNode{
+				opNode = &OperatorNode{
 					Left: condNodes[0],
-					Right: ConstantNode{
+					Right: &ConstantNode{
 						Type:  BOOL,
 						Value: 1,
 					},
@@ -179,7 +179,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 
 			p.i++
 
-			return p.aheadParse(ConditionNode{
+			return p.aheadParse(&ConditionNode{
 				Cond: opNode,
 				True: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"}),
 			})
@@ -196,7 +196,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 		// - function body
 		// - closing curly bracket (})
 		if current.Val == "func" {
-			defineFunc := DefineFuncNode{}
+			defineFunc := &DefineFuncNode{}
 			p.i++
 
 			// Check if next is IDENTIFIER (named function), or an opening parenthesis (method).
@@ -221,12 +221,12 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 					panic(err)
 				}
 
-				if pointerSingleTypeNode, ok := methodOnType.(PointerTypeNode); ok {
+				if pointerSingleTypeNode, ok := methodOnType.(*PointerTypeNode); ok {
 					defineFunc.IsPointerReceiver = true
 					methodOnType = pointerSingleTypeNode.ValueType
 				}
 
-				if singleTypeNode, ok := methodOnType.(SingleTypeNode); ok {
+				if singleTypeNode, ok := methodOnType.(*SingleTypeNode); ok {
 					defineFunc.MethodOnType = singleTypeNode
 				} else {
 					panic(fmt.Sprintf("could not find type in method defitition: %T", methodOnType))
@@ -262,7 +262,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 			defineFunc.Arguments = p.parseFunctionArguments()
 
 			// Parse return types
-			var retTypesNodeNames []NameNode
+			var retTypesNodeNames []*NameNode
 
 			checkIfOpeningCurly := p.lookAhead(0)
 			if checkIfOpeningCurly.Type != lexer.SEPARATOR || checkIfOpeningCurly.Val != "{" {
@@ -283,7 +283,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 					if err != nil {
 						panic(err)
 					}
-					retTypesNodeNames = append(retTypesNodeNames, NameNode{
+					retTypesNodeNames = append(retTypesNodeNames, &NameNode{
 						Type: retType,
 					})
 					p.i++
@@ -345,7 +345,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 				break
 			}
 
-			res = ReturnNode{Vals: retVals}
+			res = &ReturnNode{Vals: retVals}
 			if withAheadParse {
 				res = p.aheadParse(res)
 			}
@@ -369,7 +369,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 			// Save the name of the type
 			typeType.SetName(name.Val)
 
-			res = DefineTypeNode{
+			res = &DefineTypeNode{
 				Name: name.Val,
 				Type: typeType,
 			}
@@ -400,7 +400,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 				panic(err)
 			}
 
-			return AllocNode{
+			return &AllocNode{
 				Name: name.Val,
 				Val:  tp,
 			}
@@ -415,7 +415,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 
 			p.i += 1
 
-			return DeclarePackageNode{
+			return &DeclarePackageNode{
 				PackageName: packageName.Val,
 			}
 		}
@@ -425,11 +425,11 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 		}
 
 		if current.Val == "break" {
-			return BreakNode{}
+			return &BreakNode{}
 		}
 
 		if current.Val == "continue" {
-			return ContinueNode{}
+			return &ContinueNode{}
 		}
 
 		if current.Val == "import" {
@@ -442,7 +442,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 				v = 1
 			}
 
-			return ConstantNode{
+			return &ConstantNode{
 				Type:  BOOL,
 				Value: v,
 			}
@@ -469,7 +469,7 @@ func (p *parser) aheadParse(input Node) Node {
 			next = p.lookAhead(1)
 			if next.Type == lexer.IDENTIFIER {
 				p.i++
-				return p.aheadParse(StructLoadElementNode{
+				return p.aheadParse(&StructLoadElementNode{
 					Struct:      input,
 					ElementName: next.Val,
 				})
@@ -491,7 +491,7 @@ func (p *parser) aheadParse(input Node) Node {
 
 				p.i++
 
-				return p.aheadParse(TypeCastInterfaceNode{
+				return p.aheadParse(&TypeCastInterfaceNode{
 					Item: input,
 					Type: castToType,
 				})
@@ -503,36 +503,36 @@ func (p *parser) aheadParse(input Node) Node {
 		if next.Val == ":=" || next.Val == "=" {
 			p.i += 2
 
-			if nameNode, ok := input.(NameNode); ok {
+			if nameNode, ok := input.(*NameNode); ok {
 				if next.Val == ":=" {
-					return AllocNode{
+					return &AllocNode{
 						Name: nameNode.Name,
 						Val:  p.parseOne(true),
 					}
 				}
-				return AssignNode{
+				return &AssignNode{
 					Name: nameNode.Name,
 					Val:  p.parseOne(true),
 				}
 			}
 
 			if next.Val == "=" {
-				if loadNode, ok := input.(StructLoadElementNode); ok {
-					return AssignNode{
+				if loadNode, ok := input.(*StructLoadElementNode); ok {
+					return &AssignNode{
 						Target: loadNode,
 						Val:    p.parseOne(true),
 					}
 				}
 
-				if arrayNode, ok := input.(LoadArrayElement); ok {
-					return AssignNode{
+				if arrayNode, ok := input.(*LoadArrayElement); ok {
+					return &AssignNode{
 						Target: arrayNode,
 						Val:    p.parseOne(true),
 					}
 				}
 
-				if dereferenceNode, ok := input.(DereferenceNode); ok {
-					return AssignNode{
+				if dereferenceNode, ok := input.(*DereferenceNode); ok {
+					return &AssignNode{
 						Target: dereferenceNode,
 						Val:    p.parseOne(true),
 					}
@@ -544,7 +544,7 @@ func (p *parser) aheadParse(input Node) Node {
 
 		if next.Val == "..." {
 			p.i++
-			return DeVariadicSliceNode{
+			return &DeVariadicSliceNode{
 				Item: input,
 			}
 		}
@@ -560,14 +560,14 @@ func (p *parser) aheadParse(input Node) Node {
 			checkIfColon := p.lookAhead(1)
 			if checkIfColon.Type == lexer.OPERATOR && checkIfColon.Val == ":" {
 				p.i += 2
-				res = SliceArrayNode{
+				res = &SliceArrayNode{
 					Val:    input,
 					Start:  index,
 					HasEnd: true,
 					End:    p.parseOne(true),
 				}
 			} else {
-				res = LoadArrayElement{
+				res = &LoadArrayElement{
 					Array: input,
 					Pos:   index,
 				}
@@ -585,14 +585,14 @@ func (p *parser) aheadParse(input Node) Node {
 
 		if _, ok := opsCharToOp[next.Val]; ok {
 			p.i += 2
-			res := OperatorNode{
+			res := &OperatorNode{
 				Operator: opsCharToOp[next.Val],
 				Left:     input,
 				Right:    p.parseOne(true),
 			}
 
 			// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
-			if right, ok := res.Right.(OperatorNode); ok {
+			if right, ok := res.Right.(*OperatorNode); ok {
 				return sortInfix(res, right)
 			}
 
@@ -610,15 +610,15 @@ func (p *parser) aheadParse(input Node) Node {
 			if len(val) != 1 {
 				panic("type conversion must take only one argument")
 			}
-			return p.aheadParse(TypeCastNode{
-				Type: SingleTypeNode{
+			return p.aheadParse(&TypeCastNode{
+				Type: &SingleTypeNode{
 					TypeName: current.Val,
 				},
 				Val: val[0],
 			})
 		}
 
-		return p.aheadParse(CallNode{
+		return p.aheadParse(&CallNode{
 			Function:  input,
 			Arguments: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"}),
 		})
@@ -628,11 +628,11 @@ func (p *parser) aheadParse(input Node) Node {
 	//   Foo{Bar: 123}
 	//   Foo{Bar: 123, Bax: hello(123)}
 	if next.Type == lexer.SEPARATOR && next.Val == "{" {
-		nameNode, isNamedNode := input.(NameNode)
+		nameNode, isNamedNode := input.(*NameNode)
 		if isNamedNode {
 			_, isType := types[nameNode.Name]
 			if isType {
-				inputType := SingleTypeNode{
+				inputType := &SingleTypeNode{
 					TypeName: nameNode.Name,
 				}
 
@@ -679,7 +679,7 @@ func (p *parser) aheadParse(input Node) Node {
 					}
 				}
 
-				return p.aheadParse(InitializeStructNode{
+				return p.aheadParse(&InitializeStructNode{
 					Type:  inputType,
 					Items: items,
 				})
@@ -688,7 +688,7 @@ func (p *parser) aheadParse(input Node) Node {
 	}
 
 	if next.Type == lexer.SEPARATOR && next.Val == "," {
-		if inputNamedNode, ok := input.(NameNode); ok {
+		if inputNamedNode, ok := input.(*NameNode); ok {
 
 			// This bit of parsing is specualtive
 			//
@@ -701,18 +701,20 @@ func (p *parser) aheadParse(input Node) Node {
 
 			nextName := p.parseOne(true)
 
-			if nextAlloc, ok := nextName.(AllocNode); ok {
-				if len(nextAlloc.MultiNames.Names) == 0 {
-					nextAlloc.MultiNames = MultiNameNode{
-						Names: []NameNode{inputNamedNode, NameNode{Name: nextAlloc.Name}},
+			if nextAlloc, ok := nextName.(*AllocNode); ok {
+				if nextAlloc.MultiNames == nil || len(nextAlloc.MultiNames.Names) == 0 {
+					nextAlloc.MultiNames = &MultiNameNode{
+						Names: []*NameNode{inputNamedNode, &NameNode{Name: nextAlloc.Name}},
 					}
 					nextAlloc.Name = ""
 				} else {
 					// Add the current one to the beging of the list
-					newMultiNames := []NameNode{inputNamedNode}
-					newMultiNames = append(newMultiNames, nextAlloc.MultiNames.Names...)
+					newMultiNames := []*NameNode{inputNamedNode}
+					if nextAlloc.MultiNames != nil {
+						newMultiNames = append(newMultiNames, nextAlloc.MultiNames.Names...)
+					}
 
-					nextAlloc.MultiNames = MultiNameNode{Names: newMultiNames}
+					nextAlloc.MultiNames = &MultiNameNode{Names: newMultiNames}
 				}
 
 				return p.aheadParse(nextAlloc)
@@ -766,8 +768,8 @@ func (p *parser) parseUntil(until lexer.Item) []Node {
 	}
 }
 
-func (p *parser) parseFunctionArguments() []NameNode {
-	var res []NameNode
+func (p *parser) parseFunctionArguments() []*NameNode {
+	var res []*NameNode
 	var i int
 
 	for {
@@ -798,7 +800,7 @@ func (p *parser) parseFunctionArguments() []NameNode {
 		}
 		p.i++
 
-		res = append(res, NameNode{
+		res = append(res, &NameNode{
 			Name: name.Val,
 			Type: argType,
 		})
@@ -825,7 +827,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		if err != nil {
 			panic(err)
 		}
-		return PointerTypeNode{
+		return &PointerTypeNode{
 			ValueType:  valType,
 			IsVariadic: isVariadic,
 		}, nil
@@ -835,7 +837,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 	if current.Type == lexer.KEYWORD && current.Val == "struct" {
 		p.i++
 
-		res := StructTypeNode{
+		res := &StructTypeNode{
 			Types:      make([]TypeNode, 0),
 			Names:      make(map[string]int),
 			IsVariadic: isVariadic,
@@ -886,7 +888,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		p.expect(p.lookAhead(0), lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
 		p.i++
 
-		ifaceType := InterfaceTypeNode{
+		ifaceType := &InterfaceTypeNode{
 			IsVariadic: isVariadic,
 		}
 
@@ -959,7 +961,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 	}
 
 	if current.Type == lexer.IDENTIFIER {
-		return SingleTypeNode{
+		return &SingleTypeNode{
 			TypeName:   current.Val,
 			IsVariadic: isVariadic,
 		}, nil
@@ -978,7 +980,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 				return nil, errors.New("arrayParse failed: " + err.Error())
 			}
 
-			return SliceTypeNode{
+			return &SliceTypeNode{
 				ItemType:   sliceItemType,
 				IsVariadic: isVariadic,
 			}, nil
@@ -1004,7 +1006,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 			return nil, errors.New("arrayParse failed: " + err.Error())
 		}
 
-		return ArrayTypeNode{
+		return &ArrayTypeNode{
 			ItemType:   arrayItemType,
 			Len:        int64(arrayLengthInt),
 			IsVariadic: isVariadic,

@@ -8,7 +8,7 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func (c *Compiler) compileGetReferenceNode(v parser.GetReferenceNode) value.Value {
+func (c *Compiler) compileGetReferenceNode(v *parser.GetReferenceNode) value.Value {
 	val := c.compileValue(v.Item)
 
 	// Case where allocation is not neccesary, as all LLVM values are pointers by default
@@ -51,7 +51,7 @@ func (c *Compiler) compileGetReferenceNode(v parser.GetReferenceNode) value.Valu
 	}
 }
 
-func (c *Compiler) compileDereferenceNode(v parser.DereferenceNode) value.Value {
+func (c *Compiler) compileDereferenceNode(v *parser.DereferenceNode) value.Value {
 	val := c.compileValue(v.Item)
 
 	if ptrVal, ok := val.Type.(*types.Pointer); ok {

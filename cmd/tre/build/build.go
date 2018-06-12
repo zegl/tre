@@ -12,6 +12,7 @@ import (
 	"github.com/zegl/tre/compiler/compiler"
 	"github.com/zegl/tre/compiler/lexer"
 	"github.com/zegl/tre/compiler/parser"
+	"github.com/zegl/tre/compiler/passes/escape"
 )
 
 var debug bool
@@ -95,7 +96,7 @@ func compilePackage(c *compiler.Compiler, path, name string) error {
 	// Use importNodes to import more packages
 	for _, file := range parsedFiles {
 		for _, i := range file.Instructions {
-			if _, ok := i.(parser.DeclarePackageNode); ok {
+			if _, ok := i.(*parser.DeclarePackageNode); ok {
 				continue
 			}
 
@@ -104,7 +105,7 @@ func compilePackage(c *compiler.Compiler, path, name string) error {
 				gopath = gopathFromEnv
 			}
 
-			if importNode, ok := i.(parser.ImportNode); ok {
+			if importNode, ok := i.(*parser.ImportNode); ok {
 
 				// Is built in to the compiler
 				if importNode.PackagePath == "external" {
@@ -167,6 +168,14 @@ func parseFile(path string) parser.FileNode {
 
 	// Run lexed source through the parser. A syntax tree is returned.
 	parsed := parser.Parse(lexed, debug)
+
+	// List of passes to run on the AST
+	passes := []func(parser.FileNode) parser.FileNode{
+		escape.Escape,
+	}
+	for _, pass := range passes {
+		parsed = pass(parsed)
+	}
 
 	return parsed
 }

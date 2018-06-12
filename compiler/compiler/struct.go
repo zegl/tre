@@ -2,15 +2,17 @@ package compiler
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
+	llvmValue "github.com/llir/llvm/ir/value"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func (c *Compiler) compileStructLoadElementNode(v parser.StructLoadElementNode) value.Value {
+func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode) value.Value {
 	src := c.compileValue(v.Struct)
 
 	if packageRef, ok := src.Type.(*types.PackageInstance); ok {
@@ -50,11 +52,17 @@ func (c *Compiler) compileStructLoadElementNode(v parser.StructLoadElementNode) 
 		if memberIndex, ok := structType.MemberIndexes[v.ElementName]; ok {
 
 			val := src.Value
-			if isPointer && !isPointerNonAllocDereference && structType.IsHeapAllocated {
+
+			var retVal llvmValue.Value
+
+			if isPointer && !isPointerNonAllocDereference {
 				val = c.contextBlock.NewLoad(src.Value)
+				log.Printf("mem: %+v", val)
+				retVal = c.contextBlock.NewGetElementPtr(val, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(memberIndex), i32.LLVM()))
+			} else {
+				retVal = c.contextBlock.NewGetElementPtr(val, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(memberIndex), i32.LLVM()))
 			}
 
-			retVal := c.contextBlock.NewGetElementPtr(val, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(memberIndex), i32.LLVM()))
 			return value.Value{
 				Type:       structType.Members[v.ElementName],
 				Value:      retVal,
@@ -105,7 +113,7 @@ func (c *Compiler) compileStructLoadElementNode(v parser.StructLoadElementNode) 
 	panic(fmt.Sprintf("%T internal error: no such type map indexing: %s", src, v.ElementName))
 }
 
-func (c *Compiler) compileInitStructWithValues(v parser.InitializeStructNode) value.Value {
+func (c *Compiler) compileInitStructWithValues(v *parser.InitializeStructNode) value.Value {
 	treType := parserTypeToType(v.Type)
 
 	structType, ok := treType.(*types.Struct)
@@ -113,11 +121,18 @@ func (c *Compiler) compileInitStructWithValues(v parser.InitializeStructNode) va
 		panic("Expected struct type in compileInitStructWithValues")
 	}
 
-	// Allocate on the heap
-	// TODO: Allocate on the stack if it's safe to do so
-	mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs.Malloc.LlvmFunction, constant.NewInt(structType.Size(), i64.LLVM()))
-	alloc := c.contextBlock.NewBitCast(mallocatedSpaceRaw, llvmTypes.NewPointer(structType.LLVM()))
-	structType.IsHeapAllocated = true
+	var alloc llvmValue.Value
+
+	currentAlloc := c.contextAlloc[len(c.contextAlloc)-1]
+	if currentAlloc.Escapes {
+		// Allocate on the heap
+		mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs.Malloc.LlvmFunction, constant.NewInt(structType.Size(), i64.LLVM()))
+		alloc = c.contextBlock.NewBitCast(mallocatedSpaceRaw, llvmTypes.NewPointer(structType.LLVM()))
+		structType.IsHeapAllocated = true
+	} else {
+		// Stack allocation
+		alloc = c.contextBlock.NewAlloca(structType.LLVM())
+	}
 
 	treType.Zero(c.contextBlock, alloc)
 

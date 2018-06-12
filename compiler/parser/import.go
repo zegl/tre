@@ -4,7 +4,7 @@ import (
 	"github.com/zegl/tre/compiler/lexer"
 )
 
-func (p *parser) parseImport() ImportNode {
+func (p *parser) parseImport() *ImportNode {
 	p.i++
 
 	expectPathString := p.lookAhead(0)
@@ -12,7 +12,7 @@ func (p *parser) parseImport() ImportNode {
 		panic("Expected string after import")
 	}
 
-	return ImportNode{
+	return &ImportNode{
 		PackagePath: expectPathString.Val,
 	}
 }

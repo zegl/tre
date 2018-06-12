@@ -10,7 +10,7 @@ import (
 	"github.com/llir/llvm/ir/constant"
 )
 
-func (c *Compiler) compileConstantNode(v parser.ConstantNode) value.Value {
+func (c *Compiler) compileConstantNode(v *parser.ConstantNode) value.Value {
 	switch v.Type {
 	case parser.NUMBER:
 		var intType types.Type = i64

@@ -29,7 +29,7 @@ func getConditionLLVMpred(operator parser.Operator) ir.IntPred {
 	panic("unknown op: " + string(operator))
 }
 
-func (c *Compiler) compileOperatorNode(v parser.OperatorNode) value.Value {
+func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 	left := c.compileValue(v.Left)
 	leftLLVM := left.Value
 
@@ -111,7 +111,7 @@ func (c *Compiler) compileOperatorNode(v parser.OperatorNode) value.Value {
 	}
 }
 
-func (c *Compiler) compileConditionNode(v parser.ConditionNode) {
+func (c *Compiler) compileConditionNode(v *parser.ConditionNode) {
 	cond := c.compileOperatorNode(v.Cond)
 
 	afterBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-after")

@@ -11,19 +11,19 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func (c *Compiler) compileDefineFuncNode(v parser.DefineFuncNode) {
+func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 	var compiledName string
 
 	if v.IsMethod {
 		var methodOnType parser.TypeNode = v.MethodOnType
 
 		if v.IsPointerReceiver {
-			methodOnType = parser.PointerTypeNode{ValueType: methodOnType}
+			methodOnType = &parser.PointerTypeNode{ValueType: methodOnType}
 		}
 
 		// Add the type that we're a method on as the first argument
-		v.Arguments = append([]parser.NameNode{
-			parser.NameNode{
+		v.Arguments = append([]*parser.NameNode{
+			&parser.NameNode{
 				Name: v.InstanceName,
 				Type: methodOnType,
 			},
@@ -240,7 +240,7 @@ func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Function) *ir.Funct
 	return fn
 }
 
-func (c *Compiler) compileReturnNode(v parser.ReturnNode) {
+func (c *Compiler) compileReturnNode(v *parser.ReturnNode) {
 	// Single variable return
 	if len(v.Vals) == 1 {
 		// Set value and jump to return block
@@ -275,10 +275,10 @@ func (c *Compiler) compileReturnNode(v parser.ReturnNode) {
 	c.contextBlock.NewRet(nil)
 }
 
-func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
+func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 	var args []value.Value
 
-	name, isNameNode := v.Function.(parser.NameNode)
+	name, isNameNode := v.Function.(*parser.NameNode)
 
 	// len() functions
 	if isNameNode && name.Name == "len" {
@@ -350,7 +350,7 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 
 	// Compile all values
 	for _, vv := range v.Arguments {
-		if devVar, ok := vv.(parser.DeVariadicSliceNode); ok {
+		if devVar, ok := vv.(*parser.DeVariadicSliceNode); ok {
 			lastIsVariadicSlice = true
 			args = append(args, c.compileValue(devVar.Item))
 			continue
@@ -435,24 +435,9 @@ func (c *Compiler) compileCallNode(v parser.CallNode) value.Value {
 		}
 	}
 
-	// 2 ore more return variables
-
+	// 2 or more return variables
 	return value.Value{
 		Type:        &types.MultiValue{Types: fn.ReturnTypes},
 		MultiValues: multiValues,
 	}
-
-	// Call function and return the result
-	/*compileRes := value.Value{
-		Value: funcCallRes,
-		// Type:  fn.LlvmReturnType,
-	}
-
-	if len(fn.ReturnTypes) > 1 {
-		compileRes.MultiValues = multiValues
-	} else {
-		compileRes.Type = fn.LlvmReturnType
-	}
-
-	return compileRes*/
 }

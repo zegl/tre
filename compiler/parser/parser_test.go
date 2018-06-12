@@ -18,9 +18,9 @@ func TestCall(t *testing.T) {
 
 	expected := FileNode{
 		Instructions: []Node{
-			CallNode{
-				Function:  NameNode{Name: "printf"},
-				Arguments: []Node{ConstantNode{Type: NUMBER, Value: 1}},
+			&CallNode{
+				Function:  &NameNode{Name: "printf"},
+				Arguments: []Node{&ConstantNode{Type: NUMBER, Value: 1}},
 			},
 		},
 	}
@@ -38,13 +38,13 @@ func TestAdd(t *testing.T) {
 
 	expected := FileNode{
 		Instructions: []Node{
-			OperatorNode{
+			&OperatorNode{
 				Operator: OP_ADD,
-				Left: ConstantNode{
+				Left: &ConstantNode{
 					Type:  NUMBER,
 					Value: 1,
 				},
-				Right: ConstantNode{
+				Right: &ConstantNode{
 					Type:  NUMBER,
 					Value: 2,
 				},
@@ -67,19 +67,19 @@ func TestInfixPriority(t *testing.T) {
 
 	expected := FileNode{
 		Instructions: []Node{
-			OperatorNode{
+			&OperatorNode{
 				Operator: OP_ADD,
-				Left: ConstantNode{
+				Left: &ConstantNode{
 					Type:  NUMBER,
 					Value: 1,
 				},
-				Right: OperatorNode{
+				Right: &OperatorNode{
 					Operator: OP_MUL,
-					Left: ConstantNode{
+					Left: &ConstantNode{
 						Type:  NUMBER,
 						Value: 2,
 					},
-					Right: ConstantNode{
+					Right: &ConstantNode{
 						Type:  NUMBER,
 						Value: 3,
 					},
@@ -103,20 +103,20 @@ func TestInfixPriority2(t *testing.T) {
 
 	expected := FileNode{
 		Instructions: []Node{
-			OperatorNode{
+			&OperatorNode{
 				Operator: OP_ADD,
-				Left: OperatorNode{
+				Left: &OperatorNode{
 					Operator: OP_MUL,
-					Left: ConstantNode{
+					Left: &ConstantNode{
 						Type:  NUMBER,
 						Value: 1,
 					},
-					Right: ConstantNode{
+					Right: &ConstantNode{
 						Type:  NUMBER,
 						Value: 2,
 					},
 				},
-				Right: ConstantNode{
+				Right: &ConstantNode{
 					Type:  NUMBER,
 					Value: 3,
 				},

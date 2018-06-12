@@ -7,8 +7,7 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func (c *Compiler) compileNegateBoolNode(v parser.NegateNode) value.Value {
-
+func (c *Compiler) compileNegateBoolNode(v *parser.NegateNode) value.Value {
 	val := c.compileValue(v.Item)
 	loadedVal := c.contextBlock.NewLoad(val.Value)
 

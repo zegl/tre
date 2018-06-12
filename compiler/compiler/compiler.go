@@ -48,6 +48,10 @@ type Compiler struct {
 	// Is used when evaluating what type an integer constant should be.
 	contextAssignDest []value.Value
 
+	// Stack of Alloc instructions
+	// Is used to decide if values should be stack or heap allocated
+	contextAlloc []*parser.AllocNode
+
 	stringConstants map[string]*ir.Global
 }
 
@@ -158,31 +162,31 @@ func (c *Compiler) addGlobal() {
 func (c *Compiler) compile(instructions []parser.Node) {
 	for _, i := range instructions {
 		switch v := i.(type) {
-		case parser.ConditionNode:
+		case *parser.ConditionNode:
 			c.compileConditionNode(v)
-		case parser.DefineFuncNode:
+		case *parser.DefineFuncNode:
 			c.compileDefineFuncNode(v)
-		case parser.ReturnNode:
+		case *parser.ReturnNode:
 			c.compileReturnNode(v)
-		case parser.AllocNode:
+		case *parser.AllocNode:
 			c.compileAllocNode(v)
-		case parser.AssignNode:
+		case *parser.AssignNode:
 			c.compileAssignNode(v)
-		case parser.ForNode:
+		case *parser.ForNode:
 			c.compileForNode(v)
-		case parser.BreakNode:
+		case *parser.BreakNode:
 			c.compileBreakNode(v)
-		case parser.ContinueNode:
+		case *parser.ContinueNode:
 			c.compileContinueNode(v)
 
-		case parser.DeclarePackageNode:
+		case *parser.DeclarePackageNode:
 			// TODO: Make use of it
 			break
-		case parser.ImportNode:
+		case *parser.ImportNode:
 			// NOOP
 			break
 
-		case parser.DefineTypeNode:
+		case *parser.DefineTypeNode:
 			t := parserTypeToType(v.Type)
 
 			// Add type to module and override the structtype to use the named
@@ -233,29 +237,29 @@ func (c *Compiler) varByName(name string) value.Value {
 func (c *Compiler) compileValue(node parser.Node) value.Value {
 	switch v := node.(type) {
 
-	case parser.ConstantNode:
+	case *parser.ConstantNode:
 		return c.compileConstantNode(v)
-	case parser.OperatorNode:
+	case *parser.OperatorNode:
 		return c.compileOperatorNode(v)
-	case parser.NameNode:
+	case *parser.NameNode:
 		return c.varByName(v.Name)
-	case parser.CallNode:
+	case *parser.CallNode:
 		return c.compileCallNode(v)
-	case parser.TypeCastNode:
+	case *parser.TypeCastNode:
 		return c.compileTypeCastNode(v)
-	case parser.StructLoadElementNode:
+	case *parser.StructLoadElementNode:
 		return c.compileStructLoadElementNode(v)
-	case parser.LoadArrayElement:
+	case *parser.LoadArrayElement:
 		return c.compileLoadArrayElement(v)
-	case parser.GetReferenceNode:
+	case *parser.GetReferenceNode:
 		return c.compileGetReferenceNode(v)
-	case parser.DereferenceNode:
+	case *parser.DereferenceNode:
 		return c.compileDereferenceNode(v)
-	case parser.NegateNode:
+	case *parser.NegateNode:
 		return c.compileNegateBoolNode(v)
-	case parser.InitializeSliceNode:
+	case *parser.InitializeSliceNode:
 		return c.compileInitializeSliceNode(v)
-	case parser.SliceArrayNode:
+	case *parser.SliceArrayNode:
 		src := c.compileValue(v.Val)
 
 		if _, ok := src.Type.(*types.StringType); ok {
@@ -263,9 +267,9 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		}
 
 		return c.compileSliceArray(src, v)
-	case parser.InitializeStructNode:
+	case *parser.InitializeStructNode:
 		return c.compileInitStructWithValues(v)
-	case parser.TypeCastInterfaceNode:
+	case *parser.TypeCastInterfaceNode:
 		return c.compileTypeCastInterfaceNode(v)
 	}
 
