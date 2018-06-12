@@ -55,7 +55,7 @@ func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode)
 
 			var retVal llvmValue.Value
 
-			if isPointer && !isPointerNonAllocDereference {
+			if isPointer && !isPointerNonAllocDereference && structType.IsHeapAllocated {
 				val = c.contextBlock.NewLoad(src.Value)
 				log.Printf("mem: %+v", val)
 				retVal = c.contextBlock.NewGetElementPtr(val, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(memberIndex), i32.LLVM()))
@@ -123,14 +123,12 @@ func (c *Compiler) compileInitStructWithValues(v *parser.InitializeStructNode) v
 
 	var alloc llvmValue.Value
 
-	currentAlloc := c.contextAlloc[len(c.contextAlloc)-1]
-	if currentAlloc.Escapes {
-		// Allocate on the heap
+	// Allocate on the heap or on the stack
+	if len(c.contextAlloc) > 0 && c.contextAlloc[len(c.contextAlloc)-1].Escapes {
 		mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs.Malloc.LlvmFunction, constant.NewInt(structType.Size(), i64.LLVM()))
 		alloc = c.contextBlock.NewBitCast(mallocatedSpaceRaw, llvmTypes.NewPointer(structType.LLVM()))
 		structType.IsHeapAllocated = true
 	} else {
-		// Stack allocation
 		alloc = c.contextBlock.NewAlloca(structType.LLVM())
 	}
 

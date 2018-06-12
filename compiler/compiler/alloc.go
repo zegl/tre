@@ -75,14 +75,14 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 	}
 
 	// Non-allocation needed structs
-	/*if _, ok := val.Type.(*types.Struct); ok /*&& structVal.IsHeapAllocated {
+	if structVal, ok := val.Type.(*types.Struct); ok && structVal.IsHeapAllocated {
 		c.contextBlockVariables[v.Name] = value.Value{
 			Type:       val.Type,
 			Value:      llvmVal,
 			IsVariable: true,
 		}
 		return
-	}*/
+	}
 
 	if val.IsVariable {
 		llvmVal = c.contextBlock.NewLoad(llvmVal)
