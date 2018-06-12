@@ -6,8 +6,8 @@ import (
 	"github.com/zegl/tre/compiler/lexer"
 )
 
-func (p *parser) parseFor() ForNode {
-	res := ForNode{}
+func (p *parser) parseFor() *ForNode {
+	res := &ForNode{}
 
 	p.i++
 	beforeLoop := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ";"})
@@ -22,7 +22,7 @@ func (p *parser) parseFor() ForNode {
 		panic("Expected only one condition in for loop")
 	}
 
-	if conditionNode, ok := loopCondition[0].(OperatorNode); ok {
+	if conditionNode, ok := loopCondition[0].(*OperatorNode); ok {
 		res.Condition = conditionNode
 	} else {
 		panic(fmt.Sprintf("Expected OperatorNode in for loop. Got: %T: %+v", loopCondition[0], loopCondition[0]))

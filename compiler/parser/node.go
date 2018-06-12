@@ -14,7 +14,7 @@ type Node interface {
 // baseNode implements the Node interface, to recuce code duplication
 type baseNode struct{}
 
-func (n baseNode) Node() {
+func (n *baseNode) Node() {
 
 }
 
@@ -126,7 +126,7 @@ func (cn ConstantNode) String() string {
 type ConditionNode struct {
 	baseNode
 
-	Cond  OperatorNode
+	Cond  *OperatorNode
 	True  []Node
 	False []Node
 }
@@ -142,12 +142,12 @@ type DefineFuncNode struct {
 	Name string
 
 	IsMethod          bool
-	MethodOnType      SingleTypeNode
+	MethodOnType      *SingleTypeNode
 	IsPointerReceiver bool
 	InstanceName      string
 
-	Arguments    []NameNode
-	ReturnValues []NameNode
+	Arguments    []*NameNode
+	ReturnValues []*NameNode
 	Body         []Node
 }
 
@@ -175,7 +175,7 @@ func (nn NameNode) String() string {
 
 type MultiNameNode struct {
 	baseNode
-	Names []NameNode
+	Names []*NameNode
 }
 
 func (n MultiNameNode) String() string {
@@ -198,7 +198,8 @@ type AllocNode struct {
 	baseNode
 
 	Name       string
-	MultiNames MultiNameNode
+	MultiNames *MultiNameNode
+	Escapes    bool
 
 	Val Node
 }
@@ -208,7 +209,7 @@ func (an AllocNode) String() string {
 		return fmt.Sprintf("allocMulti(%+v) = %v", an.MultiNames, an.Val)
 	}
 
-	return fmt.Sprintf("alloc(%s) = %v", an.Name, an.Val)
+	return fmt.Sprintf("alloc(%s) = %v (escapes: %v)", an.Name, an.Val, an.Escapes)
 }
 
 // AssignNode assign Val to Target (or Name)
@@ -308,7 +309,7 @@ type ForNode struct {
 	baseNode
 
 	BeforeLoop     Node
-	Condition      OperatorNode
+	Condition      *OperatorNode
 	AfterIteration Node
 	Block          []Node
 }

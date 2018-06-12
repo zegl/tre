@@ -19,11 +19,11 @@ func infixPrio(input Operator) int {
 // sortInfix maxes sure that the infix operators are applied in the correct order
 //
 // Example: (2 * (3 + 4) gets corrected to ((2 * 3) + 4)
-func sortInfix(left, right OperatorNode) OperatorNode {
+func sortInfix(left, right *OperatorNode) *OperatorNode {
 	if infixPrio(left.Operator) > infixPrio(right.Operator) {
-		return OperatorNode{
+		return &OperatorNode{
 			Operator: right.Operator,
-			Left: OperatorNode{
+			Left: &OperatorNode{
 				Operator: left.Operator,
 				Left:     left.Left,
 				Right:    right.Left,

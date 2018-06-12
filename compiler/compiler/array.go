@@ -10,7 +10,7 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func (c *Compiler) compileLoadArrayElement(v parser.LoadArrayElement) value.Value {
+func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Value {
 	arr := c.compileValue(v.Array)
 	arrayValue := arr.Value
 

@@ -41,21 +41,21 @@ func getTypeID(typeName string) int64 {
 
 func parserTypeToType(typeNode parser.TypeNode) types.Type {
 	switch t := typeNode.(type) {
-	case parser.SingleTypeNode:
+	case *parser.SingleTypeNode:
 		if res, ok := typeConvertMap[t.TypeName]; ok {
 			return res
 		}
 
 		panic("unknown type: " + t.TypeName)
 
-	case parser.ArrayTypeNode:
+	case *parser.ArrayTypeNode:
 		itemType := parserTypeToType(t.ItemType)
 		return &types.Array{
 			Type:     itemType,
 			LlvmType: llvmTypes.NewArray(itemType.LLVM(), t.Len),
 		}
 
-	case parser.StructTypeNode:
+	case *parser.StructTypeNode:
 		var structTypes []llvmTypes.Type
 		members := make(map[string]types.Type)
 		memberIndexes := t.Names
@@ -78,14 +78,14 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 			Type:          llvmTypes.NewStruct(structTypes...),
 		}
 
-	case parser.SliceTypeNode:
+	case *parser.SliceTypeNode:
 		itemType := parserTypeToType(t.ItemType)
 		return &types.Slice{
 			Type:     itemType,
 			LlvmType: internal.Slice(itemType.LLVM()),
 		}
 
-	case parser.InterfaceTypeNode:
+	case *parser.InterfaceTypeNode:
 		requiredMethods := make(map[string]types.InterfaceMethod)
 
 		for name, def := range t.Methods {
@@ -106,7 +106,7 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 
 		return &types.Interface{RequiredMethods: requiredMethods}
 
-	case parser.PointerTypeNode:
+	case *parser.PointerTypeNode:
 		return &types.Pointer{
 			Type: parserTypeToType(t.ValueType),
 		}
@@ -115,7 +115,7 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 	panic(fmt.Sprintf("unknown typeNode: %T", typeNode))
 }
 
-func (c *Compiler) compileTypeCastNode(v parser.TypeCastNode) value.Value {
+func (c *Compiler) compileTypeCastNode(v *parser.TypeCastNode) value.Value {
 	val := c.compileValue(v.Val)
 
 	var current *llvmTypes.IntType
@@ -161,7 +161,7 @@ func (c *Compiler) compileTypeCastNode(v parser.TypeCastNode) value.Value {
 	}
 }
 
-func (c *Compiler) compileTypeCastInterfaceNode(v parser.TypeCastInterfaceNode) value.Value {
+func (c *Compiler) compileTypeCastInterfaceNode(v *parser.TypeCastInterfaceNode) value.Value {
 	tryCastToType := parserTypeToType(v.Type)
 
 	// Allocate the OK variable

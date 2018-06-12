@@ -9,7 +9,7 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func (c *Compiler) lenFuncCall(v parser.CallNode) value.Value {
+func (c *Compiler) lenFuncCall(v *parser.CallNode) value.Value {
 	arg := c.compileValue(v.Arguments[0])
 
 	if arg.Type.Name() == "string" {

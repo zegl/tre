@@ -7,7 +7,14 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func (c *Compiler) compileAllocNode(v parser.AllocNode) {
+func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
+
+	// Push and pop alloc stack
+	c.contextAlloc = append(c.contextAlloc, v)
+	defer func() {
+		c.contextAlloc = c.contextAlloc[0 : len(c.contextAlloc)-1]
+	}()
+
 	// Allocate from type
 	if typeNode, ok := v.Val.(parser.TypeNode); ok {
 		treType := parserTypeToType(typeNode)
@@ -68,14 +75,14 @@ func (c *Compiler) compileAllocNode(v parser.AllocNode) {
 	}
 
 	// Non-allocation needed structs
-	if structVal, ok := val.Type.(*types.Struct); ok && structVal.IsHeapAllocated {
+	/*if _, ok := val.Type.(*types.Struct); ok /*&& structVal.IsHeapAllocated {
 		c.contextBlockVariables[v.Name] = value.Value{
 			Type:       val.Type,
 			Value:      llvmVal,
 			IsVariable: true,
 		}
 		return
-	}
+	}*/
 
 	if val.IsVariable {
 		llvmVal = c.contextBlock.NewLoad(llvmVal)
@@ -94,7 +101,7 @@ func (c *Compiler) compileAllocNode(v parser.AllocNode) {
 	return
 }
 
-func (c *Compiler) compileAssignNode(v parser.AssignNode) {
+func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
 	var dst value.Value
 
 	// TODO: Remove AssignNode.Name
@@ -108,7 +115,7 @@ func (c *Compiler) compileAssignNode(v parser.AssignNode) {
 
 	// Allocate from type
 	if typeNode, ok := v.Val.(parser.TypeNode); ok {
-		if singleTypeNode, ok := typeNode.(parser.SingleTypeNode); ok {
+		if singleTypeNode, ok := typeNode.(*parser.SingleTypeNode); ok {
 			alloc := c.contextBlock.NewAlloca(parserTypeToType(singleTypeNode).LLVM())
 			c.contextBlock.NewStore(c.contextBlock.NewLoad(alloc), llvmDst)
 			return

@@ -13,7 +13,7 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func (c *Compiler) compileSubstring(src value.Value, v parser.SliceArrayNode) value.Value {
+func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) value.Value {
 	srcVal := src.Value
 
 	var originalLength *ir.InstExtractValue
@@ -70,7 +70,7 @@ func (c *Compiler) compileSubstring(src value.Value, v parser.SliceArrayNode) va
 	}
 }
 
-func (c *Compiler) compileSliceArray(src value.Value, v parser.SliceArrayNode) value.Value {
+func (c *Compiler) compileSliceArray(src value.Value, v *parser.SliceArrayNode) value.Value {
 	arrType := src.Type.(*types.Array)
 
 	sliceType := internal.Slice(arrType.Type.LLVM())
@@ -115,7 +115,7 @@ func (c *Compiler) compileSliceArray(src value.Value, v parser.SliceArrayNode) v
 	return res
 }
 
-func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
+func (c *Compiler) appendFuncCall(v *parser.CallNode) value.Value {
 	// 1. Grow the backing array if neccesary (cap == len)
 	// 1.1. Create a new array (at least double the size).
 	// 1.2. Copy all data
@@ -309,7 +309,7 @@ func (c *Compiler) appendFuncCall(v parser.CallNode) value.Value {
 	return sliceToAppendTo
 }
 
-func (c *Compiler) compileInitializeSliceNode(v parser.InitializeSliceNode) value.Value {
+func (c *Compiler) compileInitializeSliceNode(v *parser.InitializeSliceNode) value.Value {
 	itemType := parserTypeToType(v.Type)
 
 	var values []value.Value
