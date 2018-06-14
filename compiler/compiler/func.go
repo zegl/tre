@@ -135,7 +135,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 
 	c.contextFunc = typesFunc
 	c.contextBlock = entry
-	c.contextBlockVariables = make(map[string]value.Value)
+	c.pushVariablesStack()
 
 	// Push to the return values stack
 	if argumentReturnValuesCount > 0 {
@@ -163,20 +163,20 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 			paramPtr := entry.NewAlloca(dataType.LLVM())
 			entry.NewStore(param, paramPtr)
 
-			c.contextBlockVariables[paramName] = value.Value{
+			c.setVar(paramName, value.Value{
 				Value:      paramPtr,
 				Type:       dataType,
 				IsVariable: true,
-			}
+			})
 
 			continue
 		}
 
-		c.contextBlockVariables[paramName] = value.Value{
+		c.setVar(paramName, value.Value{
 			Value:      param,
 			Type:       dataType,
 			IsVariable: false,
-		}
+		})
 	}
 
 	c.compile(v.Body)
@@ -195,6 +195,8 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 	if v.Name == "main" {
 		c.contextBlock.NewRet(constant.NewInt(0, types.I32.LLVM()))
 	}
+
+	c.popVariablesStack()
 }
 
 func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Function) *ir.Function {

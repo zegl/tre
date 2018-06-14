@@ -37,8 +37,10 @@ type Compiler struct {
 	// than one value
 	contextFuncRetVals [][]value.Value
 
-	contextBlock          *ir.BasicBlock
-	contextBlockVariables map[string]value.Value
+	contextBlock *ir.BasicBlock
+
+	// Stack of variables that are in scope
+	contextBlockVariables []map[string]value.Value
 
 	// What a break or continue should resolve to
 	contextLoopBreak    []*ir.BasicBlock
@@ -69,6 +71,8 @@ func NewCompiler() *Compiler {
 		packages: make(map[string]*types.PackageInstance),
 
 		contextFuncRetVals: make([][]value.Value, 0),
+
+		contextBlockVariables: make([]map[string]value.Value, 0),
 
 		contextLoopBreak:    make([]*ir.BasicBlock, 0),
 		contextLoopContinue: make([]*ir.BasicBlock, 0),
@@ -219,9 +223,11 @@ func (c *Compiler) funcByName(name string) *types.Function {
 }
 
 func (c *Compiler) varByName(name string) value.Value {
-	// Named variable in this block?
-	if val, ok := c.contextBlockVariables[name]; ok {
-		return val
+	// Search scope in reverse (most specific first)
+	for i := len(c.contextBlockVariables) - 1; i >= 0; i-- {
+		if val, ok := c.contextBlockVariables[i][name]; ok {
+			return val
+		}
 	}
 
 	// Imported package?
@@ -232,6 +238,18 @@ func (c *Compiler) varByName(name string) value.Value {
 	}
 
 	panic("undefined variable: " + name)
+}
+
+func (c *Compiler) setVar(name string, val value.Value) {
+	c.contextBlockVariables[len(c.contextBlockVariables)-1][name] = val
+}
+
+func (c *Compiler) pushVariablesStack() {
+	c.contextBlockVariables = append(c.contextBlockVariables, make(map[string]value.Value))
+}
+
+func (c *Compiler) popVariablesStack() {
+	c.contextBlockVariables = c.contextBlockVariables[0 : len(c.contextBlockVariables)-1]
 }
 
 func (c *Compiler) compileValue(node parser.Node) value.Value {
