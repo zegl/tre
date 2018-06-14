@@ -36,11 +36,11 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 
 		alloc.SetName(v.Name)
 
-		c.contextBlockVariables[v.Name] = value.Value{
+		c.setVar(v.Name, value.Value{
 			Value:      alloc,
 			Type:       treType,
 			IsVariable: isVariable,
-		}
+		})
 		return
 	}
 
@@ -55,7 +55,7 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 		// Is currently expecting that the variables are already allocated in this block.
 		// Will only add the vars to the map of variables
 		for i, multiVal := range val.MultiValues {
-			c.contextBlockVariables[v.MultiNames.Names[i].Name] = multiVal
+			c.setVar(v.MultiNames.Names[i].Name, multiVal)
 		}
 
 		return
@@ -66,21 +66,21 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 
 	// Non-allocation needed pointers
 	if ptrVal, ok := val.Type.(*types.Pointer); ok && ptrVal.IsNonAllocDereference {
-		c.contextBlockVariables[v.Name] = value.Value{
+		c.setVar(v.Name, value.Value{
 			Type:       val.Type,
 			Value:      llvmVal,
 			IsVariable: false,
-		}
+		})
 		return
 	}
 
 	// Non-allocation needed structs
 	if structVal, ok := val.Type.(*types.Struct); ok && structVal.IsHeapAllocated {
-		c.contextBlockVariables[v.Name] = value.Value{
+		c.setVar(v.Name, value.Value{
 			Type:       val.Type,
 			Value:      llvmVal,
 			IsVariable: true,
-		}
+		})
 		return
 	}
 
@@ -89,14 +89,14 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 	}
 
 	alloc := c.contextBlock.NewAlloca(llvmVal.Type())
-	alloc.SetName(v.Name)
+	alloc.SetName(getVarName(v.Name))
 	c.contextBlock.NewStore(llvmVal, alloc)
 
-	c.contextBlockVariables[v.Name] = value.Value{
+	c.setVar(v.Name, value.Value{
 		Type:       val.Type,
 		Value:      alloc,
 		IsVariable: true,
-	}
+	})
 
 	return
 }

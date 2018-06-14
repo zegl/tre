@@ -112,6 +112,9 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 }
 
 func (c *Compiler) compileConditionNode(v *parser.ConditionNode) {
+
+	c.pushVariablesStack()
+
 	cond := c.compileOperatorNode(v.Cond)
 
 	afterBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-after")
@@ -143,4 +146,6 @@ func (c *Compiler) compileConditionNode(v *parser.ConditionNode) {
 	}
 
 	c.contextBlock = afterBlock
+
+	c.popVariablesStack()
 }
