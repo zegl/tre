@@ -154,20 +154,23 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 		// - a body
 		// - a closing bracket (})
 		if current.Val == "if" {
-			p.i++
-			condNodes := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
 
-			if len(condNodes) != 1 {
-				panic("could not parse if-condition")
-			}
+			getCondition := func() *OperatorNode {
+				p.i++
 
-			var opNode *OperatorNode
+				condNodes := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
+				if len(condNodes) != 1 {
+					panic("could not parse if-condition")
+				}
 
-			if cond, ok := condNodes[0].(*OperatorNode); ok {
-				opNode = cond
-			} else {
+				p.i++
+
+				if cond, ok := condNodes[0].(*OperatorNode); ok {
+					return cond
+				}
+
 				// Add implicit == true
-				opNode = &OperatorNode{
+				return &OperatorNode{
 					Left: condNodes[0],
 					Right: &ConstantNode{
 						Type:  BOOL,
@@ -175,14 +178,51 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 					},
 					Operator: OP_EQ,
 				}
+
 			}
+
+			outerConditionNode := &ConditionNode{
+				Cond: getCondition(),
+				True: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"}),
+			}
+
+			lastConditionNode := outerConditionNode
 
 			p.i++
 
-			return p.aheadParse(&ConditionNode{
-				Cond: opNode,
-				True: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"}),
-			})
+			// Check if the next keyword is "if" + "else" or "else"
+			for {
+				checkIfElse := p.lookAhead(0)
+				if checkIfElse.Type != lexer.KEYWORD || checkIfElse.Val != "else" {
+					break
+				}
+
+				p.i++
+
+				checkIfElseIf := p.lookAhead(0)
+				if checkIfElseIf.Type == lexer.KEYWORD && checkIfElseIf.Val == "if" {
+
+					newCondNode := &ConditionNode{
+						Cond: getCondition(),
+						True: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"}),
+					}
+
+					lastConditionNode.False = []Node{newCondNode}
+					lastConditionNode = newCondNode
+					p.i++
+					continue
+				}
+
+				expectOpenBrack := p.lookAhead(0)
+				if expectOpenBrack.Type != lexer.SEPARATOR || expectOpenBrack.Val != "{" {
+					panic("Expected { after else")
+				}
+
+				p.i++
+				lastConditionNode.False = p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+			}
+
+			return outerConditionNode
 		}
 
 		// "func" gets converted into a DefineFuncNode
