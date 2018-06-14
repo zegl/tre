@@ -121,6 +121,9 @@ func (c *Compiler) compileConditionNode(v *parser.ConditionNode) {
 	trueBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-true")
 	falseBlock := afterBlock
 
+	// push afterBlock stack
+	c.contextCondAfter = append(c.contextCondAfter, afterBlock)
+
 	if len(v.False) > 0 {
 		falseBlock = c.contextBlock.Parent.NewBlock(getBlockName() + "-false")
 	}
@@ -146,6 +149,14 @@ func (c *Compiler) compileConditionNode(v *parser.ConditionNode) {
 	}
 
 	c.contextBlock = afterBlock
+
+	// pop after block stack
+	c.contextCondAfter = c.contextCondAfter[0 : len(c.contextCondAfter)-1]
+
+	// set after block to jump to the after block
+	if len(c.contextCondAfter) > 0 {
+		afterBlock.NewBr(c.contextCondAfter[len(c.contextCondAfter)-1])
+	}
 
 	c.popVariablesStack()
 }

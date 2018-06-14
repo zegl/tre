@@ -46,6 +46,9 @@ type Compiler struct {
 	contextLoopBreak    []*ir.BasicBlock
 	contextLoopContinue []*ir.BasicBlock
 
+	// Where a condition should jump when done
+	contextCondAfter []*ir.BasicBlock
+
 	// What type the current assign operation is assigning to.
 	// Is used when evaluating what type an integer constant should be.
 	contextAssignDest []value.Value
@@ -76,6 +79,7 @@ func NewCompiler() *Compiler {
 
 		contextLoopBreak:    make([]*ir.BasicBlock, 0),
 		contextLoopContinue: make([]*ir.BasicBlock, 0),
+		contextCondAfter:    make([]*ir.BasicBlock, 0),
 
 		contextAssignDest: make([]value.Value, 0),
 
