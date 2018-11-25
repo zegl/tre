@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"github.com/llir/llvm/ir/constant"
+	llvmTypes "github.com/llir/llvm/ir/types"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
@@ -13,7 +14,7 @@ func (c *Compiler) compileNegateBoolNode(v *parser.NegateNode) value.Value {
 
 	return value.Value{
 		Type:       types.Bool,
-		Value:      c.contextBlock.NewXor(loadedVal, constant.NewInt(1, types.Bool.LLVM())),
+		Value:      c.contextBlock.NewXor(loadedVal, constant.NewInt(llvmTypes.I1, 1)),
 		IsVariable: false,
 	}
 }

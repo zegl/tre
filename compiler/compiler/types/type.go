@@ -71,8 +71,8 @@ func (s Struct) Name() string {
 func (s Struct) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
 	for key, valType := range s.Members {
 		ptr := block.NewGetElementPtr(alloca,
-			constant.NewInt(0, I32.LLVM()),
-			constant.NewInt(int64(s.MemberIndexes[key]), I32.LLVM()),
+			constant.NewInt(types.I32, 0),
+			constant.NewInt(types.I32, int64(s.MemberIndexes[key])),
 		)
 		valType.Zero(block, ptr)
 	}
@@ -146,7 +146,7 @@ func (BoolType) Size() int64 {
 }
 
 func (b BoolType) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
-	block.NewStore(constant.NewInt(0, b.LLVM()), alloca)
+	block.NewStore(constant.NewInt(types.I1, 0), alloca)
 }
 
 type VoidType struct {
@@ -168,7 +168,7 @@ func (VoidType) Size() int64 {
 type Int struct {
 	backingType
 
-	Type     types.Type
+	Type     *types.IntType
 	TypeName string
 	TypeSize int64
 }
@@ -186,7 +186,7 @@ func (i Int) Size() int64 {
 }
 
 func (i Int) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
-	block.NewStore(constant.NewInt(0, i.Type), alloca)
+	block.NewStore(constant.NewInt(i.Type, 0), alloca)
 }
 
 type StringType struct {
@@ -211,9 +211,9 @@ func (StringType) Size() int64 {
 }
 
 func (s StringType) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
-	lenPtr := block.NewGetElementPtr(alloca, constant.NewInt(0, types.I32), constant.NewInt(0, types.I32))
-	backingDataPtr := block.NewGetElementPtr(alloca, constant.NewInt(0, types.I32), constant.NewInt(1, types.I32))
-	block.NewStore(constant.NewInt(0, types.I64), lenPtr)
+	lenPtr := block.NewGetElementPtr(alloca, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
+	backingDataPtr := block.NewGetElementPtr(alloca, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 1))
+	block.NewStore(constant.NewInt(types.I64, 0), lenPtr)
 	block.NewStore(strings.Toi8Ptr(block, EmptyStringConstant), backingDataPtr)
 }
 
@@ -258,16 +258,16 @@ func (s Slice) SliceZero(block *ir.BasicBlock, mallocFunc llvmValue.Named, initC
 
 	emptySlize := block.NewAlloca(s.LLVM())
 
-	len := block.NewGetElementPtr(emptySlize, constant.NewInt(0, types.I32), constant.NewInt(0, types.I32))
-	cap := block.NewGetElementPtr(emptySlize, constant.NewInt(0, types.I32), constant.NewInt(1, types.I32))
-	offset := block.NewGetElementPtr(emptySlize, constant.NewInt(0, types.I32), constant.NewInt(2, types.I32))
-	backingArray := block.NewGetElementPtr(emptySlize, constant.NewInt(0, types.I32), constant.NewInt(3, types.I32))
+	len := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
+	cap := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 1))
+	offset := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 2))
+	backingArray := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 3))
 
-	block.NewStore(constant.NewInt(0, types.I32), len)
-	block.NewStore(constant.NewInt(int64(initCap), types.I32), cap)
-	block.NewStore(constant.NewInt(0, types.I32), offset)
+	block.NewStore(constant.NewInt(types.I32, 0), len)
+	block.NewStore(constant.NewInt(types.I32, int64(initCap)), cap)
+	block.NewStore(constant.NewInt(types.I32, 0), offset)
 
-	mallocatedSpaceRaw := block.NewCall(mallocFunc, constant.NewInt(int64(initCap)*s.Type.Size(), types.I64))
+	mallocatedSpaceRaw := block.NewCall(mallocFunc, constant.NewInt(types.I64, int64(initCap)*s.Type.Size()))
 	bitcasted := block.NewBitCast(mallocatedSpaceRaw, types.NewPointer(s.Type.LLVM()))
 	block.NewStore(bitcasted, backingArray)
 

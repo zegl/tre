@@ -3,6 +3,7 @@ package compiler
 import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
+	"github.com/llir/llvm/ir/enum"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
 	"github.com/zegl/tre/compiler/compiler/types"
@@ -21,7 +22,7 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 	}
 
 	var runtimeLength llvmValue.Value
-	var compileTimeLenght int64
+	var compileTimeLength uint64
 	lengthKnownAtCompileTime := false
 	lengthKnownAtRunTime := false
 	isLlvmArrayBased := false
@@ -30,7 +31,7 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 	// Length of array
 	if arr, ok := arr.Type.(*types.Array); ok {
 		if arrayType, ok := arr.LlvmType.(*llvmTypes.ArrayType); ok {
-			compileTimeLenght = arrayType.Len
+			compileTimeLength = arrayType.Len
 			lengthKnownAtCompileTime = true
 			retType = arr.Type
 			isLlvmArrayBased = true
@@ -63,17 +64,17 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 		sliceValue := arrayValue
 
 		// Length of the slice
-		runtimeLength = c.contextBlock.NewExtractValue(sliceValue, []int64{0})
+		runtimeLength = c.contextBlock.NewExtractValue(sliceValue, 0)
 
 		// Add offset to indexVal
-		backingArrayOffset := c.contextBlock.NewExtractValue(sliceValue, []int64{2})
+		backingArrayOffset := c.contextBlock.NewExtractValue(sliceValue, 2)
 		indexVal = c.contextBlock.NewAdd(indexVal, backingArrayOffset)
 
 		// Add offset to runtimeLength
 		runtimeLength = c.contextBlock.NewAdd(runtimeLength, backingArrayOffset)
 
 		// Backing array
-		arrayValue = c.contextBlock.NewExtractValue(sliceValue, []int64{3})
+		arrayValue = c.contextBlock.NewExtractValue(sliceValue, 3)
 	}
 
 	// Length of string
@@ -84,9 +85,9 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 				arrayValue = c.contextBlock.NewLoad(arrayValue)
 			}
 
-			runtimeLength = c.contextBlock.NewExtractValue(arrayValue, []int64{0})
+			runtimeLength = c.contextBlock.NewExtractValue(arrayValue, 0)
 			// Get backing array
-			arrayValue = c.contextBlock.NewExtractValue(arrayValue, []int64{1})
+			arrayValue = c.contextBlock.NewExtractValue(arrayValue, 1)
 			lengthKnownAtRunTime = true
 			retType = types.I8
 			isLlvmArrayBased = false
@@ -100,7 +101,7 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 	isCheckedAtCompileTime := false
 
 	if lengthKnownAtCompileTime {
-		if compileTimeLenght < 0 {
+		if compileTimeLength < 0 {
 			compilePanic("index out of range")
 		}
 
@@ -108,7 +109,7 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 			if intType.X.IsInt64() {
 				isCheckedAtCompileTime = true
 
-				if intType.X.Int64() > compileTimeLenght {
+				if intType.X.Uint64() > compileTimeLength {
 					compilePanic("index out of range")
 				}
 			}
@@ -124,13 +125,13 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 
 		var runtimeOrCompiletimeCmp *ir.InstICmp
 		if lengthKnownAtCompileTime {
-			runtimeOrCompiletimeCmp = c.contextBlock.NewICmp(ir.IntSGE, indexVal, constant.NewInt(compileTimeLenght, i32.LLVM()))
+			runtimeOrCompiletimeCmp = c.contextBlock.NewICmp(enum.IPredSGE, indexVal, constant.NewInt(llvmTypes.I32, int64(compileTimeLength)))
 		} else {
-			runtimeOrCompiletimeCmp = c.contextBlock.NewICmp(ir.IntSGE, indexVal, runtimeLength)
+			runtimeOrCompiletimeCmp = c.contextBlock.NewICmp(enum.IPredSGE, indexVal, runtimeLength)
 		}
 
 		outOfRangeCmp := c.contextBlock.NewOr(
-			c.contextBlock.NewICmp(ir.IntSLT, indexVal, constant.NewInt(0, i64.LLVM())),
+			c.contextBlock.NewICmp(enum.IPredSLT, indexVal, constant.NewInt(llvmTypes.I64, 0)),
 			runtimeOrCompiletimeCmp,
 		)
 
@@ -141,7 +142,7 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 
 	var indicies []llvmValue.Value
 	if isLlvmArrayBased {
-		indicies = append(indicies, constant.NewInt(0, i64.LLVM()))
+		indicies = append(indicies, constant.NewInt(llvmTypes.I64, 0))
 	}
 	indicies = append(indicies, indexVal)
 

@@ -35,7 +35,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 		compiledName = c.currentPackageName + "_" + v.Name
 	}
 
-	llvmParams := make([]*llvmTypes.Param, len(v.Arguments))
+	llvmParams := make([]*ir.Param, len(v.Arguments))
 	treParams := make([]types.Type, len(v.Arguments))
 
 	isVariadicFunc := false
@@ -77,7 +77,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 	} else if len(v.ReturnValues) > 0 {
 		// Return values via argument pointers
 		// The return values goes first
-		var llvmReturnTypesParams []*llvmTypes.Param
+		var llvmReturnTypesParams []*ir.Param
 
 		for _, ret := range v.ReturnValues {
 			t := parserTypeToType(ret.Type)
@@ -102,7 +102,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 	}
 
 	// Create a new function, and add it to the list of global functions
-	fn := c.module.NewFunction(compiledName, funcRetType.LLVM(), llvmParams...)
+	fn := c.module.NewFunc(compiledName, funcRetType.LLVM(), llvmParams...)
 
 	typesFunc := &types.Function{
 		LlvmFunction:   fn,
@@ -193,7 +193,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 
 	// Return 0 by default in main func
 	if v.Name == "main" {
-		c.contextBlock.NewRet(constant.NewInt(0, types.I32.LLVM()))
+		c.contextBlock.NewRet(constant.NewInt(llvmTypes.I32, 0))
 	}
 
 	c.popVariablesStack()
@@ -201,12 +201,12 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 
 func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Function) *ir.Function {
 	// Copy parameter types so that we can modify them
-	params := make([]*llvmTypes.Param, len(targetFunc.Sig.Params))
-	for i, p := range targetFunc.Sig.Params {
+	params := make([]*ir.Param, len(targetFunc.Sig.Params))
+	for i, p := range targetFunc.Params {
 		params[i] = ir.NewParam("", p.Type())
 	}
 
-	originalType := targetFunc.Sig.Params[0].Type()
+	originalType := targetFunc.Params[0].Type()
 	_, isPointerType := originalType.(*llvmTypes.PointerType)
 	if !isPointerType {
 		originalType = llvmTypes.NewPointer(originalType)
@@ -216,7 +216,7 @@ func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Function) *ir.Funct
 	// Will be bitcasted later to the target type
 	params[0] = ir.NewParam("unsafe-ptr", llvmTypes.NewPointer(llvmTypes.I8))
 
-	fn := c.module.NewFunction(targetFunc.Name+"_jump", targetFunc.Sig.Ret, params...)
+	fn := c.module.NewFunc(targetFunc.Name()+"_jump", targetFunc.Sig.RetType, params...)
 	block := fn.NewBlock(getBlockName())
 
 	var bitcasted llvmValue.Value = block.NewBitCast(params[0], originalType)
@@ -233,7 +233,7 @@ func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Function) *ir.Funct
 
 	resVal := block.NewCall(targetFunc, callArgs...)
 
-	if _, ok := targetFunc.Sig.Ret.(*llvmTypes.VoidType); ok {
+	if _, ok := targetFunc.Sig.RetType.(*llvmTypes.VoidType); ok {
 		block.NewRet(nil)
 	} else {
 		block.NewRet(resVal)
@@ -318,7 +318,7 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 			args = methodCallArgs
 		} else if ifaceMethod, ok := funcByVal.Type.(*types.InterfaceMethod); ok {
 
-			ifaceInstance := c.contextBlock.NewGetElementPtr(funcByVal.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+			ifaceInstance := c.contextBlock.NewGetElementPtr(funcByVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
 			ifaceInstanceLoad := c.contextBlock.NewLoad(ifaceInstance)
 
 			// Add instance as the first argument
@@ -393,12 +393,12 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 		// Convert strings and arrays to i8* when calling external functions
 		if fn.IsExternal {
 			if v.Type.Name() == "string" {
-				llvmArgs[i] = c.contextBlock.NewExtractValue(val, []int64{1})
+				llvmArgs[i] = c.contextBlock.NewExtractValue(val, 1)
 				continue
 			}
 
 			if v.Type.Name() == "array" {
-				llvmArgs[i] = c.contextBlock.NewExtractValue(val, []int64{1})
+				llvmArgs[i] = c.contextBlock.NewExtractValue(val, 1)
 				continue
 			}
 		}

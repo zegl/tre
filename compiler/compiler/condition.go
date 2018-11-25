@@ -7,19 +7,20 @@ import (
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
 
-	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
+	"github.com/llir/llvm/ir/enum"
+	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
 )
 
-func getConditionLLVMpred(operator parser.Operator) ir.IntPred {
-	m := map[parser.Operator]ir.IntPred{
-		parser.OP_GT:   ir.IntSGT,
-		parser.OP_GTEQ: ir.IntSGE,
-		parser.OP_LT:   ir.IntSLT,
-		parser.OP_LTEQ: ir.IntSLE,
-		parser.OP_EQ:   ir.IntEQ,
-		parser.OP_NEQ:  ir.IntNE,
+func getConditionLLVMpred(operator parser.Operator) enum.IPred {
+	m := map[parser.Operator]enum.IPred{
+		parser.OP_GT:   enum.IPredSGT,
+		parser.OP_GTEQ: enum.IPredSGE,
+		parser.OP_LT:   enum.IPredSLT,
+		parser.OP_LTEQ: enum.IPredSLE,
+		parser.OP_EQ:   enum.IPredEQ,
+		parser.OP_NEQ:  enum.IPredNE,
 	}
 
 	if op, ok := m[operator]; ok {
@@ -48,30 +49,30 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 		panic(fmt.Sprintf("Different types in operation: %T and %T (%+v and %+v)", left.Type, right.Type, leftLLVM.Type(), rightLLVM.Type()))
 	}
 
-	switch leftLLVM.Type().GetName() {
+	switch leftLLVM.Type().Name() {
 	case "string":
 		if v.Operator == parser.OP_ADD {
-			leftLen := c.contextBlock.NewExtractValue(leftLLVM, []int64{0})
-			rightLen := c.contextBlock.NewExtractValue(rightLLVM, []int64{0})
+			leftLen := c.contextBlock.NewExtractValue(leftLLVM, 0)
+			rightLen := c.contextBlock.NewExtractValue(rightLLVM, 0)
 			sumLen := c.contextBlock.NewAdd(leftLen, rightLen)
 
 			backingArray := c.contextBlock.NewAlloca(i8.LLVM())
 			backingArray.NElems = sumLen
 
 			// Copy left to new backing array
-			c.contextBlock.NewCall(c.externalFuncs.Strcpy.LlvmFunction, backingArray, c.contextBlock.NewExtractValue(leftLLVM, []int64{1}))
+			c.contextBlock.NewCall(c.externalFuncs.Strcpy.LlvmFunction, backingArray, c.contextBlock.NewExtractValue(leftLLVM, 1))
 
 			// Append right to backing array
-			c.contextBlock.NewCall(c.externalFuncs.Strcat.LlvmFunction, backingArray, c.contextBlock.NewExtractValue(rightLLVM, []int64{1}))
+			c.contextBlock.NewCall(c.externalFuncs.Strcat.LlvmFunction, backingArray, c.contextBlock.NewExtractValue(rightLLVM, 1))
 
 			alloc := c.contextBlock.NewAlloca(typeConvertMap["string"].LLVM())
 
 			// Save length of the string
-			lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+			lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
 			c.contextBlock.NewStore(sumLen, lenItem)
 
 			// Save i8* version of string
-			strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
+			strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
 			c.contextBlock.NewStore(backingArray, strItem)
 
 			return value.Value{
