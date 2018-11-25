@@ -8,12 +8,13 @@ import (
 
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
+	llvmTypes "github.com/llir/llvm/ir/types"
 )
 
 func (c *Compiler) compileConstantNode(v *parser.ConstantNode) value.Value {
 	switch v.Type {
 	case parser.NUMBER:
-		var intType types.Type = i64
+		var intType *types.Int = i64
 
 		// Use context to detect which type that should be returned
 		// Is used to detect if a number should be i32 or i64 etc...
@@ -23,12 +24,12 @@ func (c *Compiler) compileConstantNode(v *parser.ConstantNode) value.Value {
 		}
 
 		// Create the correct type of int based on context
-		if _, ok := wantedType.(*types.Int); ok {
-			intType = wantedType
+		if t, ok := wantedType.(*types.Int); ok {
+			intType = t
 		}
 
 		return value.Value{
-			Value:      constant.NewInt(v.Value, intType.LLVM()),
+			Value:      constant.NewInt(intType.Type, v.Value),
 			Type:       i64,
 			IsVariable: false,
 		}
@@ -41,18 +42,18 @@ func (c *Compiler) compileConstantNode(v *parser.ConstantNode) value.Value {
 			constString = reusedConst
 		} else {
 			constString = c.module.NewGlobalDef(strings.NextStringName(), strings.Constant(v.ValueStr))
-			constString.IsConst = true
+			constString.Immutable = true
 			c.stringConstants[v.ValueStr] = constString
 		}
 
 		alloc := c.contextBlock.NewAlloca(typeConvertMap["string"].LLVM())
 
 		// Save length of the string
-		lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
-		c.contextBlock.NewStore(constant.NewInt(int64(len(v.ValueStr)), i64.LLVM()), lenItem)
+		lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
+		c.contextBlock.NewStore(constant.NewInt(llvmTypes.I64, int64(len(v.ValueStr))), lenItem)
 
 		// Save i8* version of string
-		strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
+		strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
 		c.contextBlock.NewStore(strings.Toi8Ptr(c.contextBlock, constString), strItem)
 
 		return value.Value{
@@ -63,7 +64,7 @@ func (c *Compiler) compileConstantNode(v *parser.ConstantNode) value.Value {
 
 	case parser.BOOL:
 		return value.Value{
-			Value:      constant.NewInt(v.Value, types.Bool.LLVM()),
+			Value:      constant.NewInt(llvmTypes.I1, v.Value),
 			Type:       types.Bool,
 			IsVariable: false,
 		}

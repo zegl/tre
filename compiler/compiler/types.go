@@ -9,8 +9,8 @@ import (
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/parser"
 
-	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
+	"github.com/llir/llvm/ir/enum"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
 )
@@ -52,7 +52,7 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 		itemType := parserTypeToType(t.ItemType)
 		return &types.Array{
 			Type:     itemType,
-			LlvmType: llvmTypes.NewArray(itemType.LLVM(), t.Len),
+			LlvmType: llvmTypes.NewArray(uint64(t.Len), itemType.LLVM()),
 		}
 
 	case *parser.StructTypeNode:
@@ -138,7 +138,7 @@ func (c *Compiler) compileTypeCastNode(v *parser.TypeCastNode) value.Value {
 	}
 
 	// Same size, nothing to do here
-	if current.Size == target.Size {
+	if current.BitSize == target.BitSize {
 		return val
 	}
 
@@ -146,7 +146,7 @@ func (c *Compiler) compileTypeCastNode(v *parser.TypeCastNode) value.Value {
 
 	var changedSize llvmValue.Value
 
-	if current.Size < target.Size {
+	if current.BitSize < target.BitSize {
 		changedSize = c.contextBlock.NewSExt(llvmVal, target)
 	} else {
 		changedSize = c.contextBlock.NewTrunc(llvmVal, target)
@@ -175,7 +175,7 @@ func (c *Compiler) compileTypeCastInterfaceNode(v *parser.TypeCastInterfaceNode)
 
 	interfaceVal := c.compileValue(v.Item)
 
-	interfaceDataType := c.contextBlock.NewGetElementPtr(interfaceVal.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
+	interfaceDataType := c.contextBlock.NewGetElementPtr(interfaceVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
 	loadedInterfaceDataType := c.contextBlock.NewLoad(interfaceDataType)
 
 	trueBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-was-correct-type")
@@ -186,12 +186,12 @@ func (c *Compiler) compileTypeCastInterfaceNode(v *parser.TypeCastInterfaceNode)
 	falseBlock.NewBr(afterBlock)
 
 	backingTypeID := getTypeID(tryCastToType.Name())
-	cmp := c.contextBlock.NewICmp(ir.IntEQ, loadedInterfaceDataType, constant.NewInt(backingTypeID, i32.LLVM()))
+	cmp := c.contextBlock.NewICmp(enum.IPredEQ, loadedInterfaceDataType, constant.NewInt(llvmTypes.I32, backingTypeID))
 	c.contextBlock.NewCondBr(cmp, trueBlock, falseBlock)
 
-	trueBlock.NewStore(constant.NewInt(1, types.Bool.LLVM()), okVal)
+	trueBlock.NewStore(constant.NewInt(llvmTypes.I32, 1), okVal)
 
-	backingDataPtr := trueBlock.NewGetElementPtr(interfaceVal.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+	backingDataPtr := trueBlock.NewGetElementPtr(interfaceVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
 	loadedBackingDataPtr := trueBlock.NewLoad(backingDataPtr)
 	casted := trueBlock.NewBitCast(loadedBackingDataPtr, llvmTypes.NewPointer(tryCastToType.LLVM()))
 	loadedCasted := trueBlock.NewLoad(casted)

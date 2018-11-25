@@ -34,21 +34,21 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 
 	ifaceStruct := c.contextBlock.NewAlloca(targetType.LLVM())
 
-	dataPtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(0, i32.LLVM()), constant.NewInt(0, i32.LLVM()))
+	dataPtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
 	bitcastedVal := c.contextBlock.NewBitCast(val, llvmTypes.NewPointer(llvmTypes.I8))
 	c.contextBlock.NewStore(bitcastedVal, dataPtr)
 
-	dataTypePtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(0, i32.LLVM()), constant.NewInt(1, i32.LLVM()))
+	dataTypePtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
 
 	backingTypID := getTypeID(v.Type.Name())
-	c.contextBlock.NewStore(constant.NewInt(backingTypID, i32.LLVM()), dataTypePtr)
+	c.contextBlock.NewStore(constant.NewInt(llvmTypes.I32, backingTypID), dataTypePtr)
 
 	// Create interface jump table if needed
 	var funcTableAlloca *ir.InstAlloca
 	if len(iface.RequiredMethods) > 0 {
 		funcTablePtr := c.contextBlock.NewGetElementPtr(ifaceStruct,
-			constant.NewInt(0, i32.LLVM()),
-			constant.NewInt(2, i32.LLVM()),
+			constant.NewInt(llvmTypes.I32, 0),
+			constant.NewInt(llvmTypes.I32, 2),
 		)
 		funcTableAlloca = c.contextBlock.NewAlloca(iface.JumpTable())
 		c.contextBlock.NewStore(funcTableAlloca, funcTablePtr)
@@ -64,8 +64,8 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 	// Add methods to the iface table
 	for methodIndex, methodName := range iface.SortedRequiredMethods() {
 		functionPointer := c.contextBlock.NewGetElementPtr(funcTableAlloca,
-			constant.NewInt(0, i32.LLVM()),
-			constant.NewInt(int64(methodIndex), i32.LLVM()),
+			constant.NewInt(llvmTypes.I32, 0),
+			constant.NewInt(llvmTypes.I32, int64(methodIndex)),
 		)
 
 		m, ok := useFuncsFromType.GetMethod(methodName)

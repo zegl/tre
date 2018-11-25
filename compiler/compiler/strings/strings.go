@@ -10,28 +10,16 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
-func Constant(in string) *constant.Array {
-	var constants []constant.Constant
-
-	for _, char := range in {
-		constants = append(constants, constant.NewInt(int64(char), types.I8))
-	}
-
-	// null
-	constants = append(constants, constant.NewInt(0, types.I8))
-
-	s := constant.NewArray(constants...)
-	s.CharArray = true
-
-	return s
+func Constant(in string) *constant.CharArray {
+	return constant.NewCharArray([]byte(in))
 }
 
 func Toi8Ptr(block *ir.BasicBlock, src value.Value) *ir.InstGetElementPtr {
-	return block.NewGetElementPtr(src, constant.NewInt(0, types.I64), constant.NewInt(0, types.I64))
+	return block.NewGetElementPtr(src, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, 0))
 }
 
 func TreStringToi8Ptr(block *ir.BasicBlock, src value.Value) *ir.InstExtractValue {
-	return block.NewExtractValue(src, []int64{1})
+	return block.NewExtractValue(src, 1)
 }
 
 var globalStringCounter uint
