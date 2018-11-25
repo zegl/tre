@@ -19,7 +19,7 @@ func (c *Compiler) capFuncCall(v *parser.CallNode) value.Value {
 		}
 
 		return value.Value{
-			Value:      c.contextBlock.NewExtractValue(val, []int64{1}),
+			Value:      c.contextBlock.NewExtractValue(val, 1),
 			Type:       i64,
 			IsVariable: false,
 		}

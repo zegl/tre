@@ -15,6 +15,7 @@ import (
 
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
+	llvmTypes "github.com/llir/llvm/ir/types"
 )
 
 type Compiler struct {
@@ -152,11 +153,11 @@ func (c *Compiler) GetIR() string {
 }
 
 func (c *Compiler) addGlobal() {
-	types.ModuleStringType = c.module.NewType("string", internal.String())
+	types.ModuleStringType = c.module.NewTypeDef("string", internal.String())
 
 	// Create empty string constant
 	types.EmptyStringConstant = c.module.NewGlobalDef(strings.NextStringName(), strings.Constant(""))
-	types.EmptyStringConstant.IsConst = true
+	types.EmptyStringConstant.Immutable = true
 
 	// len_string
 	strLen := internal.StringLen(types.ModuleStringType)
@@ -164,7 +165,7 @@ func (c *Compiler) addGlobal() {
 		LlvmFunction:   strLen,
 		LlvmReturnType: types.I64,
 	}
-	c.module.AppendFunction(strLen)
+	c.module.Funcs = append(c.module.Funcs, strLen)
 }
 
 func (c *Compiler) compile(instructions []parser.Node) {
@@ -200,7 +201,7 @@ func (c *Compiler) compile(instructions []parser.Node) {
 			// Add type to module and override the structtype to use the named
 			// type in the module
 			if structType, ok := t.(*types.Struct); ok {
-				structType.Type = c.module.NewType(v.Name, t.LLVM())
+				structType.Type = c.module.NewTypeDef(v.Name, t.LLVM())
 			}
 
 			// Add to tre mapping
@@ -300,9 +301,9 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 
 func (c *Compiler) panic(block *ir.BasicBlock, message string) {
 	globMsg := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant("runtime panic: "+message+"\n"))
-	globMsg.IsConst = true
+	globMsg.Immutable = true
 	block.NewCall(c.externalFuncs.Printf.LlvmFunction, strings.Toi8Ptr(block, globMsg))
-	block.NewCall(c.externalFuncs.Exit.LlvmFunction, constant.NewInt(1, i32.LLVM()))
+	block.NewCall(c.externalFuncs.Exit.LlvmFunction, constant.NewInt(llvmTypes.I32, 1))
 }
 
 type Panic string

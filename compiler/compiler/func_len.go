@@ -29,9 +29,9 @@ func (c *Compiler) lenFuncCall(v *parser.CallNode) value.Value {
 
 	if arg.Type.Name() == "array" {
 		if ptrType, ok := arg.Value.Type().(*llvmTypes.PointerType); ok {
-			if arrayType, ok := ptrType.Elem.(*llvmTypes.ArrayType); ok {
+			if arrayType, ok := ptrType.ElemType.(*llvmTypes.ArrayType); ok {
 				return value.Value{
-					Value:      constant.NewInt(arrayType.Len, i64.LLVM()),
+					Value:      constant.NewInt(llvmTypes.I64, int64(arrayType.Len)),
 					Type:       i64,
 					IsVariable: false,
 				}
@@ -49,7 +49,7 @@ func (c *Compiler) lenFuncCall(v *parser.CallNode) value.Value {
 		}
 
 		return value.Value{
-			Value:      c.contextBlock.NewExtractValue(val, []int64{0}),
+			Value:      c.contextBlock.NewExtractValue(val, 0),
 			Type:       i64,
 			IsVariable: false,
 		}

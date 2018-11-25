@@ -58,9 +58,9 @@ func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode)
 			if isPointer && !isPointerNonAllocDereference && structType.IsHeapAllocated {
 				val = c.contextBlock.NewLoad(src.Value)
 				log.Printf("mem: %+v", val)
-				retVal = c.contextBlock.NewGetElementPtr(val, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(memberIndex), i32.LLVM()))
+				retVal = c.contextBlock.NewGetElementPtr(val, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(memberIndex)))
 			} else {
-				retVal = c.contextBlock.NewGetElementPtr(val, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(memberIndex), i32.LLVM()))
+				retVal = c.contextBlock.NewGetElementPtr(val, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(memberIndex)))
 			}
 
 			return value.Value{
@@ -94,9 +94,9 @@ func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode)
 			}
 
 			// Load jump function
-			jumpTable := c.contextBlock.NewGetElementPtr(src.Value, constant.NewInt(0, i32.LLVM()), constant.NewInt(2, i32.LLVM()))
+			jumpTable := c.contextBlock.NewGetElementPtr(src.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 2))
 			jumpLoad := c.contextBlock.NewLoad(jumpTable)
-			jumpFunc := c.contextBlock.NewGetElementPtr(jumpLoad, constant.NewInt(0, i32.LLVM()), constant.NewInt(methodIndex, i32.LLVM()))
+			jumpFunc := c.contextBlock.NewGetElementPtr(jumpLoad, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, methodIndex))
 			jumpFuncLoad := c.contextBlock.NewLoad(jumpFunc)
 
 			// Set jump function
@@ -125,7 +125,7 @@ func (c *Compiler) compileInitStructWithValues(v *parser.InitializeStructNode) v
 
 	// Allocate on the heap or on the stack
 	if len(c.contextAlloc) > 0 && c.contextAlloc[len(c.contextAlloc)-1].Escapes {
-		mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs.Malloc.LlvmFunction, constant.NewInt(structType.Size(), i64.LLVM()))
+		mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs.Malloc.LlvmFunction, constant.NewInt(llvmTypes.I64, structType.Size()))
 		alloc = c.contextBlock.NewBitCast(mallocatedSpaceRaw, llvmTypes.NewPointer(structType.LLVM()))
 		structType.IsHeapAllocated = true
 	} else {
@@ -140,7 +140,7 @@ func (c *Compiler) compileInitStructWithValues(v *parser.InitializeStructNode) v
 			panic("Unknown struct key: " + key)
 		}
 
-		itemPtr := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(0, i32.LLVM()), constant.NewInt(int64(keyIndex), i32.LLVM()))
+		itemPtr := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(keyIndex)))
 		itemPtr.SetName(getVarName(key))
 
 		compiledVal := c.compileValue(val)

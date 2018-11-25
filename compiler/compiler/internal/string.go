@@ -14,8 +14,8 @@ func String() *types.StructType {
 
 func StringLen(stringType types.Type) *ir.Function {
 	param := ir.NewParam("input", stringType)
-	res := ir.NewFunction("string_len", types.I64, param)
+	res := ir.NewFunc("string_len", types.I64, param)
 	block := res.NewBlock("entry")
-	block.NewRet(block.NewExtractValue(param, []int64{0}))
+	block.NewRet(block.NewExtractValue(param, 0))
 	return res
 }
