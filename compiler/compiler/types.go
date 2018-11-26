@@ -189,7 +189,7 @@ func (c *Compiler) compileTypeCastInterfaceNode(v *parser.TypeCastInterfaceNode)
 	cmp := c.contextBlock.NewICmp(enum.IPredEQ, loadedInterfaceDataType, constant.NewInt(llvmTypes.I32, backingTypeID))
 	c.contextBlock.NewCondBr(cmp, trueBlock, falseBlock)
 
-	trueBlock.NewStore(constant.NewInt(llvmTypes.I32, 1), okVal)
+	trueBlock.NewStore(constant.NewInt(llvmTypes.I1, 1), okVal)
 
 	backingDataPtr := trueBlock.NewGetElementPtr(interfaceVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
 	loadedBackingDataPtr := trueBlock.NewLoad(backingDataPtr)
