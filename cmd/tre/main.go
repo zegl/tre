@@ -15,7 +15,7 @@ func main() {
 
 	debug := len(os.Args) > 2 && os.Args[2] == "--debug"
 
-	err := build.Build(os.Args[1], debug)
+	err := build.Build(os.Args[1], "output-binary", debug)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)

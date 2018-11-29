@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"errors"
-	gobuild "go/build"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -14,24 +13,21 @@ import (
 )
 
 func TestAllPrograms(t *testing.T) {
-	bindir := gobuild.Default.GOPATH + "/src/github.com/zegl/tre/compiler"
-	testsdir := gobuild.Default.GOPATH + "/src/github.com/zegl/tre/compiler/testdata"
-
-	files, _ := ioutil.ReadDir(testsdir)
+	files, _ := ioutil.ReadDir("testdata")
 	if len(files) == 0 {
 		t.Error("No test files found")
 	}
 
 	for _, file := range files {
 		t.Run(file.Name(), func(t *testing.T) {
-			if err := buildRunAndCheck(t, bindir, testsdir+"/"+file.Name()); err != nil {
+			if err := buildRunAndCheck(t, "testdata/"+file.Name()); err != nil {
 				t.Error("failed: " + err.Error())
 			}
 		})
 	}
 }
 
-func buildRunAndCheck(t *testing.T, bindir, path string) error {
+func buildRunAndCheck(t *testing.T, path string) error {
 	fp, err := os.Stat(path)
 	if err != nil {
 		return err
@@ -61,7 +57,9 @@ func buildRunAndCheck(t *testing.T, bindir, path string) error {
 	runProgram := true
 	var output string
 
-	err = build.Build(path, false)
+	outputBinaryPath := os.TempDir() + "/exec"
+
+	err = build.Build(path, outputBinaryPath, false)
 	if err != nil {
 		output = strings.TrimSpace(err.Error())
 		runProgram = false
@@ -69,7 +67,7 @@ func buildRunAndCheck(t *testing.T, bindir, path string) error {
 
 	// Run program output
 	if runProgram {
-		cmd := exec.Command(bindir + "/output-binary")
+		cmd := exec.Command(outputBinaryPath)
 		stdout, err := cmd.CombinedOutput()
 		if err != nil {
 			if err.Error() != "exit status 1" {
