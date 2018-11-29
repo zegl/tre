@@ -11,7 +11,7 @@ import (
 )
 
 func Constant(in string) *constant.CharArray {
-	return constant.NewCharArray([]byte(in))
+	return constant.NewCharArray(append([]byte(in), 0)) 
 }
 
 func Toi8Ptr(block *ir.BasicBlock, src value.Value) *ir.InstGetElementPtr {
