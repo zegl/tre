@@ -2,8 +2,6 @@ package compiler
 
 import (
 	"fmt"
-	"log"
-
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
@@ -57,7 +55,6 @@ func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode)
 
 			if isPointer && !isPointerNonAllocDereference && structType.IsHeapAllocated {
 				val = c.contextBlock.NewLoad(src.Value)
-				log.Printf("mem: %+v", val)
 				retVal = c.contextBlock.NewGetElementPtr(val, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(memberIndex)))
 			} else {
 				retVal = c.contextBlock.NewGetElementPtr(val, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(memberIndex)))
