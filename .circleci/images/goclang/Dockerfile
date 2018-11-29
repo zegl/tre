@@ -1,4 +1,4 @@
-FROM golang:1.9.2-stretch
+FROM golang:1.11-stretch
 
 # Install clang
 RUN apt-get update -q && \
