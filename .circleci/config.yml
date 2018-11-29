@@ -2,7 +2,7 @@ version: 2
 jobs:
   go-tests:
     docker:
-      - image: golang:1.10.0-stretch
+      - image: golang:1.11-stretch
     working_directory: /go/src/github.com/zegl/tre
     steps:
       - run: apt-get update -q &&
@@ -10,10 +10,9 @@ jobs:
              ln -s /usr/bin/clang-3.9 /usr/local/bin/clang &&
              ln -s /usr/bin/clang-tidy-3.9 /usr/local/bin/clang-tidy &&
              ln -s /usr/bin/clang-format-3.9 /usr/local/bin/clang-format
-      - run: go get -u -v golang.org/x/vgo
       - checkout
-      - run: vgo test -v github.com/zegl/tre/compiler/... github.com/zegl/tre/cmd/...
-      - run: vgo test -v --cover --coverpkg="github.com/zegl/tre/..." --coverprofile=coverage.txt --covermode=count github.com/zegl/tre/compiler
+      - run: go test -v github.com/zegl/tre/compiler/... github.com/zegl/tre/cmd/...
+      - run: go test -v --cover --coverpkg="github.com/zegl/tre/..." --coverprofile=coverage.txt --covermode=count github.com/zegl/tre/compiler
       - run: bash <(curl -s https://codecov.io/bash)
 
 workflows:
