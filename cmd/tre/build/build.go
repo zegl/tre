@@ -50,7 +50,8 @@ func Build(path, goroot, outputBinaryPath string, setDebug bool) error {
 
 	// Invoke clang compiler to compile LLVM IR to a binary executable
 	cmd := exec.Command("clang",
-		tmpDir+"/main.ll",     // Path to LLVM IR
+		"-Wno-override-module", // Disable override target triple warnings
+		tmpDir+"/main.ll",      // Path to LLVM IR
 		"-o", outputBinaryPath, // Output path
 	)
 	output, err := cmd.CombinedOutput()
