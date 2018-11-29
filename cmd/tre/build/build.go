@@ -17,7 +17,7 @@ import (
 
 var debug bool
 
-func Build(path string, setDebug bool) error {
+func Build(path string, outputBinaryPath string, setDebug bool) error {
 	c := compiler.NewCompiler()
 	debug = setDebug
 
@@ -44,10 +44,14 @@ func Build(path string, setDebug bool) error {
 		panic(err)
 	}
 
+	if outputBinaryPath == "" {
+		outputBinaryPath = "output-binary"
+	}
+
 	// Invoke clang compiler to compile LLVM IR to a binary executable
 	cmd := exec.Command("clang",
 		tmpDir+"/main.ll",     // Path to LLVM IR
-		"-o", "output-binary", // Output path
+		"-o", outputBinaryPath, // Output path
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
