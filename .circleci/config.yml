@@ -3,7 +3,7 @@ jobs:
   go-tests:
     docker:
       - image: golang:1.11-stretch
-    working_directory: /go/src/github.com/zegl/tre
+    working_directory: /src/tre
     steps:
       - run: apt-get update -q &&
              apt-get install -y -q clang-3.9 clang-tidy-3.9 clang-format-3.9 &&
