@@ -17,11 +17,11 @@ import (
 
 var debug bool
 
-func Build(path string, outputBinaryPath string, setDebug bool) error {
+func Build(path, goroot, outputBinaryPath string, setDebug bool) error {
 	c := compiler.NewCompiler()
 	debug = setDebug
 
-	err := compilePackage(c, path, "main")
+	err := compilePackage(c, path, goroot, "main")
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func Build(path string, outputBinaryPath string, setDebug bool) error {
 	return nil
 }
 
-func compilePackage(c *compiler.Compiler, path, name string) error {
+func compilePackage(c *compiler.Compiler, path, goroot, name string) error {
 	f, err := os.Stat(path)
 	if err != nil {
 		return err
@@ -104,11 +104,6 @@ func compilePackage(c *compiler.Compiler, path, name string) error {
 				continue
 			}
 
-			gopath := os.Getenv("HOME") + "/go"
-			if gopathFromEnv, ok := os.LookupEnv("GOPATH"); ok {
-				gopath = gopathFromEnv
-			}
-
 			if importNode, ok := i.(*parser.ImportNode); ok {
 
 				// Is built in to the compiler
@@ -118,9 +113,7 @@ func compilePackage(c *compiler.Compiler, path, name string) error {
 
 				searchPaths := []string{
 					path + "/vendor/" + importNode.PackagePath,
-
-					// "GOROOT" equivalent
-					gopath + "/src/github.com/zegl/tre/pkg/" + importNode.PackagePath,
+					goroot + "/" + importNode.PackagePath,
 				}
 
 				importSuccessful := false
@@ -135,7 +128,7 @@ func compilePackage(c *compiler.Compiler, path, name string) error {
 						log.Printf("Loading %s from %s", importNode.PackagePath, sp)
 					}
 
-					err = compilePackage(c, sp, importNode.PackagePath)
+					err = compilePackage(c, sp, goroot, importNode.PackagePath)
 					if err != nil {
 						return err
 					}
