@@ -5,7 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -59,7 +61,11 @@ func buildRunAndCheck(t *testing.T, path string) error {
 
 	outputBinaryPath := os.TempDir() + "/exec"
 
-	err = build.Build(path, outputBinaryPath, false)
+	// "GOROOT" (treroot?) detection
+	_, testFilePath, _, _ := runtime.Caller(0)
+	goroot := filepath.Clean(testFilePath + "/../../pkg/")
+
+	err = build.Build(path,goroot, outputBinaryPath, false)
 	if err != nil {
 		output = strings.TrimSpace(err.Error())
 		runProgram = false
