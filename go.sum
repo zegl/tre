@@ -1,12 +1,16 @@
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/inspirer/textmapper v0.0.0-20181104204410-4bdb1fb0392a/go.mod h1:SpoIwXu07A3gguovN379QUCTHpUk1lhX2KIjVxpQOas=
 github.com/inspirer/textmapper v0.0.0-20181111212404-973a0cda8bfa/go.mod h1:SpoIwXu07A3gguovN379QUCTHpUk1lhX2KIjVxpQOas=
+github.com/inspirer/textmapper v0.0.0-20181130124126-b0668bb65599/go.mod h1:SpoIwXu07A3gguovN379QUCTHpUk1lhX2KIjVxpQOas=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/llir/ll v0.0.0-20181124143609-405448b26944/go.mod h1:a4JSuI2i1XkjU15LV11UxD243X6zJFuVeCHc63E/kGA=
+github.com/llir/ll v0.0.0-20181130124432-c921b17125cd/go.mod h1:cn5BEGWlH2Dt/Zh324p1jR2GT7wYWT6oVxc1T6ghYKU=
 github.com/llir/llvm v0.3.0-pre2.0.20181125234946-9b9b9240f6d2 h1:65d2Z/H2EYDAxO7Ob3zbPsOlxy9jfciFkNXCtIz5X30=
 github.com/llir/llvm v0.3.0-pre2.0.20181125234946-9b9b9240f6d2/go.mod h1:GjmZh4l6Kcz7/Q1G25oyiZuD2VqOWfHwnudPDaeArAE=
+github.com/llir/llvm v0.3.0-pre2.0.20181125234946-acfb969a802bc78c7ae796a4123d629e81913d2e h1:AQ8mn/NK05BEKXTavJwVXhnMp66zkghku31zuY+xKNo=
+github.com/llir/llvm v0.3.0-pre2.0.20181125234946-acfb969a802bc78c7ae796a4123d629e81913d2e/go.mod h1:kW4e6xyLfWqy3fzrTJN6dA83tkMZleHxT3IxH/RRzM8=
 github.com/mewkiz/pkg v0.0.0-20181119122551-9729f4f4ff2b h1:XHFBx9ZEVHnSCRiTz7w1a/NRBk9x7iyFiqnoN6R+vu8=
 github.com/mewkiz/pkg v0.0.0-20181119122551-9729f4f4ff2b/go.mod h1:bhmdGJSMX5WCIBFmk27tBnUvBJm5WxXmarBV41qvbNI=
 github.com/mewmew/float v0.0.0-20181121163145-c0f786d7da73 h1:bTqCgPsW3TFb9MFtvaOmGFWVhCmN3EmRw02zkchdOHo=
@@ -18,3 +22,4 @@ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZN
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 golang.org/x/tools v0.0.0-20181122213734-04b5d21e00f1/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
+golang.org/x/tools v0.0.0-20181130052023-1c3d964395ce/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
