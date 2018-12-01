@@ -14,4 +14,8 @@ func main() {
 	var abc myint
 	abc = 100
 	abc.Yolo()
+
+	f1 := func() int {
+		return 100
+	}
 }

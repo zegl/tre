@@ -149,7 +149,7 @@ func (c *Compiler) Compile(root parser.PackageNode) (err error) {
 }
 
 func (c *Compiler) GetIR() string {
-	return fmt.Sprintln(c.module)
+	return c.module.String()
 }
 
 func (c *Compiler) addGlobal() {
@@ -214,17 +214,17 @@ func (c *Compiler) compile(instructions []parser.Node) {
 	}
 }
 
-func (c *Compiler) funcByName(name string) *types.Function {
+func (c *Compiler) funcByName(name string) (*types.Function, bool) {
 	if f, ok := c.globalFuncs[name]; ok {
-		return f
+		return f, true
 	}
 
 	// Function in the current package
 	if f, ok := c.currentPackage.Funcs[name]; ok {
-		return f
+		return f, true
 	}
 
-	panic("funcByName: no such func: " + name)
+	return nil, false
 }
 
 func (c *Compiler) varByName(name string) value.Value {
@@ -294,6 +294,9 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		return c.compileInitStructWithValues(v)
 	case *parser.TypeCastInterfaceNode:
 		return c.compileTypeCastInterfaceNode(v)
+
+	case *parser.DefineFuncNode:
+		return c.compileDefineFuncNode(v)
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))
