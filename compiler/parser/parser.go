@@ -32,9 +32,9 @@ func Parse(input []lexer.Item, debug bool) FileNode {
 func (p *parser) parseOne(withAheadParse bool) (res Node) {
 	current := p.input[p.i]
 
-	if p.debug {
+	/*if p.debug {
 		fmt.Printf("parseOne: %d - %+v\n", p.i, current)
-	}
+	}*/
 
 	switch current.Type {
 
@@ -235,31 +235,42 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 		// - opening curly bracket ({)
 		// - function body
 		// - closing curly bracket (})
+
+		// named func:  func abc() {
+		// method:      func (a abc) abc() {
+		// value func:  func (a abc) {
+
 		if current.Val == "func" {
 			defineFunc := &DefineFuncNode{}
 			p.i++
 
-			// Check if next is IDENTIFIER (named function), or an opening parenthesis (method).
-			checkIfOpeningParen := p.lookAhead(0)
+			var argsOrMethodType []*NameNode
+			var canBeMethod bool
 
-			// Method Parsning
+			checkIfOpeningParen := p.lookAhead(0)
 			if checkIfOpeningParen.Type == lexer.SEPARATOR && checkIfOpeningParen.Val == "(" {
 				p.i++
+				argsOrMethodType = p.parseFunctionArguments()
+				canBeMethod = true
+			}
 
-				expectIdentifier := p.lookAhead(0)
-				if expectIdentifier.Type != lexer.IDENTIFIER {
-					panic("could not find type identifier in method definition")
-				}
+			checkIfIdentifier := p.lookAhead(0)
+			checkIfOpeningParen = p.lookAhead(1)
+
+			if canBeMethod && checkIfIdentifier.Type == lexer.IDENTIFIER &&
+				checkIfOpeningParen.Type == lexer.SEPARATOR && checkIfOpeningParen.Val == "(" {
 
 				defineFunc.IsMethod = true
-				defineFunc.InstanceName = expectIdentifier.Val
+				defineFunc.IsNamed = true
+				defineFunc.Name = checkIfIdentifier.Val
 
-				p.i++
-
-				methodOnType, err := p.parseOneType()
-				if err != nil {
-					panic(err)
+				if len(argsOrMethodType) != 1 {
+					panic("Unexpected count of types in method")
 				}
+
+				defineFunc.InstanceName = argsOrMethodType[0].Name
+
+				methodOnType := argsOrMethodType[0].Type
 
 				if pointerSingleTypeNode, ok := methodOnType.(*PointerTypeNode); ok {
 					defineFunc.IsPointerReceiver = true
@@ -271,35 +282,22 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 				} else {
 					panic(fmt.Sprintf("could not find type in method defitition: %T", methodOnType))
 				}
-
-				p.i++
-
-				// Expect closing paren
-				expectCloseParen := p.lookAhead(0)
-				if expectCloseParen.Type != lexer.SEPARATOR || expectCloseParen.Val != ")" {
-					panic("expected ) after method type in method definition")
-				}
-
-				p.i++
 			}
 
 			name := p.lookAhead(0)
-			if name.Type != lexer.IDENTIFIER {
-				panic("func must be followed by IDENTIFIER. Got " + name.Val)
+			openParen := p.lookAhead(1)
+			if name.Type == lexer.IDENTIFIER && openParen.Type == lexer.SEPARATOR && openParen.Val == "("{
+				defineFunc.Name = name.Val
+				defineFunc.IsNamed = true
+
+				p.i++
+				p.i++
+
+				// Parse argument list
+				defineFunc.Arguments = p.parseFunctionArguments()
+			} else {
+				defineFunc.Arguments = argsOrMethodType
 			}
-			defineFunc.Name = name.Val
-
-			p.i++
-
-			openParen := p.lookAhead(0)
-			if openParen.Type != lexer.SEPARATOR || openParen.Val != "(" {
-				panic("func identifier must be followed by (. Got " + openParen.Val)
-			}
-
-			p.i++
-
-			// Parse argument list
-			defineFunc.Arguments = p.parseFunctionArguments()
 
 			// Parse return types
 			var retTypesNodeNames []*NameNode
@@ -499,7 +497,7 @@ func (p *parser) aheadParse(input Node) Node {
 	next := p.lookAhead(1)
 
 	if p.debug {
-		fmt.Printf("aheadParse: %+v - %+v\n", next, input)
+		fmt.Printf("aheadParse: %+v - %T %+v\n", next, input, input)
 	}
 
 	if next.Type == lexer.OPERATOR {
@@ -776,20 +774,9 @@ func (p *parser) lookAhead(steps int) lexer.Item {
 func (p *parser) parseUntil(until lexer.Item) []Node {
 	var res []Node
 
-	if p.debug {
-		fmt.Printf("parseUntil: %+v\n", until)
-	}
-
 	for {
-		if p.debug {
-			fmt.Printf("in parseUntil: %+v\n", until)
-		}
-
 		current := p.input[p.i]
 		if current.Type == until.Type && current.Val == until.Val {
-			if p.debug {
-				fmt.Printf("parseUntil: %+v done\n", until)
-			}
 			return res
 		}
 

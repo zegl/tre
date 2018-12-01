@@ -94,7 +94,7 @@ func init() {
 }
 
 func (on OperatorNode) String() string {
-	return fmt.Sprintf("(%v %s %v)", on.Left, string(on.Operator), on.Right)
+	return fmt.Sprintf("OP(%v %s %v)", on.Left, string(on.Operator), on.Right)
 }
 
 // ConstantNode is a raw string or number
@@ -118,7 +118,7 @@ func (cn ConstantNode) String() string {
 	if len(cn.ValueStr) > 0 {
 		return cn.ValueStr
 	}
-	return fmt.Sprintf("%d", cn.Value)
+	return fmt.Sprintf("const(%d)", cn.Value)
 }
 
 // ConditionNode creates a new if condition
@@ -140,8 +140,10 @@ type DefineFuncNode struct {
 	baseNode
 
 	Name string
+	IsNamed bool
 
 	IsMethod          bool
+
 	MethodOnType      *SingleTypeNode
 	IsPointerReceiver bool
 	InstanceName      string
@@ -158,7 +160,13 @@ func (dfn DefineFuncNode) String() string {
 		body = append(body, fmt.Sprintf("%+v", b))
 	}
 
-	return fmt.Sprintf("func %s(%+v) %+v {\n\t%s\n}", dfn.Name, dfn.Arguments, dfn.ReturnValues, strings.Join(body, "\n\t"))
+	if dfn.IsMethod {
+		return fmt.Sprintf("func+m (%+v) %s(%+v) %+v {\n\t%s\n}", dfn.InstanceName, dfn.Name, dfn.Arguments, dfn.ReturnValues, strings.Join(body, "\n\t"))
+	} else if dfn.IsNamed {
+		return fmt.Sprintf("func+n %s(%+v) %+v {\n\t%s\n}", dfn.Name, dfn.Arguments, dfn.ReturnValues, strings.Join(body, "\n\t"))
+	} else {
+		return fmt.Sprintf("func+v (%+v) %+v {\n\t%s\n}", dfn.Arguments, dfn.ReturnValues, strings.Join(body, "\n\t"))
+	}
 }
 
 // NameNode retreives a named variable
@@ -170,7 +178,7 @@ type NameNode struct {
 }
 
 func (nn NameNode) String() string {
-	return fmt.Sprintf("var(%s %s)", nn.Type, nn.Name)
+	return fmt.Sprintf("var(%s)", nn.Name)
 }
 
 type MultiNameNode struct {
@@ -205,7 +213,7 @@ type AllocNode struct {
 }
 
 func (an AllocNode) String() string {
-	if len(an.MultiNames.Names) > 0 {
+	if an.MultiNames != nil && len(an.MultiNames.Names) > 0 {
 		return fmt.Sprintf("allocMulti(%+v) = %v", an.MultiNames, an.Val)
 	}
 
@@ -369,7 +377,7 @@ type NegateNode struct {
 }
 
 func (nn NegateNode) String() string {
-	return fmt.Sprintf("!%s", nn.Item)
+	return fmt.Sprintf("NegateNode-!%s", nn.Item)
 }
 
 type InitializeSliceNode struct {
@@ -379,7 +387,7 @@ type InitializeSliceNode struct {
 }
 
 func (i InitializeSliceNode) String() string {
-	return fmt.Sprintf("[]%s{%+v}", i.Type, i.Items)
+	return fmt.Sprintf("InitializeSliceNode-[]%s{%+v}", i.Type, i.Items)
 }
 
 type InitializeStructNode struct {
@@ -389,7 +397,7 @@ type InitializeStructNode struct {
 }
 
 func (i InitializeStructNode) String() string {
-	return fmt.Sprintf("%s{%+v}", i.Type, i.Items)
+	return fmt.Sprintf("InitializeStructNode-%s{%+v}", i.Type, i.Items)
 }
 
 type DeVariadicSliceNode struct {
