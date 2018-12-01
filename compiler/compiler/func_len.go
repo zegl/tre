@@ -13,7 +13,10 @@ func (c *Compiler) lenFuncCall(v *parser.CallNode) value.Value {
 	arg := c.compileValue(v.Arguments[0])
 
 	if arg.Type.Name() == "string" {
-		f := c.funcByName("len_string")
+		f, ok := c.funcByName("len_string")
+		if !ok {
+			panic("could not find len_string func")
+		}
 
 		val := arg.Value
 		if arg.IsVariable {

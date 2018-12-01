@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
@@ -11,7 +12,7 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
+func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 	var compiledName string
 
 	if v.IsMethod {
@@ -31,8 +32,10 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 
 		// Change the name of our function
 		compiledName = c.currentPackageName + "_method_" + v.MethodOnType.TypeName + "_" + v.Name
-	} else {
+	} else if v.IsNamed {
 		compiledName = c.currentPackageName + "_" + v.Name
+	} else {
+		compiledName = c.currentPackageName + "_" + getAnonFuncName()
 	}
 
 	llvmParams := make([]*ir.Param, len(v.Arguments))
@@ -127,11 +130,14 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 
 		// Make this method available in interfaces via a jump function
 		typesFunc.JumpFunction = c.compileInterfaceMethodJump(fn)
-	} else {
+	} else if v.IsNamed {
 		c.currentPackage.Funcs[v.Name] = typesFunc
 	}
 
 	entry := fn.NewBlock(getBlockName())
+
+	prevContextFunc := c.contextFunc
+	prevContextBlock := c.contextBlock
 
 	c.contextFunc = typesFunc
 	c.contextBlock = entry
@@ -196,7 +202,15 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) {
 		c.contextBlock.NewRet(constant.NewInt(llvmTypes.I32, 0))
 	}
 
+	c.contextFunc = prevContextFunc
+	c.contextBlock = prevContextBlock
+
 	c.popVariablesStack()
+
+	return value.Value{
+		Type: typesFunc,
+		Value: typesFunc.LlvmFunction,
+	}
 }
 
 func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Function) *ir.Function {
@@ -248,7 +262,7 @@ func (c *Compiler) compileReturnNode(v *parser.ReturnNode) {
 		// Set value and jump to return block
 		val := c.compileValue(v.Vals[0])
 
-		// Type cast if neccesary
+		// Type cast if necessary
 		val = c.valueToInterfaceValue(val, c.contextFunc.LlvmReturnType)
 
 		if val.IsVariable {
@@ -264,7 +278,7 @@ func (c *Compiler) compileReturnNode(v *parser.ReturnNode) {
 	for i, val := range v.Vals {
 		compVal := c.compileValue(val)
 
-		// Type cast if neccesary
+		// TODO: Type cast if necessary
 		// compVal = c.valueToInterfaceValue(compVal, c.contextFunc.ReturnType)
 
 		// Assign to ptr
@@ -300,7 +314,16 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 	var fn *types.Function
 
 	if isNameNode {
-		fn = c.funcByName(name.Name)
+		if namedFn, ok := c.funcByName(name.Name); ok {
+			fn = namedFn
+		} else {
+			funcByVal := c.compileValue(v.Function)
+			if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
+				fn = checkIfFunc
+			} else {
+				panic(fmt.Sprintf("no such function: %v", v))
+			}
+		}
 	} else {
 		funcByVal := c.compileValue(v.Function)
 		if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
