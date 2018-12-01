@@ -21,14 +21,8 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 
 		var alloc *ir.InstAlloca
 
-		isVariable := true
-
 		if sliceType, ok := treType.(*types.Slice); ok {
 			alloc = sliceType.SliceZero(c.contextBlock, c.externalFuncs.Malloc.LlvmFunction, 2)
-		} else if pointerType, ok := treType.(*types.Pointer); ok {
-			alloc = c.contextBlock.NewAlloca(pointerType.Type.LLVM())
-			pointerType.Type.Zero(c.contextBlock, alloc)
-			isVariable = false
 		} else {
 			alloc = c.contextBlock.NewAlloca(treType.LLVM())
 			treType.Zero(c.contextBlock, alloc)
@@ -39,7 +33,7 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 		c.setVar(v.Name, value.Value{
 			Value:      alloc,
 			Type:       treType,
-			IsVariable: isVariable,
+			IsVariable: true,
 		})
 		return
 	}

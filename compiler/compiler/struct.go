@@ -48,17 +48,13 @@ func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode)
 	// Check if it is a struct member
 	if structType, ok := targetType.(*types.Struct); ok {
 		if memberIndex, ok := structType.MemberIndexes[v.ElementName]; ok {
-
 			val := src.Value
 
-			var retVal llvmValue.Value
-
-			if isPointer && !isPointerNonAllocDereference && structType.IsHeapAllocated {
-				val = c.contextBlock.NewLoad(src.Value)
-				retVal = c.contextBlock.NewGetElementPtr(val, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(memberIndex)))
-			} else {
-				retVal = c.contextBlock.NewGetElementPtr(val, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(memberIndex)))
+			if isPointer && !isPointerNonAllocDereference && src.IsVariable {
+					val = c.contextBlock.NewLoad(val)
 			}
+
+			retVal := c.contextBlock.NewGetElementPtr(val, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(memberIndex)))
 
 			return value.Value{
 				Type:       structType.Members[v.ElementName],
