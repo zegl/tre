@@ -36,38 +36,25 @@ More examples of what's possible can be found in the [compiler testdata](https:/
 
 ### Types
 
-- [x] int (all signed types)
+- [x] int
 - [x] string
 - [x] struct
 - [x] array
 - [x] slice
-- [ ] map
+- [ ] [map](https://github.com/zegl/tre/issues/34)
 - [x] bool
-- [ ] func
+- [x] func
+- [ ] [chan](https://github.com/zegl/tre/issues/78)
 
 ### Language features
 
-- [ ] Functions
-- - [x] Named functions
-- - [x] Methods
-- - [x] More than 1 return variable
-- - [ ] First class functions: Assign a function to a variable, functions as arguments etc.
-- [x] Strings
-- [x] Arrays
-- [x] Builtin functions
-- - [x] println (to be removed)
-- - [x] printf (to be removed)
-- - [x] exit (to be removed)
-- - [x] len (string, array, slice) TODO: Maps
-- - [x] cap (slice)
-- - [x] append (slice)
-- [ ] Packages
-- [x] Methods
-- [x] Pointers
-- [x] Interfaces
-- - [x] Empty interfaces
-- - [x] Values receiver methods
-- - [x] Pointer receiver methods
+- [ ] [first class func](https://github.com/zegl/tre/issues/36) 
+- [ ] packages
+- [x] methods
+- [x] pointers
+- [x] interfaces
+- [ ] [chan](https://github.com/zegl/tre/issues/78)
+- [ ] [goroutines](https://github.com/zegl/tre/issues/77)
 
 ## Dependencies
 
