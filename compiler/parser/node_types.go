@@ -191,3 +191,34 @@ func (ptn PointerTypeNode) GetName() string {
 func (ptn PointerTypeNode) Variadic() bool {
 	return ptn.IsVariadic
 }
+
+type FuncTypeNode struct {
+	baseNode
+
+	ArgTypes []TypeNode
+	RetTypes []TypeNode
+
+	SourceName string
+	IsVariadic bool
+}
+
+func (ftn FuncTypeNode) Type() string {
+	return fmt.Sprintf("func(%+v)(%+v)", ftn.ArgTypes, ftn.RetTypes)
+}
+
+func (ftn FuncTypeNode) String() string {
+	return ftn.Type()
+}
+
+func (ftn FuncTypeNode) SetName(name string) {
+	ftn.SourceName = name
+}
+
+func (ftn FuncTypeNode) GetName() string {
+	return ftn.SourceName
+}
+
+func (ftn FuncTypeNode) Variadic() bool {
+	return ftn.IsVariadic
+}
+

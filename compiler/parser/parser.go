@@ -286,7 +286,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 
 			name := p.lookAhead(0)
 			openParen := p.lookAhead(1)
-			if name.Type == lexer.IDENTIFIER && openParen.Type == lexer.SEPARATOR && openParen.Val == "("{
+			if name.Type == lexer.IDENTIFIER && openParen.Type == lexer.SEPARATOR && openParen.Val == "(" {
 				defineFunc.Name = name.Val
 				defineFunc.IsNamed = true
 
@@ -1038,6 +1038,96 @@ func (p *parser) parseOneType() (TypeNode, error) {
 			Len:        int64(arrayLengthInt),
 			IsVariadic: isVariadic,
 		}, nil
+	}
+
+	// Func type parsing
+	if current.Type == lexer.KEYWORD && current.Val == "func" {
+		p.i++
+
+		expectOpenParen := p.lookAhead(0)
+		if expectOpenParen.Type != lexer.SEPARATOR && expectOpenParen.Val != "(" {
+			return nil, errors.New("parse func failed, expected ( after func")
+		}
+		p.i++
+
+		fn := &FuncTypeNode{}
+
+		multiTypeParse := func() ([]TypeNode, error) {
+			var typeList []TypeNode
+
+			for {
+				checkIfEndParen := p.lookAhead(0)
+				if checkIfEndParen.Type == lexer.SEPARATOR && checkIfEndParen.Val == ")" {
+					break
+				}
+
+				argType, err := p.parseOneType()
+				if err != nil {
+					return nil, err
+				}
+
+				typeList = append(typeList, argType)
+
+				p.i++
+
+				expectCommaOrEndParen := p.lookAhead(0)
+				if expectCommaOrEndParen.Type == lexer.SEPARATOR && expectCommaOrEndParen.Val == "," {
+					p.i++
+					continue
+				}
+
+				if expectCommaOrEndParen.Type == lexer.SEPARATOR && expectCommaOrEndParen.Val == ")" {
+					continue
+				}
+
+				return nil, errors.New("expected ) or , in func arg parsing")
+			}
+
+			return typeList, nil
+		}
+
+		// List of arguments
+		var err error
+		fn.ArgTypes, err = multiTypeParse()
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse func arguments: %s", err)
+		}
+
+		// Return type parsing
+		// Possible formats:
+		// - Nothing
+		// - T
+		// - (T1, T2, ... )
+
+		checkIfParenOrType := p.lookAhead(1)
+
+		// Multiple types
+		if checkIfParenOrType.Type == lexer.SEPARATOR && checkIfParenOrType.Val == "(" {
+			p.i++
+			p.i++
+
+			fn.RetTypes, err = multiTypeParse()
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse func return values: %s", err)
+			}
+
+			return fn, nil
+		}
+
+		// Single types
+		if checkIfParenOrType.Type == lexer.IDENTIFIER {
+			p.i++
+
+			t, err := p.parseOneType()
+			if err != nil {
+				return nil, err
+			}
+
+			fn.RetTypes = []TypeNode{t}
+			return fn, nil
+		}
+
+		return fn, nil
 	}
 
 	return nil, errors.New("parseOneType failed: " + fmt.Sprintf("%+v", current))
