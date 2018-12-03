@@ -235,6 +235,11 @@ func (c *Compiler) varByName(name string) value.Value {
 		}
 	}
 
+	// Check functions in scope
+	if fn, ok := c.funcByName(name); ok {
+		return value.Value{Type: fn, Value: fn.LlvmFunction}
+	}
+
 	// Imported package?
 	if pkg, ok := c.packages[name]; ok {
 		return value.Value{
