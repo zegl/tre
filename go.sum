@@ -11,6 +11,8 @@ github.com/llir/llvm v0.3.0-pre2.0.20181125234946-9b9b9240f6d2 h1:65d2Z/H2EYDAxO
 github.com/llir/llvm v0.3.0-pre2.0.20181125234946-9b9b9240f6d2/go.mod h1:GjmZh4l6Kcz7/Q1G25oyiZuD2VqOWfHwnudPDaeArAE=
 github.com/llir/llvm v0.3.0-pre2.0.20181125234946-acfb969a802bc78c7ae796a4123d629e81913d2e h1:AQ8mn/NK05BEKXTavJwVXhnMp66zkghku31zuY+xKNo=
 github.com/llir/llvm v0.3.0-pre2.0.20181125234946-acfb969a802bc78c7ae796a4123d629e81913d2e/go.mod h1:kW4e6xyLfWqy3fzrTJN6dA83tkMZleHxT3IxH/RRzM8=
+github.com/llir/llvm v0.3.0-pre3 h1:018uZENf9RSwwlMcyu9KbZ38IVOD4GlFSrIkEfyrVMk=
+github.com/llir/llvm v0.3.0-pre3/go.mod h1:kW4e6xyLfWqy3fzrTJN6dA83tkMZleHxT3IxH/RRzM8=
 github.com/mewkiz/pkg v0.0.0-20181119122551-9729f4f4ff2b h1:XHFBx9ZEVHnSCRiTz7w1a/NRBk9x7iyFiqnoN6R+vu8=
 github.com/mewkiz/pkg v0.0.0-20181119122551-9729f4f4ff2b/go.mod h1:bhmdGJSMX5WCIBFmk27tBnUvBJm5WxXmarBV41qvbNI=
 github.com/mewmew/float v0.0.0-20181121163145-c0f786d7da73 h1:bTqCgPsW3TFb9MFtvaOmGFWVhCmN3EmRw02zkchdOHo=
