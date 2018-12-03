@@ -12,38 +12,11 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
-	var compiledName string
+func funcType(params, returnTypes []*parser.NameNode) (retType types.Type, treReturnTypes []types.Type, argTypes []*ir.Param, treParams []types.Type, isVariadicFunc bool, argumentReturnValuesCount int) {
+	llvmParams := make([]*ir.Param, len(params))
+	treParams = make([]types.Type, len(params))
 
-	if v.IsMethod {
-		var methodOnType parser.TypeNode = v.MethodOnType
-
-		if v.IsPointerReceiver {
-			methodOnType = &parser.PointerTypeNode{ValueType: methodOnType}
-		}
-
-		// Add the type that we're a method on as the first argument
-		v.Arguments = append([]*parser.NameNode{
-			&parser.NameNode{
-				Name: v.InstanceName,
-				Type: methodOnType,
-			},
-		}, v.Arguments...)
-
-		// Change the name of our function
-		compiledName = c.currentPackageName + "_method_" + v.MethodOnType.TypeName + "_" + v.Name
-	} else if v.IsNamed {
-		compiledName = c.currentPackageName + "_" + v.Name
-	} else {
-		compiledName = c.currentPackageName + "_" + getAnonFuncName()
-	}
-
-	llvmParams := make([]*ir.Param, len(v.Arguments))
-	treParams := make([]types.Type, len(v.Arguments))
-
-	isVariadicFunc := false
-
-	for k, par := range v.Arguments {
+	for k, par := range params {
 		paramType := parserTypeToType(par.Type)
 
 		// Variadic arguments are converted into a slice
@@ -70,19 +43,19 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 	var funcRetType types.Type = types.Void
 
 	// Amount of values returned via argument pointers
-	var argumentReturnValuesCount int
-	var treReturnTypes []types.Type
+	// var argumentReturnValuesCount int
+	// var treReturnTypes []types.Type
 
 	// Use LLVM function return value if there's only one return value
-	if len(v.ReturnValues) == 1 {
-		funcRetType = parserTypeToType(v.ReturnValues[0].Type)
+	if len(returnTypes) == 1 {
+		funcRetType = parserTypeToType(returnTypes[0].Type)
 		treReturnTypes = []types.Type{funcRetType}
-	} else if len(v.ReturnValues) > 0 {
+	} else if len(returnTypes) > 0 {
 		// Return values via argument pointers
 		// The return values goes first
 		var llvmReturnTypesParams []*ir.Param
 
-		for _, ret := range v.ReturnValues {
+		for _, ret := range returnTypes {
 			t := parserTypeToType(ret.Type)
 			treReturnTypes = append(treReturnTypes, t)
 			llvmReturnTypesParams = append(llvmReturnTypesParams, ir.NewParam(getVarName("ret"), llvmTypes.NewPointer(t.LLVM())))
@@ -92,8 +65,41 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		treParams = append(treReturnTypes, treParams...)
 		llvmParams = append(llvmReturnTypesParams, llvmParams...)
 
-		argumentReturnValuesCount = len(v.ReturnValues)
+		argumentReturnValuesCount = len(returnTypes)
 	}
+
+	return funcRetType, treReturnTypes, llvmParams, treParams, isVariadicFunc, argumentReturnValuesCount
+}
+
+func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
+	var compiledName string
+
+	if v.IsMethod {
+		var methodOnType parser.TypeNode = v.MethodOnType
+
+		if v.IsPointerReceiver {
+			methodOnType = &parser.PointerTypeNode{ValueType: methodOnType}
+		}
+
+		// Add the type that we're a method on as the first argument
+		v.Arguments = append([]*parser.NameNode{
+			&parser.NameNode{
+				Name: v.InstanceName,
+				Type: methodOnType,
+			},
+		}, v.Arguments...)
+
+		// Change the name of our function
+		compiledName = c.currentPackageName + "_method_" + v.MethodOnType.TypeName + "_" + v.Name
+	} else if v.IsNamed {
+		compiledName = c.currentPackageName + "_" + v.Name
+	} else {
+		compiledName = c.currentPackageName + "_" + getAnonFuncName()
+	}
+
+	// isVariadicFunc := false
+
+	funcRetType, treReturnTypes, llvmParams, treParams, isVariadicFunc, argumentReturnValuesCount := funcType(v.Arguments, v.ReturnValues)
 
 	if c.currentPackageName == "main" && v.Name == "main" {
 		if len(v.ReturnValues) != 0 {
@@ -104,7 +110,6 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		compiledName = "main"
 	}
 
-	// Create a new function, and add it to the list of global functions
 	fn := c.module.NewFunc(compiledName, funcRetType.LLVM(), llvmParams...)
 
 	typesFunc := &types.Function{
@@ -208,7 +213,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 	c.popVariablesStack()
 
 	return value.Value{
-		Type: typesFunc,
+		Type:  typesFunc,
 		Value: typesFunc.LlvmFunction,
 	}
 }
@@ -311,25 +316,43 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 		return c.appendFuncCall(v)
 	}
 
-	var fn *types.Function
+	var fnType *types.Function
+	var fn llvmValue.Named
 
 	if isNameNode {
-		if namedFn, ok := c.funcByName(name.Name); ok {
-			fn = namedFn
+
+		// Check if it's a function
+		namedFn := c.varByName(name.Name)
+		if ft, ok := namedFn.Type.(*types.Function); ok {
+			fnType = ft
+
+			// TODO: Get rid of this difference
+			// The function should alwasy be in the value, not the type
+			if ft.LlvmFunction.Name() == "UNNAMEDFUNC" {
+				fn = namedFn.Value.(llvmValue.Named)
+			} else {
+				fn = ft.LlvmFunction
+			}
+
 		} else {
 			funcByVal := c.compileValue(v.Function)
 			if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
-				fn = checkIfFunc
+				fnType = checkIfFunc
+				fn = checkIfFunc.LlvmFunction
 			} else {
 				panic(fmt.Sprintf("no such function: %v", v))
 			}
 		}
+
 	} else {
 		funcByVal := c.compileValue(v.Function)
 		if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
-			fn = checkIfFunc
+			fnType = checkIfFunc
+			fn = checkIfFunc.LlvmFunction
 		} else if checkIfMethod, ok := funcByVal.Type.(*types.Method); ok {
-			fn = checkIfMethod.Function
+			fnType = checkIfMethod.Function
+			fn = checkIfMethod.Function.LlvmFunction
+
 			var methodCallArgs []value.Value
 
 			// Should be loaded if the method is not a pointer receiver
@@ -359,10 +382,12 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 				returnType = types.Void
 			}
 
-			fn = &types.Function{
+			fnType = &types.Function{
+				// TODO: We probably need to add more fields here?
 				LlvmFunction:   ifaceMethod.LlvmJumpFunction,
 				LlvmReturnType: returnType,
 			}
+			fn = ifaceMethod.LlvmJumpFunction
 		} else {
 			panic("expected function or method, got something else")
 		}
@@ -384,10 +409,10 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 	}
 
 	// Convert variadic arguments to a slice when needed
-	if fn.IsVariadic && !lastIsVariadicSlice {
+	if fnType.IsVariadic && !lastIsVariadicSlice {
 		// Only the last argument can be variadic
-		variadicArgIndex := len(fn.ArgumentTypes) - 1
-		variadicType := fn.ArgumentTypes[variadicArgIndex].(*types.Slice)
+		variadicArgIndex := len(fnType.ArgumentTypes) - 1
+		variadicType := fnType.ArgumentTypes[variadicArgIndex].(*types.Slice)
 
 		// Convert last argument to a slice.
 		variadicSlice := c.compileInitializeSliceWithValues(variadicType.Type, args[variadicArgIndex:]...)
@@ -403,8 +428,8 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 	for i, v := range args {
 
 		// Convert type to interface type if needed
-		if len(fn.ArgumentTypes) > i {
-			v = c.valueToInterfaceValue(v, fn.ArgumentTypes[i])
+		if len(fnType.ArgumentTypes) > i {
+			v = c.valueToInterfaceValue(v, fnType.ArgumentTypes[i])
 		}
 
 		val := v.Value
@@ -414,7 +439,7 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 		}
 
 		// Convert strings and arrays to i8* when calling external functions
-		if fn.IsExternal {
+		if fnType.IsExternal {
 			if v.Type.Name() == "string" {
 				llvmArgs[i] = c.contextBlock.NewExtractValue(val, 1)
 				continue
@@ -432,10 +457,10 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 	// Functions with multiple return values are using pointers via arguments
 	// Alloc the values here and add pointers to the list of arguments
 	var multiValues []value.Value
-	if len(fn.ReturnTypes) > 1 {
+	if len(fnType.ReturnTypes) > 1 {
 		var retValAllocas []llvmValue.Value
 
-		for _, retType := range fn.ReturnTypes {
+		for _, retType := range fnType.ReturnTypes {
 			alloca := c.contextBlock.NewAlloca(retType.LLVM())
 			retValAllocas = append(retValAllocas, alloca)
 
@@ -450,19 +475,19 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 		llvmArgs = append(retValAllocas, llvmArgs...)
 	}
 
-	funcCallRes := c.contextBlock.NewCall(fn.LlvmFunction, llvmArgs...)
+	funcCallRes := c.contextBlock.NewCall(fn, llvmArgs...)
 
 	// 0 or 1 return variables
-	if len(fn.ReturnTypes) < 2 {
+	if len(fnType.ReturnTypes) < 2 {
 		return value.Value{
 			Value: funcCallRes,
-			Type:  fn.LlvmReturnType,
+			Type:  fnType.LlvmReturnType,
 		}
 	}
 
 	// 2 or more return variables
 	return value.Value{
-		Type:        &types.MultiValue{Types: fn.ReturnTypes},
+		Type:        &types.MultiValue{Types: fnType.ReturnTypes},
 		MultiValues: multiValues,
 	}
 }
