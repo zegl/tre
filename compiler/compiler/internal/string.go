@@ -12,7 +12,7 @@ func String() *types.StructType {
 	)
 }
 
-func StringLen(stringType types.Type) *ir.Function {
+func StringLen(stringType types.Type) *ir.Func {
 	param := ir.NewParam("input", stringType)
 	res := ir.NewFunc("string_len", types.I64, param)
 	block := res.NewBlock("entry")

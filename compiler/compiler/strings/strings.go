@@ -11,14 +11,14 @@ import (
 )
 
 func Constant(in string) *constant.CharArray {
-	return constant.NewCharArray(append([]byte(in), 0)) 
+	return constant.NewCharArray(append([]byte(in), 0))
 }
 
-func Toi8Ptr(block *ir.BasicBlock, src value.Value) *ir.InstGetElementPtr {
+func Toi8Ptr(block *ir.Block, src value.Value) *ir.InstGetElementPtr {
 	return block.NewGetElementPtr(src, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, 0))
 }
 
-func TreStringToi8Ptr(block *ir.BasicBlock, src value.Value) *ir.InstExtractValue {
+func TreStringToi8Ptr(block *ir.Block, src value.Value) *ir.InstExtractValue {
 	return block.NewExtractValue(src, 1)
 }
 

@@ -6,7 +6,7 @@ import (
 	"github.com/zegl/tre/compiler/compiler/strings"
 )
 
-func Println(stringType types.Type, printfFunc *ir.Function, module *ir.Module) *ir.Function {
+func Println(stringType types.Type, printfFunc *ir.Func, module *ir.Module) *ir.Func {
 	param := ir.NewParam("input", stringType)
 	res := ir.NewFunc("println", types.Void, param)
 	block := res.NewBlock("entry")
