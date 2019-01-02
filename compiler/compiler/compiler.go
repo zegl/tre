@@ -22,7 +22,6 @@ type Compiler struct {
 	module *ir.Module
 
 	// functions provided by the OS, such as printf and malloc
-	// externalFuncs map[string]*ir.Function
 	externalFuncs ExternalFuncs
 
 	// functions provided by the language, such as println
@@ -38,17 +37,17 @@ type Compiler struct {
 	// than one value
 	contextFuncRetVals [][]value.Value
 
-	contextBlock *ir.BasicBlock
+	contextBlock *ir.Block
 
 	// Stack of variables that are in scope
 	contextBlockVariables []map[string]value.Value
 
 	// What a break or continue should resolve to
-	contextLoopBreak    []*ir.BasicBlock
-	contextLoopContinue []*ir.BasicBlock
+	contextLoopBreak    []*ir.Block
+	contextLoopContinue []*ir.Block
 
 	// Where a condition should jump when done
-	contextCondAfter []*ir.BasicBlock
+	contextCondAfter []*ir.Block
 
 	// What type the current assign operation is assigning to.
 	// Is used when evaluating what type an integer constant should be.
@@ -78,9 +77,9 @@ func NewCompiler() *Compiler {
 
 		contextBlockVariables: make([]map[string]value.Value, 0),
 
-		contextLoopBreak:    make([]*ir.BasicBlock, 0),
-		contextLoopContinue: make([]*ir.BasicBlock, 0),
-		contextCondAfter:    make([]*ir.BasicBlock, 0),
+		contextLoopBreak:    make([]*ir.Block, 0),
+		contextLoopContinue: make([]*ir.Block, 0),
+		contextCondAfter:    make([]*ir.Block, 0),
 
 		contextAssignDest: make([]value.Value, 0),
 
@@ -307,7 +306,7 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))
 }
 
-func (c *Compiler) panic(block *ir.BasicBlock, message string) {
+func (c *Compiler) panic(block *ir.Block, message string) {
 	globMsg := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant("runtime panic: "+message+"\n"))
 	globMsg.Immutable = true
 	block.NewCall(c.externalFuncs.Printf.LlvmFunction, strings.Toi8Ptr(block, globMsg))

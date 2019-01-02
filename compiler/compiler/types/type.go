@@ -21,7 +21,7 @@ type Type interface {
 	AddMethod(string, *Method)
 	GetMethod(string) (*Method, bool)
 
-	Zero(*ir.BasicBlock, llvmValue.Value)
+	Zero(*ir.Block, llvmValue.Value)
 }
 
 type backingType struct {
@@ -44,7 +44,7 @@ func (backingType) Size() int64 {
 	panic("Type does not have size set")
 }
 
-func (backingType) Zero(*ir.BasicBlock, llvmValue.Value) {
+func (backingType) Zero(*ir.Block, llvmValue.Value) {
 	// NOOP
 }
 
@@ -68,7 +68,7 @@ func (s Struct) Name() string {
 	return fmt.Sprintf("struct(%s)", s.SourceName)
 }
 
-func (s Struct) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
+func (s Struct) Zero(block *ir.Block, alloca llvmValue.Value) {
 	for key, valType := range s.Members {
 		ptr := block.NewGetElementPtr(alloca,
 			constant.NewInt(types.I32, 0),
@@ -118,7 +118,7 @@ type Function struct {
 	IsExternal    bool
 
 	// Is used when calling an interface method
-	JumpFunction *ir.Function
+	JumpFunction *ir.Func
 }
 
 func (f Function) LLVM() types.Type {
@@ -145,7 +145,7 @@ func (BoolType) Size() int64 {
 	return 1
 }
 
-func (b BoolType) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
+func (b BoolType) Zero(block *ir.Block, alloca llvmValue.Value) {
 	block.NewStore(constant.NewInt(types.I1, 0), alloca)
 }
 
@@ -185,7 +185,7 @@ func (i Int) Size() int64 {
 	return i.TypeSize
 }
 
-func (i Int) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
+func (i Int) Zero(block *ir.Block, alloca llvmValue.Value) {
 	block.NewStore(constant.NewInt(i.Type, 0), alloca)
 }
 
@@ -210,7 +210,7 @@ func (StringType) Size() int64 {
 	return 16
 }
 
-func (s StringType) Zero(block *ir.BasicBlock, alloca llvmValue.Value) {
+func (s StringType) Zero(block *ir.Block, alloca llvmValue.Value) {
 	lenPtr := block.NewGetElementPtr(alloca, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
 	backingDataPtr := block.NewGetElementPtr(alloca, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 1))
 	block.NewStore(constant.NewInt(types.I64, 0), lenPtr)
@@ -249,7 +249,7 @@ func (Slice) Size() int64 {
 	return 3*4 + 4 // 3 int32s and a pointer
 }
 
-func (s Slice) SliceZero(block *ir.BasicBlock, mallocFunc llvmValue.Named, initCap int) *ir.InstAlloca {
+func (s Slice) SliceZero(block *ir.Block, mallocFunc llvmValue.Named, initCap int) *ir.InstAlloca {
 	// The cap must always be larger than 0
 	// Use 2 as the default value
 	if initCap < 2 {

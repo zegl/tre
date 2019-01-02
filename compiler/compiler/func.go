@@ -218,7 +218,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 	}
 }
 
-func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Function) *ir.Function {
+func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Func) *ir.Func {
 	// Copy parameter types so that we can modify them
 	params := make([]*ir.Param, len(targetFunc.Sig.Params))
 	for i, p := range targetFunc.Params {
