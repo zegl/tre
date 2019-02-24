@@ -485,6 +485,10 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 				Value: v,
 			}
 		}
+
+		if current.Val == "range" {
+			return p.parseRange()
+		}
 	}
 
 	p.printInput()
@@ -772,12 +776,24 @@ func (p *parser) lookAhead(steps int) lexer.Item {
 }
 
 func (p *parser) parseUntil(until lexer.Item) []Node {
-	var res []Node
+	n, _ := p.parseUntilEither([]lexer.Item{until})
+	return n
+}
 
+// parseUntilEither reads lexer items until it finds one that equals to a item in "untils"
+// The list of parsed nodes is returned in res. The lexer item that stopped the iteration
+// is returned in "reached"
+func (p *parser) parseUntilEither(untils []lexer.Item) (res []Node, reached lexer.Item) {
 	for {
 		current := p.input[p.i]
-		if current.Type == until.Type && current.Val == until.Val {
-			return res
+
+		log.Printf("current: %+v", current)
+
+		// Check if we have reached the end
+		for _, until := range untils {
+			if current.Type == until.Type && current.Val == until.Val {
+				return res, until
+			}
 		}
 
 		// Ignore comma

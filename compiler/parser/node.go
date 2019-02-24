@@ -312,20 +312,6 @@ func (d DeclarePackageNode) String() string {
 	return "DeclarePackageNode(" + d.PackageName + ")"
 }
 
-// ForNode creates a new for-loop
-type ForNode struct {
-	baseNode
-
-	BeforeLoop     Node
-	Condition      *OperatorNode
-	AfterIteration Node
-	Block          []Node
-}
-
-func (f ForNode) String() string {
-	return fmt.Sprintf("For(%s; %s; %s) {\n\t%s\n}", f.BeforeLoop, f.Condition, f.AfterIteration, f.Block)
-}
-
 // BreakNode breaks out of the current for loop
 type BreakNode struct {
 	baseNode
