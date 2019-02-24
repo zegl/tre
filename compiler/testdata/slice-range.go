@@ -10,4 +10,11 @@ func main() {
 	for k, v := range s {
 		external.Printf("%d %d\n", k, v)
 	}
+
+	// 0
+	// 1
+	// 2
+	for k := range s {
+		external.Printf("%d\n", k)
+	}
 }
