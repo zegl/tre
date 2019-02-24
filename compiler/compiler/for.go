@@ -1,8 +1,19 @@
 package compiler
 
-import "github.com/zegl/tre/compiler/parser"
+import (
+	"github.com/zegl/tre/compiler/parser"
+)
 
 func (c *Compiler) compileForNode(v *parser.ForNode) {
+	if v.IsThreeTypeFor {
+		c.compileForThreeType(v)
+		return
+	}
+
+	c.compileForRange(v)
+}
+
+func (c *Compiler) compileForThreeType(v *parser.ForNode) {
 	// TODO: create a new context-block for code running inside the for loop
 	c.compile([]parser.Node{
 		v.BeforeLoop,
@@ -46,6 +57,55 @@ func (c *Compiler) compileForNode(v *parser.ForNode) {
 	// Pop break and continue
 	c.contextLoopBreak = c.contextLoopBreak[0 : len(c.contextLoopBreak)-1]
 	c.contextLoopContinue = c.contextLoopContinue[0 : len(c.contextLoopContinue)-1]
+}
+
+func (c *Compiler) compileForRange(v *parser.ForNode) {
+	// A for range that iterates over a slice is just syntactic sugar
+	// for k, v := range a
+	// for k := 0; k < len(a); k++ { v := a[k] }
+
+
+	forAlloc := v.BeforeLoop.(*parser.AllocNode)
+
+	forAllocRange := forAlloc.Val.(*parser.RangeNode)
+
+	typeCastedKey := &parser.TypeCastNode{
+		Type: &parser.SingleTypeNode{SourceName: "int32", TypeName: "int32"},
+		Val: &parser.NameNode{Name: "for-key"},
+	}
+
+	modifiedBlock := []parser.Node{
+		&parser.AllocNode{Name: forAlloc.MultiNames.Names[0].Name, Val: &parser.NameNode{Name: "for-key"}},
+		&parser.AllocNode{Name: forAlloc.MultiNames.Names[1].Name, Val:
+			&parser.LoadArrayElement{Array: forAllocRange.Item, Pos: &parser.NameNode{Name: "for-key"}},
+		},
+	}
+
+	modifiedBlock = append(modifiedBlock, v.Block...)
+
+	c.compileForThreeType(&parser.ForNode{
+		BeforeLoop: &parser.AllocNode{Name: "for-key", Val: &parser.ConstantNode{Type: parser.NUMBER, Value: 0}},
+
+		Condition: &parser.OperatorNode{
+			Left: typeCastedKey,
+			Operator: parser.OP_LT,
+			Right: &parser.CallNode{
+					Function: &parser.NameNode{Name: "len"},
+					Arguments: []parser.Node{forAllocRange.Item},
+			},
+		},
+
+		AfterIteration: &parser.AssignNode{
+			Target: &parser.NameNode{Name: "for-key"},
+			Val: &parser.OperatorNode{
+				Left: &parser.NameNode{Name: "for-key"},
+				Operator: parser.OP_ADD,
+				Right: &parser.ConstantNode{Type: parser.NUMBER, Value: 1},
+			},
+		},
+
+		Block: modifiedBlock,
+	})
 }
 
 func (c *Compiler) compileBreakNode(v *parser.BreakNode) {
