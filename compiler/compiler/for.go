@@ -64,21 +64,36 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 	// for k, v := range a
 	// for k := 0; k < len(a); k++ { v := a[k] }
 
-
 	forAlloc := v.BeforeLoop.(*parser.AllocNode)
 
 	forAllocRange := forAlloc.Val.(*parser.RangeNode)
 
 	typeCastedKey := &parser.TypeCastNode{
 		Type: &parser.SingleTypeNode{SourceName: "int32", TypeName: "int32"},
-		Val: &parser.NameNode{Name: "for-key"},
+		Val:  &parser.NameNode{Name: "for-key"},
 	}
 
-	modifiedBlock := []parser.Node{
-		&parser.AllocNode{Name: forAlloc.MultiNames.Names[0].Name, Val: &parser.NameNode{Name: "for-key"}},
-		&parser.AllocNode{Name: forAlloc.MultiNames.Names[1].Name, Val:
-			&parser.LoadArrayElement{Array: forAllocRange.Item, Pos: &parser.NameNode{Name: "for-key"}},
-		},
+	var modifiedBlock []parser.Node
+
+	var keyName string
+	if forAlloc.MultiNames == nil {
+		keyName = forAlloc.Name
+	} else {
+		keyName = forAlloc.MultiNames.Names[0].Name
+	}
+
+	// Assignment of key
+	modifiedBlock = append(modifiedBlock, &parser.AllocNode{
+		Name: keyName,
+		Val:  &parser.NameNode{Name: "for-key"},
+	})
+
+	// Assignment of value
+	if forAlloc.MultiNames != nil && len(forAlloc.MultiNames.Names) >= 2 {
+		modifiedBlock = append(modifiedBlock, &parser.AllocNode{
+			Name: forAlloc.MultiNames.Names[1].Name,
+			Val:  &parser.LoadArrayElement{Array: forAllocRange.Item, Pos: &parser.NameNode{Name: "for-key"}},
+		})
 	}
 
 	modifiedBlock = append(modifiedBlock, v.Block...)
@@ -87,20 +102,20 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 		BeforeLoop: &parser.AllocNode{Name: "for-key", Val: &parser.ConstantNode{Type: parser.NUMBER, Value: 0}},
 
 		Condition: &parser.OperatorNode{
-			Left: typeCastedKey,
+			Left:     typeCastedKey,
 			Operator: parser.OP_LT,
 			Right: &parser.CallNode{
-					Function: &parser.NameNode{Name: "len"},
-					Arguments: []parser.Node{forAllocRange.Item},
+				Function:  &parser.NameNode{Name: "len"},
+				Arguments: []parser.Node{forAllocRange.Item},
 			},
 		},
 
 		AfterIteration: &parser.AssignNode{
 			Target: &parser.NameNode{Name: "for-key"},
 			Val: &parser.OperatorNode{
-				Left: &parser.NameNode{Name: "for-key"},
+				Left:     &parser.NameNode{Name: "for-key"},
 				Operator: parser.OP_ADD,
-				Right: &parser.ConstantNode{Type: parser.NUMBER, Value: 1},
+				Right:    &parser.ConstantNode{Type: parser.NUMBER, Value: 1},
 			},
 		},
 
