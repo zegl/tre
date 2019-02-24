@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"github.com/zegl/tre/compiler/parser"
 )
 
@@ -63,40 +64,49 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 	// A for range that iterates over a slice is just syntactic sugar
 	// for k, v := range a
 	// for k := 0; k < len(a); k++ { v := a[k] }
+	var modifiedBlock []parser.Node
 
-	forAlloc := v.BeforeLoop.(*parser.AllocNode)
+	// The node/value that we're iterating over
+	var rangeItem parser.Node
 
-	forAllocRange := forAlloc.Val.(*parser.RangeNode)
+	// Ranges that use the key and value
+	if forAlloc, ok := v.BeforeLoop.(*parser.AllocNode); ok {
+		forAllocRange := forAlloc.Val.(*parser.RangeNode)
+
+		rangeItem = forAllocRange.Item
+
+		var keyName string
+		if forAlloc.MultiNames == nil {
+			keyName = forAlloc.Name
+		} else {
+			keyName = forAlloc.MultiNames.Names[0].Name
+		}
+
+		// Assignment of key
+		modifiedBlock = append(modifiedBlock, &parser.AllocNode{
+			Name: keyName,
+			Val:  &parser.NameNode{Name: "for-key"},
+		})
+
+		// Assignment of value
+		if forAlloc.MultiNames != nil && len(forAlloc.MultiNames.Names) >= 2 {
+			modifiedBlock = append(modifiedBlock, &parser.AllocNode{
+				Name: forAlloc.MultiNames.Names[1].Name,
+				Val:  &parser.LoadArrayElement{Array: forAllocRange.Item, Pos: &parser.NameNode{Name: "for-key"}},
+			})
+		}
+	} else if forRange, ok := v.BeforeLoop.(*parser.RangeNode); ok {
+		rangeItem = forRange.Item
+	} else {
+		panic("unexpected for/range beforeLoop type: " + fmt.Sprintf("%T %+v", v.BeforeLoop, v.BeforeLoop))
+	}
+
+	modifiedBlock = append(modifiedBlock, v.Block...)
 
 	typeCastedKey := &parser.TypeCastNode{
 		Type: &parser.SingleTypeNode{SourceName: "int32", TypeName: "int32"},
 		Val:  &parser.NameNode{Name: "for-key"},
 	}
-
-	var modifiedBlock []parser.Node
-
-	var keyName string
-	if forAlloc.MultiNames == nil {
-		keyName = forAlloc.Name
-	} else {
-		keyName = forAlloc.MultiNames.Names[0].Name
-	}
-
-	// Assignment of key
-	modifiedBlock = append(modifiedBlock, &parser.AllocNode{
-		Name: keyName,
-		Val:  &parser.NameNode{Name: "for-key"},
-	})
-
-	// Assignment of value
-	if forAlloc.MultiNames != nil && len(forAlloc.MultiNames.Names) >= 2 {
-		modifiedBlock = append(modifiedBlock, &parser.AllocNode{
-			Name: forAlloc.MultiNames.Names[1].Name,
-			Val:  &parser.LoadArrayElement{Array: forAllocRange.Item, Pos: &parser.NameNode{Name: "for-key"}},
-		})
-	}
-
-	modifiedBlock = append(modifiedBlock, v.Block...)
 
 	c.compileForThreeType(&parser.ForNode{
 		BeforeLoop: &parser.AllocNode{Name: "for-key", Val: &parser.ConstantNode{Type: parser.NUMBER, Value: 0}},
@@ -106,7 +116,7 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 			Operator: parser.OP_LT,
 			Right: &parser.CallNode{
 				Function:  &parser.NameNode{Name: "len"},
-				Arguments: []parser.Node{forAllocRange.Item},
+				Arguments: []parser.Node{rangeItem},
 			},
 		},
 

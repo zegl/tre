@@ -2,6 +2,7 @@ package main
 
 import "external"
 
+
 func main() {
 	s := []int{10, 20, 30}
 	// 0 10
@@ -15,6 +16,13 @@ func main() {
 	// 1
 	// 2
 	for k := range s {
-		external.Printf("%d\n", k)
+	 	external.Printf("%d\n", k)
+	}
+
+	// AAA
+	// AAA
+	// AAA
+	for range s {
+		external.Printf("%s\n", "AAA")
 	}
 }
