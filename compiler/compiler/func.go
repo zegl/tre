@@ -116,7 +116,6 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		LlvmFunction:   fn,
 		LlvmReturnType: funcRetType,
 		ReturnTypes:    treReturnTypes,
-		FunctionName:   v.Name,
 		IsVariadic:     isVariadicFunc,
 		ArgumentTypes:  treParams,
 	}
@@ -327,7 +326,7 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 			fnType = ft
 
 			// TODO: Get rid of this difference
-			// The function should alwasy be in the value, not the type
+			// The function should always be in the value, not the type
 			if ft.LlvmFunction.Name() == "UNNAMEDFUNC" {
 				fn = namedFn.Value.(llvmValue.Named)
 			} else {

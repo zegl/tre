@@ -46,7 +46,6 @@ func (c *Compiler) lenFuncCall(v *parser.CallNode) value.Value {
 		val := arg.Value
 		val = c.contextBlock.NewLoad(val)
 
-		// TODO: Why is a double load needed?
 		if _, ok := val.Type().(*llvmTypes.PointerType); ok {
 			val = c.contextBlock.NewLoad(val)
 		}
