@@ -112,7 +112,6 @@ type Function struct {
 	// Return types of the Tre function
 	ReturnTypes []Type
 
-	FunctionName  string
 	IsVariadic    bool
 	ArgumentTypes []Type
 	IsExternal    bool
@@ -126,7 +125,7 @@ func (f Function) LLVM() types.Type {
 }
 
 func (f Function) Name() string {
-	return f.FunctionName
+	return "func"
 }
 
 type BoolType struct {
