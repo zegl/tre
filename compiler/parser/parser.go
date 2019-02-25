@@ -553,7 +553,7 @@ func (p *parser) aheadParse(input Node) Node {
 					}
 				}
 				return &AssignNode{
-					Name: nameNode.Name,
+					Target: nameNode,
 					Val:  p.parseOne(true),
 				}
 			}
@@ -786,8 +786,6 @@ func (p *parser) parseUntil(until lexer.Item) []Node {
 func (p *parser) parseUntilEither(untils []lexer.Item) (res []Node, reached lexer.Item) {
 	for {
 		current := p.input[p.i]
-
-		log.Printf("current: %+v", current)
 
 		// Check if we have reached the end
 		for _, until := range untils {

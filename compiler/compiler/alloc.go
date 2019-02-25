@@ -96,15 +96,7 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 }
 
 func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
-	var dst value.Value
-
-	// TODO: Remove AssignNode.Name
-	if len(v.Name) > 0 {
-		dst = c.varByName(v.Name)
-	} else {
-		dst = c.compileValue(v.Target)
-	}
-
+	dst := c.compileValue(v.Target)
 	llvmDst := dst.Value
 
 	// Allocate from type
