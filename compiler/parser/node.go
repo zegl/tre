@@ -224,16 +224,11 @@ func (an AllocNode) String() string {
 type AssignNode struct {
 	baseNode
 
-	Name   string // TODO: Removes
 	Target Node
 	Val    Node
 }
 
 func (an AssignNode) String() string {
-	if len(an.Name) > 0 {
-		return fmt.Sprintf("assign(%s) = %v", an.Name, an.Val)
-	}
-
 	return fmt.Sprintf("assign(%+v) = %v", an.Target, an.Val)
 }
 
