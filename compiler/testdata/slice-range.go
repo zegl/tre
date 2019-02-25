@@ -3,6 +3,10 @@ package main
 import "external"
 
 
+func ff() []int {
+	return []int{40, 50}
+}
+
 func main() {
 	s := []int{10, 20, 30}
 	// 0 10
@@ -25,4 +29,18 @@ func main() {
 	for range s {
 		external.Printf("%s\n", "AAA")
 	}
+
+	// 0 40
+	// 1 50
+	f := ff()
+	for k, v := range f {
+		external.Printf("%d %d\n", k, v)
+	}
+
+	// 0 40
+	// 1 50
+	for k, v := range ff() {
+		external.Printf("%d %d\n", k, v)
+	}
 }
+
