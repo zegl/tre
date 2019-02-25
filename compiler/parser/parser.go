@@ -554,7 +554,7 @@ func (p *parser) aheadParse(input Node) Node {
 				}
 				return &AssignNode{
 					Target: nameNode,
-					Val:  p.parseOne(true),
+					Val:    p.parseOne(true),
 				}
 			}
 

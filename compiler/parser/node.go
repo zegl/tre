@@ -139,10 +139,10 @@ func (ConditionNode) String() string {
 type DefineFuncNode struct {
 	baseNode
 
-	Name string
+	Name    string
 	IsNamed bool
 
-	IsMethod          bool
+	IsMethod bool
 
 	MethodOnType      *SingleTypeNode
 	IsPointerReceiver bool

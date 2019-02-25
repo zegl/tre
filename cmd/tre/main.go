@@ -18,7 +18,7 @@ func main() {
 
 	// "GOROOT" (treroot?) detection based on the binary path
 	treBinaryPath, _ := os.Executable()
-	goroot :=  filepath.Clean(treBinaryPath + "/../pkg/")
+	goroot := filepath.Clean(treBinaryPath + "/../pkg/")
 
 	err := build.Build(os.Args[1], goroot, "output-binary", debug)
 	if err != nil {

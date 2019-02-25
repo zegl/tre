@@ -221,4 +221,3 @@ func (ftn FuncTypeNode) GetName() string {
 func (ftn FuncTypeNode) Variadic() bool {
 	return ftn.IsVariadic
 }
-

@@ -16,7 +16,7 @@ func (c *Compiler) compileGetReferenceNode(v *parser.GetReferenceNode) value.Val
 		if _, ok := val.Type.(*types.Pointer); !ok {
 			return value.Value{
 				Type: &types.Pointer{
-					Type: val.Type,
+					Type:                  val.Type,
 					IsNonAllocDereference: true,
 				},
 				Value:      val.Value,
@@ -27,7 +27,7 @@ func (c *Compiler) compileGetReferenceNode(v *parser.GetReferenceNode) value.Val
 		if structType, ok := val.Type.(*types.Struct); ok && structType.IsHeapAllocated {
 			return value.Value{
 				Type: &types.Pointer{
-					Type: val.Type,
+					Type:                  val.Type,
 					IsNonAllocDereference: true,
 				},
 				Value:      val.Value,

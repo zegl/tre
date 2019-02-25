@@ -117,20 +117,20 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 		var argNameNodes []*parser.NameNode
 		var retNameNodes []*parser.NameNode
 
-		for _, arg := range t.ArgTypes{
+		for _, arg := range t.ArgTypes {
 			argNameNodes = append(argNameNodes, &parser.NameNode{Name: "_", Type: arg})
 		}
-		for _, ret := range t.RetTypes{
+		for _, ret := range t.RetTypes {
 			retNameNodes = append(retNameNodes, &parser.NameNode{Name: "_", Type: ret})
 		}
-		retType , treReturnTypes , llvmArgTypes , treParams ,_ , _  := funcType(argNameNodes, retNameNodes)
+		retType, treReturnTypes, llvmArgTypes, treParams, _, _ := funcType(argNameNodes, retNameNodes)
 
 		fn := ir.NewFunc("UNNAMEDFUNC", retType.LLVM(), llvmArgTypes...)
 
 		return &types.Function{
 			ArgumentTypes: treParams,
-			ReturnTypes: treReturnTypes,
-			LlvmFunction: fn,
+			ReturnTypes:   treReturnTypes,
+			LlvmFunction:  fn,
 		}
 	}
 

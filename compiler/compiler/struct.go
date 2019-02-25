@@ -51,7 +51,7 @@ func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode)
 			val := src.Value
 
 			if isPointer && !isPointerNonAllocDereference && src.IsVariable {
-					val = c.contextBlock.NewLoad(val)
+				val = c.contextBlock.NewLoad(val)
 			}
 
 			retVal := c.contextBlock.NewGetElementPtr(val, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(memberIndex)))

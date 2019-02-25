@@ -65,7 +65,7 @@ func buildRunAndCheck(t *testing.T, path string) error {
 	_, testFilePath, _, _ := runtime.Caller(0)
 	goroot := filepath.Clean(testFilePath + "/../../pkg/")
 
-	err = build.Build(path,goroot, outputBinaryPath, false)
+	err = build.Build(path, goroot, outputBinaryPath, false)
 	if err != nil {
 		output = strings.TrimSpace(err.Error())
 		runProgram = false
@@ -75,7 +75,7 @@ func buildRunAndCheck(t *testing.T, path string) error {
 	if runProgram {
 		cmd := exec.Command(outputBinaryPath)
 		stdout, err := cmd.CombinedOutput()
-		if err != nil &&  err.Error() != "exit status 1" {
+		if err != nil && err.Error() != "exit status 1" {
 			output = output + strings.TrimSpace(err.Error())
 		} else {
 			output = output + strings.TrimSpace(string(stdout))
