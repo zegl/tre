@@ -40,7 +40,6 @@ func (p *parser) parseFor() *ForNode {
 		res.IsThreeTypeFor = true
 	}
 
-
 	res.BeforeLoop = beforeLoop[0]
 
 	if isThreeTypeFor {
