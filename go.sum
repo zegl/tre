@@ -8,6 +8,7 @@ github.com/inspirer/textmapper v0.0.0-20181202234051-312f7a0d146c/go.mod h1:SpoI
 github.com/inspirer/textmapper v0.0.0-20181209132054-5280caf89d64/go.mod h1:SpoIwXu07A3gguovN379QUCTHpUk1lhX2KIjVxpQOas=
 github.com/inspirer/textmapper v0.0.0-20181224220124-bad2c4921a6b/go.mod h1:SpoIwXu07A3gguovN379QUCTHpUk1lhX2KIjVxpQOas=
 github.com/inspirer/textmapper v0.0.0-20181230113252-ce12cf32c1ea/go.mod h1:SpoIwXu07A3gguovN379QUCTHpUk1lhX2KIjVxpQOas=
+github.com/inspirer/textmapper v0.0.0-20190101225825-ae0b38e27780/go.mod h1:SpoIwXu07A3gguovN379QUCTHpUk1lhX2KIjVxpQOas=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
@@ -15,6 +16,7 @@ github.com/llir/ll v0.0.0-20181124143609-405448b26944/go.mod h1:a4JSuI2i1XkjU15L
 github.com/llir/ll v0.0.0-20181130124432-c921b17125cd/go.mod h1:cn5BEGWlH2Dt/Zh324p1jR2GT7wYWT6oVxc1T6ghYKU=
 github.com/llir/ll v0.0.0-20181207163918-0cfcde00de3f/go.mod h1:jPRfHdh8JEos8a05CSejK/nIKptCRRixCfhg0zngzpg=
 github.com/llir/ll v0.0.0-20181228235520-85cf95b77ea2/go.mod h1:QSnTUqiZQX2N59KdP8TIEveBZldlGN7ypCN3fiie5WA=
+github.com/llir/ll v0.0.0-20190101214934-d9b443a40870/go.mod h1:QSnTUqiZQX2N59KdP8TIEveBZldlGN7ypCN3fiie5WA=
 github.com/llir/llvm v0.3.0-pre2.0.20181125234946-9b9b9240f6d2 h1:65d2Z/H2EYDAxO7Ob3zbPsOlxy9jfciFkNXCtIz5X30=
 github.com/llir/llvm v0.3.0-pre2.0.20181125234946-9b9b9240f6d2/go.mod h1:GjmZh4l6Kcz7/Q1G25oyiZuD2VqOWfHwnudPDaeArAE=
 github.com/llir/llvm v0.3.0-pre2.0.20181125234946-acfb969a802bc78c7ae796a4123d629e81913d2e h1:AQ8mn/NK05BEKXTavJwVXhnMp66zkghku31zuY+xKNo=
@@ -25,8 +27,11 @@ github.com/llir/llvm v0.3.0-pre5 h1:23FAmKbkTBCjOOgYSwgTAnNwHeMPzFVm/99LbdX4l24=
 github.com/llir/llvm v0.3.0-pre5/go.mod h1:+ufojQPE9iR5h7g9CqjTQNdTrglB9+RhRSbnrkd+5XQ=
 github.com/llir/llvm v0.3.0-pre6 h1:fN81cWhhvHwhZIgD73InEaVMgLKUTVJX6cRKLJbhl8k=
 github.com/llir/llvm v0.3.0-pre6/go.mod h1:e3ZSG/wmhSQ+Z8lvL9jtN+McfuZaivudis0SmvdRCPk=
+github.com/llir/llvm v0.3.0-pre7 h1:zTzXeXXNVllvHlPS9hIy56A0Nvu2qC4ouh0z8vHvw8g=
+github.com/llir/llvm v0.3.0-pre7/go.mod h1:cjDv5v+hXwGbEFpgg/wrrKc3Taq7PLwJUF9RHr/GIDU=
 github.com/mewkiz/pkg v0.0.0-20181119122551-9729f4f4ff2b h1:XHFBx9ZEVHnSCRiTz7w1a/NRBk9x7iyFiqnoN6R+vu8=
 github.com/mewkiz/pkg v0.0.0-20181119122551-9729f4f4ff2b/go.mod h1:bhmdGJSMX5WCIBFmk27tBnUvBJm5WxXmarBV41qvbNI=
+github.com/mewkiz/pkg v0.0.0-20181231041609-5720a0c5985d/go.mod h1:bhmdGJSMX5WCIBFmk27tBnUvBJm5WxXmarBV41qvbNI=
 github.com/mewmew/float v0.0.0-20181121163145-c0f786d7da73 h1:bTqCgPsW3TFb9MFtvaOmGFWVhCmN3EmRw02zkchdOHo=
 github.com/mewmew/float v0.0.0-20181121163145-c0f786d7da73/go.mod h1:obQBs6O+vjhgOZLkGdALxItKw4xrI49lSBEnAMO6lWI=
 github.com/mewspring/tools v0.0.0-20181107085742-4dbfa080ff87/go.mod h1:UAdVbSksr+7Bg+z4mga16OaBg3qAcgdaF3x3AeqJHEs=
@@ -46,3 +51,4 @@ golang.org/x/tools v0.0.0-20181122213734-04b5d21e00f1/go.mod h1:n7NCudcB/nEzxVGm
 golang.org/x/tools v0.0.0-20181130052023-1c3d964395ce/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
 golang.org/x/tools v0.0.0-20181210225255-6a3e9aa2ab77/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
 golang.org/x/tools v0.0.0-20181221235234-d00ac6d27372/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
+golang.org/x/tools v0.0.0-20190102213336-ca9055ed7d04/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
