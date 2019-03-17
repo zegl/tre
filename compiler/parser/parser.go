@@ -105,34 +105,78 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 			return
 		}
 
-		// Slice initalization
+		// Slice or array initalization
 		if current.Val == "[" {
 			next := p.lookAhead(1)
-			if next.Type != lexer.OPERATOR || next.Val != "]" {
-				panic("expected ] after [")
+
+			// Slice init
+			if next.Type == lexer.OPERATOR && next.Val == "]" {
+				p.i += 2
+
+				sliceItemType, err := p.parseOneType()
+				if err != nil {
+					panic(err)
+				}
+
+				p.i++
+
+				next = p.lookAhead(0)
+				if next.Type != lexer.SEPARATOR || next.Val != "{" {
+					log.Printf("%+v", next)
+					panic("expected { after type in slice init")
+				}
+
+				p.i++
+
+				items := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+
+				res = &InitializeSliceNode{
+					Type:  sliceItemType,
+					Items: items,
+				}
+				if withAheadParse {
+					res = p.aheadParse(res)
+				}
+				return
 			}
 
-			p.i += 2
+			p.i++
 
-			sliceItemType, err := p.parseOneType()
+			// TODO: Support for compile-time artimethic ("[1+2]int{1,2,3}")
+			arraySize := p.lookAhead(0)
+			if arraySize.Type != lexer.NUMBER {
+				panic("expected number in array size")
+			}
+			size, err := strconv.Atoi(arraySize.Val)
+			if err != nil {
+				panic("expected number in array size")
+			}
+
+			p.i++
+			p.expect(p.lookAhead(0), lexer.Item{
+				Type: lexer.OPERATOR,
+				Val:  "]",
+			})
+
+			p.i++
+			arrayItemType, err := p.parseOneType()
 			if err != nil {
 				panic(err)
 			}
 
 			p.i++
-
-			next = p.lookAhead(0)
-			if next.Type != lexer.SEPARATOR || next.Val != "{" {
-				log.Printf("%+v", next)
-				panic("expected { after type in slice init")
-			}
+			p.expect(p.lookAhead(0), lexer.Item{
+				Type: lexer.SEPARATOR,
+				Val:  "{",
+			})
 
 			p.i++
-
 			items := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
 
-			res = &InitializeSliceNode{
-				Type:  sliceItemType,
+			// Array init
+			res = &InitializeArrayNode{
+				Type:  arrayItemType,
+				Size:  size,
 				Items: items,
 			}
 			if withAheadParse {
