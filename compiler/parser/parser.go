@@ -32,10 +32,6 @@ func Parse(input []lexer.Item, debug bool) FileNode {
 func (p *parser) parseOne(withAheadParse bool) (res Node) {
 	current := p.input[p.i]
 
-	/*if p.debug {
-		fmt.Printf("parseOne: %d - %+v\n", p.i, current)
-	}*/
-
 	switch current.Type {
 
 	case lexer.EOF:
@@ -497,12 +493,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 }
 
 func (p *parser) aheadParse(input Node) Node {
-
 	next := p.lookAhead(1)
-
-	if p.debug {
-		fmt.Printf("aheadParse: %+v - %T %+v\n", next, input, input)
-	}
 
 	if next.Type == lexer.OPERATOR {
 		if next.Val == "." {

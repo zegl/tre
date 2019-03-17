@@ -113,17 +113,7 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 		}
 
 	case *parser.FuncTypeNode:
-		// TODO: if funcType worked on parser.TypeNodes instead of NameNodes we wouldn't have to do this convert
-		var argNameNodes []*parser.NameNode
-		var retNameNodes []*parser.NameNode
-
-		for _, arg := range t.ArgTypes {
-			argNameNodes = append(argNameNodes, &parser.NameNode{Name: "_", Type: arg})
-		}
-		for _, ret := range t.RetTypes {
-			retNameNodes = append(retNameNodes, &parser.NameNode{Name: "_", Type: ret})
-		}
-		retType, treReturnTypes, llvmArgTypes, treParams, _, _ := funcType(argNameNodes, retNameNodes)
+		retType, treReturnTypes, llvmArgTypes, treParams, _, _ := funcType(t.ArgTypes, t.RetTypes)
 
 		fn := ir.NewFunc("UNNAMEDFUNC", retType.LLVM(), llvmArgTypes...)
 

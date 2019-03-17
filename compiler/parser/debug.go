@@ -1,9 +1,11 @@
 package parser
 
-import "fmt"
+import (
+	"log"
+)
 
 func (p *parser) printInput() {
 	for i, p := range p.input {
-		fmt.Printf("%d - %+v\n", i, p)
+		log.Printf("%d - %+v\n", i, p)
 	}
 }
