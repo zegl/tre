@@ -410,3 +410,14 @@ type TypeCastInterfaceNode struct {
 func (i TypeCastInterfaceNode) String() string {
 	return fmt.Sprintf("castInterface(%s(%+v))", i.Type, i.Item)
 }
+
+// A node that contains multiple nodes
+// The right hand side of "a, b := 1, 2" is a MultiNode
+type MultiValueNode struct {
+	baseNode
+	Items []Node
+}
+
+func (m MultiValueNode) String() string {
+	return fmt.Sprintf("multi(%+v)", m.Items)
+}

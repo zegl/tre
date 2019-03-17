@@ -8,7 +8,6 @@ import (
 )
 
 func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
-
 	// Push and pop alloc stack
 	c.contextAlloc = append(c.contextAlloc, v)
 	defer func() {
@@ -131,4 +130,20 @@ func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
 
 	// Pop assigng type stack
 	c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
+}
+
+func (c *Compiler) compileMultiValueNode(multi *parser.MultiValueNode) value.Value {
+	var valTypes []types.Type
+	var vals []value.Value
+
+	for _, v := range multi.Items {
+		comp := c.compileValue(v)
+		valTypes = append(valTypes, comp.Type)
+		vals = append(vals, comp)
+	}
+
+	return value.Value{
+		Type:        &types.MultiValue{Types: valTypes},
+		MultiValues: vals,
+	}
 }
