@@ -298,9 +298,10 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		return c.compileInitStructWithValues(v)
 	case *parser.TypeCastInterfaceNode:
 		return c.compileTypeCastInterfaceNode(v)
-
 	case *parser.DefineFuncNode:
 		return c.compileDefineFuncNode(v)
+	case *parser.InitializeArrayNode:
+		return c.compileInitializeArrayNode(v)
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))

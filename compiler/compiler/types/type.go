@@ -219,6 +219,7 @@ func (s StringType) Zero(block *ir.Block, alloca llvmValue.Value) {
 type Array struct {
 	backingType
 	Type     Type
+	Len      uint64
 	LlvmType types.Type
 }
 
@@ -228,6 +229,13 @@ func (a Array) LLVM() types.Type {
 
 func (a Array) Name() string {
 	return "array"
+}
+
+func (a Array) Zero(block *ir.Block, alloca llvmValue.Value) {
+	for i := uint64(0); i < a.Len; i++ {
+		ptr := block.NewGetElementPtr(alloca, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, int64(i)))
+		a.Type.Zero(block, ptr)
+	}
 }
 
 type Slice struct {

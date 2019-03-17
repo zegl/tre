@@ -371,6 +371,17 @@ func (i InitializeSliceNode) String() string {
 	return fmt.Sprintf("InitializeSliceNode-[]%s{%+v}", i.Type, i.Items)
 }
 
+type InitializeArrayNode struct {
+	baseNode
+	Type  TypeNode
+	Size  int
+	Items []Node
+}
+
+func (i InitializeArrayNode) String() string {
+	return fmt.Sprintf("InitializeArrayNode-[%d]%s{%+v}", i.Size, i.Type, i.Items)
+}
+
 type InitializeStructNode struct {
 	baseNode
 	Type  TypeNode

@@ -11,6 +11,49 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
+func (c *Compiler) compileInitializeArrayNode(v *parser.InitializeArrayNode) value.Value {
+	itemType := parserTypeToType(v.Type)
+
+	var values []value.Value
+
+	// Add items
+	for _, val := range v.Items {
+		// Push assigng type stack
+		c.contextAssignDest = append(c.contextAssignDest, value.Value{Type: itemType})
+
+		values = append(values, c.compileValue(val))
+
+		// Pop assigng type stack
+		c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
+	}
+
+	return c.compileInitializeArrayWithValues(uint64(v.Size), itemType, values...)
+}
+
+func (c *Compiler) compileInitializeArrayWithValues(len uint64, itemType types.Type, values ...value.Value) value.Value {
+	arrayType := &types.Array{
+		Type:     itemType,
+		Len:      len,
+		LlvmType: llvmTypes.NewArray(len, itemType.LLVM()),
+	}
+
+	allocArray := c.contextBlock.NewAlloca(arrayType.LLVM())
+	arrayType.Zero(c.contextBlock, allocArray)
+
+	for i, val := range values {
+		dst := c.contextBlock.NewGetElementPtr(allocArray, constant.NewInt(llvmTypes.I64, 0), constant.NewInt(llvmTypes.I64, int64(i)))
+		c.contextBlock.NewStore(
+			val.Value,
+			dst)
+	}
+
+	return value.Value{
+		Value:      allocArray,
+		Type:       arrayType,
+		IsVariable: true,
+	}
+}
+
 func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Value {
 	arr := c.compileValue(v.Array)
 	arrayValue := arr.Value
