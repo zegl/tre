@@ -14,6 +14,8 @@ type parser struct {
 	i     int
 	input []lexer.Item
 
+	inAllocRightHand bool
+
 	debug bool
 }
 
@@ -128,7 +130,10 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 
 				p.i++
 
+				prevInAlloc := p.inAllocRightHand
+				p.inAllocRightHand = false
 				items := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+				p.inAllocRightHand = prevInAlloc
 
 				res = &InitializeSliceNode{
 					Type:  sliceItemType,
@@ -171,7 +176,11 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 			})
 
 			p.i++
+
+			prevInAlloc := p.inAllocRightHand
+			p.inAllocRightHand = false
 			items := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+			p.inAllocRightHand = prevInAlloc
 
 			// Array init
 			res = &InitializeArrayNode{
@@ -582,10 +591,13 @@ func (p *parser) aheadParse(input Node) Node {
 
 			if nameNode, ok := input.(*NameNode); ok {
 				if next.Val == ":=" {
-					return &AllocNode{
+					p.inAllocRightHand = true
+					a := &AllocNode{
 						Name: nameNode.Name,
 						Val:  p.parseOne(true),
 					}
+					p.inAllocRightHand = false
+					return a
 				}
 				return &AssignNode{
 					Target: nameNode,
@@ -695,10 +707,14 @@ func (p *parser) aheadParse(input Node) Node {
 			})
 		}
 
-		return p.aheadParse(&CallNode{
+		beforeAllocRightHand := p.inAllocRightHand
+		p.inAllocRightHand = false
+		callNode := p.aheadParse(&CallNode{
 			Function:  input,
 			Arguments: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"}),
 		})
+		p.inAllocRightHand = beforeAllocRightHand
+		return callNode
 	}
 
 	// Initialize structs with values:
@@ -741,7 +757,10 @@ func (p *parser) aheadParse(input Node) Node {
 
 					p.i += 2
 
+					prevInAlloc := p.inAllocRightHand
+					p.inAllocRightHand = false
 					items[key.Val] = p.parseOne(true)
+					p.inAllocRightHand = prevInAlloc
 
 					p.i++
 
@@ -765,6 +784,7 @@ func (p *parser) aheadParse(input Node) Node {
 	}
 
 	if next.Type == lexer.SEPARATOR && next.Val == "," {
+		// MultiName node parsing ("a, b, c := ...")
 		if inputNamedNode, ok := input.(*NameNode); ok {
 
 			// This bit of parsing is specualtive
@@ -800,6 +820,25 @@ func (p *parser) aheadParse(input Node) Node {
 			// A MultiNameNode could not be created
 			// Reset the parsing index
 			p.i = preIndex
+		}
+
+		// MultiValueNode node parsing ("... := 1, 2, 3")
+		if p.inAllocRightHand {
+			p.i += 2
+
+			// Add to existing multi value if possible. Done on third argument
+			// and forward
+			if inMultiValue, ok := input.(*MultiValueNode); ok {
+				inMultiValue.Items = append(inMultiValue.Items, p.parseOne(false))
+				return p.aheadParse(inMultiValue)
+			}
+
+			return p.aheadParse(&MultiValueNode{
+				Items: []Node{
+					input,
+					p.parseOne(false),
+				},
+			})
 		}
 	}
 
