@@ -12,27 +12,29 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func funcType(params, returnTypes []*parser.NameNode) (retType types.Type, treReturnTypes []types.Type, argTypes []*ir.Param, treParams []types.Type, isVariadicFunc bool, argumentReturnValuesCount int) {
+func funcType(params, returnTypes []parser.TypeNode) (retType types.Type, treReturnTypes []types.Type, argTypes []*ir.Param, treParams []types.Type, isVariadicFunc bool, argumentReturnValuesCount int) {
 	llvmParams := make([]*ir.Param, len(params))
 	treParams = make([]types.Type, len(params))
 
 	for k, par := range params {
-		paramType := parserTypeToType(par.Type)
+		paramType := parserTypeToType(par)
 
 		// Variadic arguments are converted into a slice
 		// The function takes a slice as the argument, the caller has to convert
 		// the arguments to a slice before calling
-		if par.Type.Variadic() {
+		if par.Variadic() {
 			paramType = &types.Slice{
 				Type:     paramType,
 				LlvmType: internal.Slice(paramType.LLVM()),
 			}
 		}
 
-		param := ir.NewParam(par.Name, paramType.LLVM())
+		param := ir.NewParam(getVarName("p"), paramType.LLVM())
 
-		// TODO: Should only be possible on the last argument
-		if par.Type.Variadic() {
+		if par.Variadic() {
+			if k < len(params)-1 {
+				panic("Only the last parameter can be varadic")
+			}
 			isVariadicFunc = true
 		}
 
@@ -48,7 +50,7 @@ func funcType(params, returnTypes []*parser.NameNode) (retType types.Type, treRe
 
 	// Use LLVM function return value if there's only one return value
 	if len(returnTypes) == 1 {
-		funcRetType = parserTypeToType(returnTypes[0].Type)
+		funcRetType = parserTypeToType(returnTypes[0])
 		treReturnTypes = []types.Type{funcRetType}
 	} else if len(returnTypes) > 0 {
 		// Return values via argument pointers
@@ -56,7 +58,7 @@ func funcType(params, returnTypes []*parser.NameNode) (retType types.Type, treRe
 		var llvmReturnTypesParams []*ir.Param
 
 		for _, ret := range returnTypes {
-			t := parserTypeToType(ret.Type)
+			t := parserTypeToType(ret)
 			treReturnTypes = append(treReturnTypes, t)
 			llvmReturnTypesParams = append(llvmReturnTypesParams, ir.NewParam(getVarName("ret"), llvmTypes.NewPointer(t.LLVM())))
 		}
@@ -83,7 +85,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 
 		// Add the type that we're a method on as the first argument
 		v.Arguments = append([]*parser.NameNode{
-			&parser.NameNode{
+			{
 				Name: v.InstanceName,
 				Type: methodOnType,
 			},
@@ -97,9 +99,17 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		compiledName = c.currentPackageName + "_" + getAnonFuncName()
 	}
 
-	// isVariadicFunc := false
+	argTypes := make([]parser.TypeNode, len(v.Arguments))
+	for k, v := range v.Arguments {
+		argTypes[k] = v.Type
+	}
 
-	funcRetType, treReturnTypes, llvmParams, treParams, isVariadicFunc, argumentReturnValuesCount := funcType(v.Arguments, v.ReturnValues)
+	retTypes := make([]parser.TypeNode, len(v.ReturnValues))
+	for k, v := range v.ReturnValues {
+		retTypes[k] = v.Type
+	}
+
+	funcRetType, treReturnTypes, llvmParams, treParams, isVariadicFunc, argumentReturnValuesCount := funcType(argTypes, retTypes)
 
 	if c.currentPackageName == "main" && v.Name == "main" {
 		if len(v.ReturnValues) != 0 {
@@ -155,7 +165,6 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 			retVals = append(retVals, value.Value{
 				Value: llvmParams[i],
 				Type:  retType,
-				// IsVariable: true,
 			})
 		}
 
