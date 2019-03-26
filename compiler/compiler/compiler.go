@@ -268,6 +268,8 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		return c.compileConstantNode(v)
 	case *parser.OperatorNode:
 		return c.compileOperatorNode(v)
+	case *parser.SubNode:
+		return c.compileSubNode(v)
 	case *parser.NameNode:
 		return c.varByName(v.Name)
 	case *parser.CallNode:

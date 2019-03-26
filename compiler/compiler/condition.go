@@ -112,6 +112,26 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 	}
 }
 
+func (c *Compiler) compileSubNode(v *parser.SubNode) value.Value {
+	right := c.compileValue(v.Item)
+	rVal := right.Value
+
+	if right.IsVariable {
+		rVal = c.contextBlock.NewLoad(rVal)
+	}
+
+	res := c.contextBlock.NewSub(
+		constant.NewInt(rVal.Type().(*llvmTypes.IntType), 0),
+		rVal,
+	)
+
+	return value.Value {
+		Value: res,
+		Type: right.Type,
+		IsVariable: false,
+	}
+}
+
 func (c *Compiler) compileConditionNode(v *parser.ConditionNode) {
 
 	c.pushVariablesStack()
