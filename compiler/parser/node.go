@@ -361,6 +361,15 @@ func (nn NegateNode) String() string {
 	return fmt.Sprintf("NegateNode-!%s", nn.Item)
 }
 
+type SubNode struct {
+	baseNode
+	Item Node
+}
+
+func (sn SubNode) String() string {
+	return fmt.Sprintf("-%s", sn.Item)
+}
+
 type InitializeSliceNode struct {
 	baseNode
 	Type  TypeNode

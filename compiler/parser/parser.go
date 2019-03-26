@@ -107,6 +107,12 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 			return
 		}
 
+		if current.Val == "-" {
+			p.i++
+			res = p.aheadParse(&SubNode{Item: p.parseOne(true)})
+			return
+		}
+
 		// Slice or array initalization
 		if current.Val == "[" {
 			next := p.lookAhead(1)
