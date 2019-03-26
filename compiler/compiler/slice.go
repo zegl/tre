@@ -350,7 +350,13 @@ func (c *Compiler) compileInitializeSliceWithValues(itemType types.Type, values 
 	for i, val := range values {
 		storePtr := c.contextBlock.NewGetElementPtr(loadedPtr, constant.NewInt(llvmTypes.I32, int64(i)))
 		storePtr.SetName(getVarName(fmt.Sprintf("storeptr-%d", i)))
-		c.contextBlock.NewStore(val.Value, storePtr)
+
+		val = c.valueToInterfaceValue(val, itemType)
+		v := val.Value
+		if val.IsVariable {
+			v = c.contextBlock.NewLoad(v)
+		}
+		c.contextBlock.NewStore(v, storePtr)
 	}
 
 	// Set len
