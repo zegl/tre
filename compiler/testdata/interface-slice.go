@@ -27,30 +27,4 @@ func main() {
 			external.Printf("%d\n", fromV)
 		}
 	}
-
-	a = append(a, 300)
-
-	// 100
-	// 200
-	// 300
-	for k, v := range a {
-		fromV, ok := v.(int64)
-		if ok {
-			external.Printf("%d\n", fromV)
-		}
-	}
-
-	var b interface{}
-	b = 400
-	a = append(a, b)
-	// 100
-	// 200
-	// 300
-	// 400
-	for k, v := range a {
-		fromV, ok := v.(int64)
-		if ok {
-			external.Printf("%d\n", fromV)
-		}
-	}
 }

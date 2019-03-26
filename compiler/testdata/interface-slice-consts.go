@@ -26,26 +26,18 @@ func main() {
 		}
 	}
 
-	a = append(a, 333)
-
-	// 111
-	// 222
-	// 333
-	for k, v := range a {
-		fromV, ok := v.(int64)
-		if ok {
-			external.Printf("%d\n", fromV)
-		}
-	}
-
-	var b interface{}
-	b = 444
-	a = append(a, b)
-	// 111
-	// 222
-	// 333
-	// 444
-	for k, v := range a {
+	// 10
+	// 11
+	// 12
+	// 13
+	// 14
+	// 15
+	// 16
+	// 17
+	// 18
+	// 19
+	large := []interface{}{10, 11, 12, 13, 14, 15, 16, 17, 18, 19}
+	for k, v := range large {
 		fromV, ok := v.(int64)
 		if ok {
 			external.Printf("%d\n", fromV)
