@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+	"github.com/zegl/tre/compiler/compiler/name"
 
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -138,15 +139,15 @@ func (c *Compiler) compileConditionNode(v *parser.ConditionNode) {
 
 	cond := c.compileOperatorNode(v.Cond)
 
-	afterBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-after")
-	trueBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-true")
+	afterBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-after")
+	trueBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-true")
 	falseBlock := afterBlock
 
 	// push afterBlock stack
 	c.contextCondAfter = append(c.contextCondAfter, afterBlock)
 
 	if len(v.False) > 0 {
-		falseBlock = c.contextBlock.Parent.NewBlock(getBlockName() + "-false")
+		falseBlock = c.contextBlock.Parent.NewBlock(name.Block() + "-false")
 	}
 
 	c.contextBlock.NewCondBr(cond.Value, trueBlock, falseBlock)

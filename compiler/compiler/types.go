@@ -3,6 +3,7 @@ package compiler
 import (
 	"fmt"
 	"github.com/llir/llvm/ir"
+	"github.com/zegl/tre/compiler/compiler/name"
 
 	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -179,20 +180,20 @@ func (c *Compiler) compileTypeCastInterfaceNode(v *parser.TypeCastInterfaceNode)
 	// Allocate the OK variable
 	okVal := c.contextBlock.NewAlloca(types.Bool.LLVM())
 	types.Bool.Zero(c.contextBlock, okVal)
-	okVal.SetName(getVarName("ok"))
+	okVal.SetName(name.Var("ok"))
 
 	resCastedVal := c.contextBlock.NewAlloca(tryCastToType.LLVM())
 	tryCastToType.Zero(c.contextBlock, resCastedVal)
-	resCastedVal.SetName(getVarName("rescastedval"))
+	resCastedVal.SetName(name.Var("rescastedval"))
 
 	interfaceVal := c.compileValue(v.Item)
 
 	interfaceDataType := c.contextBlock.NewGetElementPtr(interfaceVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
 	loadedInterfaceDataType := c.contextBlock.NewLoad(interfaceDataType)
 
-	trueBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-was-correct-type")
-	falseBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-was-other-type")
-	afterBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-after-type-check")
+	trueBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-was-correct-type")
+	falseBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-was-other-type")
+	afterBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-after-type-check")
 
 	trueBlock.NewBr(afterBlock)
 	falseBlock.NewBr(afterBlock)

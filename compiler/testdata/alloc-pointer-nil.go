@@ -8,6 +8,6 @@ type mytype struct{
 
 func main() {
 	var foo *mytype
-	// signal: segmentation fault
+	// Expected: runtime crash
 	foo.a = 100
 }

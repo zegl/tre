@@ -7,6 +7,7 @@ import (
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
 	"github.com/zegl/tre/compiler/compiler/internal"
+	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
@@ -29,7 +30,7 @@ func funcType(params, returnTypes []parser.TypeNode) (retType types.Type, treRet
 			}
 		}
 
-		param := ir.NewParam(getVarName("p"), paramType.LLVM())
+		param := ir.NewParam(name.Var("p"), paramType.LLVM())
 
 		if par.Variadic() {
 			if k < len(params)-1 {
@@ -60,7 +61,7 @@ func funcType(params, returnTypes []parser.TypeNode) (retType types.Type, treRet
 		for _, ret := range returnTypes {
 			t := parserTypeToType(ret)
 			treReturnTypes = append(treReturnTypes, t)
-			llvmReturnTypesParams = append(llvmReturnTypesParams, ir.NewParam(getVarName("ret"), llvmTypes.NewPointer(t.LLVM())))
+			llvmReturnTypesParams = append(llvmReturnTypesParams, ir.NewParam(name.Var("ret"), llvmTypes.NewPointer(t.LLVM())))
 		}
 
 		// Add return values to the start
@@ -96,7 +97,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 	} else if v.IsNamed {
 		compiledName = c.currentPackageName + "_" + v.Name
 	} else {
-		compiledName = c.currentPackageName + "_" + getAnonFuncName()
+		compiledName = c.currentPackageName + "_" + name.AnonFunc()
 	}
 
 	argTypes := make([]parser.TypeNode, len(v.Arguments))
@@ -148,7 +149,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		c.currentPackage.Funcs[v.Name] = typesFunc
 	}
 
-	entry := fn.NewBlock(getBlockName())
+	entry := fn.NewBlock(name.Block())
 
 	prevContextFunc := c.contextFunc
 	prevContextBlock := c.contextBlock
@@ -180,6 +181,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		// Structs needs to be pointer-allocated
 		if _, ok := param.Type().(*llvmTypes.StructType); ok {
 			paramPtr := entry.NewAlloca(dataType.LLVM())
+			paramPtr.SetName(name.Var("paramPtr"))
 			entry.NewStore(param, paramPtr)
 
 			c.setVar(paramName, value.Value{
@@ -244,7 +246,7 @@ func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Func) *ir.Func {
 	params[0] = ir.NewParam("unsafe-ptr", llvmTypes.NewPointer(llvmTypes.I8))
 
 	fn := c.module.NewFunc(targetFunc.Name()+"_jump", targetFunc.Sig.RetType, params...)
-	block := fn.NewBlock(getBlockName())
+	block := fn.NewBlock(name.Block())
 
 	var bitcasted llvmValue.Value = block.NewBitCast(params[0], originalType)
 

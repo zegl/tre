@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/parser"
 )
 
@@ -21,14 +22,14 @@ func (c *Compiler) compileForThreeType(v *parser.ForNode) {
 	})
 
 	// Check condition block
-	checkCondBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-cond")
+	checkCondBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-cond")
 
 	// Loop body block
-	loopBodyBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-body")
-	loopAfterBodyBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-after-body")
+	loopBodyBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-body")
+	loopAfterBodyBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-after-body")
 
 	// After loop block
-	afterLoopBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-after")
+	afterLoopBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-after")
 
 	// Push the break and continue stacks
 	c.contextLoopBreak = append(c.contextLoopBreak, afterLoopBlock)
@@ -79,14 +80,14 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 	}
 
 	// Alloc the value of rangeItem and save it in a variable
-	rangeItemName := getVarName("range-item")
+	rangeItemName := name.Var("range-item")
 	c.compileAllocNode(&parser.AllocNode{
 		Name: rangeItemName,
 		Val:  rangeItem,
 	})
 
 	// Call and alloc len() and save it in a variable
-	forItemLenName := getVarName("range-item-len")
+	forItemLenName := name.Var("range-item-len")
 	c.compileAllocNode(&parser.AllocNode{
 		Name: forItemLenName,
 		Val: &parser.CallNode{
@@ -95,7 +96,7 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 		},
 	})
 
-	forKeyName := getVarName("for-key")
+	forKeyName := name.Var("for-key")
 
 	// Ranges that use the key and value
 	if forAlloc, ok := v.BeforeLoop.(*parser.AllocNode); ok {

@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -21,15 +22,17 @@ func TestAllPrograms(t *testing.T) {
 	}
 
 	for _, file := range files {
-		t.Run(file.Name(), func(t *testing.T) {
-			if err := buildRunAndCheck(t, "testdata/"+file.Name()); err != nil {
-				t.Error("failed: " + err.Error())
-			}
-		})
+		for _, withOptimize := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/optimize:%v/", file.Name(), withOptimize), func(t *testing.T) {
+				if err := buildRunAndCheck(t, "testdata/"+file.Name(), withOptimize); err != nil {
+					t.Error("failed: " + err.Error())
+				}
+			})
+		}
 	}
 }
 
-func buildRunAndCheck(t *testing.T, path string) error {
+func buildRunAndCheck(t *testing.T, path string, withOptimize bool) error {
 	fp, err := os.Stat(path)
 	if err != nil {
 		return err
@@ -65,7 +68,7 @@ func buildRunAndCheck(t *testing.T, path string) error {
 	_, testFilePath, _, _ := runtime.Caller(0)
 	goroot := filepath.Clean(testFilePath + "/../../pkg/")
 
-	err = build.Build(path, goroot, outputBinaryPath, false)
+	err = build.Build(path, goroot, outputBinaryPath, false, withOptimize)
 	if err != nil {
 		output = strings.TrimSpace(err.Error())
 		runProgram = false
@@ -76,6 +79,13 @@ func buildRunAndCheck(t *testing.T, path string) error {
 		cmd := exec.Command(outputBinaryPath)
 		stdout, err := cmd.CombinedOutput()
 		if err != nil && err.Error() != "exit status 1" {
+
+			// The test is only asserting that the program should not run successfully
+			// We're currently getting different errors from runtime depending on the clang optimization level
+			if expect == "Expected: runtime crash" {
+				return nil
+			}
+
 			output = output + strings.TrimSpace(err.Error())
 		} else {
 			output = output + strings.TrimSpace(string(stdout))

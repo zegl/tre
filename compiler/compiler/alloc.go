@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"github.com/llir/llvm/ir"
+	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
@@ -27,7 +28,7 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 			treType.Zero(c.contextBlock, alloc)
 		}
 
-		alloc.SetName(v.Name)
+		alloc.SetName(name.Var(v.Name))
 
 		c.setVar(v.Name, value.Value{
 			Value:      alloc,
@@ -82,7 +83,7 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 	}
 
 	alloc := c.contextBlock.NewAlloca(llvmVal.Type())
-	alloc.SetName(getVarName(v.Name))
+	alloc.SetName(name.Var(v.Name))
 	c.contextBlock.NewStore(llvmVal, alloc)
 
 	c.setVar(v.Name, value.Value{
