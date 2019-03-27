@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+	"github.com/zegl/tre/compiler/compiler/name"
 
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -38,7 +39,7 @@ func (c *Compiler) compileGetReferenceNode(v *parser.GetReferenceNode) value.Val
 
 	// One extra allocation is neccesary
 	newSrc := c.contextBlock.NewAlloca(val.Type.LLVM())
-	newSrc.SetName(getVarName("reference-alloca"))
+	newSrc.SetName(name.Var("reference-alloca"))
 	c.contextBlock.NewStore(val.Value, newSrc)
 
 	return value.Value{

@@ -6,6 +6,7 @@ import (
 	"github.com/llir/llvm/ir/enum"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
@@ -42,6 +43,7 @@ func (c *Compiler) compileInitializeArrayWithValues(len uint64, itemType types.T
 
 	for i, val := range values {
 		dst := c.contextBlock.NewGetElementPtr(allocArray, constant.NewInt(llvmTypes.I64, 0), constant.NewInt(llvmTypes.I64, int64(i)))
+		dst.SetName(name.Var("init-arr-value"))
 		c.contextBlock.NewStore(
 			val.Value,
 			dst)
@@ -160,11 +162,11 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 	}
 
 	if !isCheckedAtCompileTime {
-		outsideOfLengthBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-array-index-out-of-range")
+		outsideOfLengthBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-array-index-out-of-range")
 		c.panic(outsideOfLengthBlock, "index out of range")
 		outsideOfLengthBlock.NewUnreachable()
 
-		safeBlock := c.contextBlock.Parent.NewBlock(getBlockName() + "-after-array-index-check")
+		safeBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-after-array-index-check")
 
 		var runtimeOrCompiletimeCmp *ir.InstICmp
 		if lengthKnownAtCompileTime {

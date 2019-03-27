@@ -5,6 +5,7 @@ import (
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
@@ -134,7 +135,7 @@ func (c *Compiler) compileInitStructWithValues(v *parser.InitializeStructNode) v
 		}
 
 		itemPtr := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(keyIndex)))
-		itemPtr.SetName(getVarName(key))
+		itemPtr.SetName(name.Var(key))
 
 		compiledVal := c.compileValue(val)
 

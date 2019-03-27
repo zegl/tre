@@ -17,7 +17,7 @@ import (
 
 var debug bool
 
-func Build(path, goroot, outputBinaryPath string, setDebug bool) error {
+func Build(path, goroot, outputBinaryPath string, setDebug bool, optimize bool) error {
 	c := compiler.NewCompiler()
 	debug = setDebug
 
@@ -48,12 +48,18 @@ func Build(path, goroot, outputBinaryPath string, setDebug bool) error {
 		outputBinaryPath = "output-binary"
 	}
 
-	// Invoke clang compiler to compile LLVM IR to a binary executable
-	cmd := exec.Command("clang",
+	clangArgs := []string{
 		"-Wno-override-module", // Disable override target triple warnings
 		tmpDir+"/main.ll",      // Path to LLVM IR
 		"-o", outputBinaryPath, // Output path
-	)
+	}
+
+	if optimize {
+		clangArgs = append(clangArgs, "-O3")
+	}
+
+	// Invoke clang compiler to compile LLVM IR to a binary executable
+	cmd := exec.Command("clang", clangArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))

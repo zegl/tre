@@ -2,11 +2,11 @@ package types
 
 import (
 	"fmt"
-
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+	"github.com/zegl/tre/compiler/compiler/name"
 
 	"github.com/zegl/tre/compiler/compiler/strings"
 )
@@ -240,7 +240,7 @@ func (a Array) Zero(block *ir.Block, alloca llvmValue.Value) {
 
 type Slice struct {
 	backingType
-	Type     Type
+	Type     Type // type of the items in the slice []int => int
 	LlvmType types.Type
 }
 
@@ -253,7 +253,7 @@ func (Slice) Name() string {
 }
 
 func (Slice) Size() int64 {
-	return 3*4 + 4 // 3 int32s and a pointer
+	return 3*4 + 8 // 3 int32s and a pointer
 }
 
 func (s Slice) SliceZero(block *ir.Block, mallocFunc llvmValue.Named, initCap int) *ir.InstAlloca {
@@ -266,15 +266,20 @@ func (s Slice) SliceZero(block *ir.Block, mallocFunc llvmValue.Named, initCap in
 	emptySlize := block.NewAlloca(s.LLVM())
 
 	len := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
+	len.SetName(name.Var("len"))
 	cap := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 1))
+	cap.SetName(name.Var("cap"))
 	offset := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 2))
+	offset.SetName(name.Var("offset"))
 	backingArray := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 3))
+	backingArray.SetName(name.Var("backing"))
 
 	block.NewStore(constant.NewInt(types.I32, 0), len)
 	block.NewStore(constant.NewInt(types.I32, int64(initCap)), cap)
 	block.NewStore(constant.NewInt(types.I32, 0), offset)
 
 	mallocatedSpaceRaw := block.NewCall(mallocFunc, constant.NewInt(types.I64, int64(initCap)*s.Type.Size()))
+	mallocatedSpaceRaw.SetName(name.Var("slicezero"))
 	bitcasted := block.NewBitCast(mallocatedSpaceRaw, types.NewPointer(s.Type.LLVM()))
 	block.NewStore(bitcasted, backingArray)
 
