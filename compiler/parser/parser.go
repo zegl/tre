@@ -372,20 +372,38 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 				}
 
 				for {
-					retType, err := p.parseOneType()
+					nameNode := &NameNode{}
+
+					// Support both named return values and when we only get the type
+					retTypeOrNamed, err := p.parseOneType()
 					if err != nil {
 						panic(err)
 					}
-					retTypesNodeNames = append(retTypesNodeNames, &NameNode{
-						Type: retType,
-					})
 					p.i++
+
+					// Next can be type, that means that the previous was the name of the var
+					isType := p.lookAhead(0)
+					if isType.Type == lexer.IDENTIFIER {
+						retType, err := p.parseOneType()
+						if err != nil {
+							panic(err)
+						}
+						p.i++
+
+						nameNode.Name = retTypeOrNamed.Type()
+						nameNode.Type = retType
+					} else {
+						nameNode.Type = retTypeOrNamed
+					}
+
+					retTypesNodeNames = append(retTypesNodeNames, nameNode)
 
 					if !allowMultiRetVals {
 						break
 					}
 
-					// Require comma or end parenthesis
+
+					// Check if comma or end parenthesis
 					commaOrEnd := p.lookAhead(0)
 					if commaOrEnd.Type == lexer.SEPARATOR && commaOrEnd.Val == "," {
 						p.i++
@@ -396,10 +414,10 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 						p.i++
 						break
 					}
-
 					panic("Could not parse function return types")
 				}
 			}
+
 			defineFunc.ReturnValues = retTypesNodeNames
 
 			openBracket := p.lookAhead(0)

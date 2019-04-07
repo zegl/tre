@@ -175,9 +175,18 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 
 	// Save all parameters in the block mapping
 	// Return value arguments are ignored
-	for i, param := range llvmParams[argumentReturnValuesCount:] {
-		paramName := v.Arguments[i].Name
-		dataType := treParams[i]
+	for i, param := range llvmParams {
+		var paramName string
+		var dataType types.Type
+
+		// Named return values
+		if i < argumentReturnValuesCount {
+			paramName = v.ReturnValues[i].Name
+			dataType = treReturnTypes[i]
+		} else {
+			paramName = v.Arguments[i-argumentReturnValuesCount].Name
+			dataType = treParams[i-argumentReturnValuesCount]
+		}
 
 		// Structs needs to be pointer-allocated
 		if _, ok := param.Type().(*llvmTypes.StructType); ok {
