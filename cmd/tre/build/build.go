@@ -113,38 +113,41 @@ func compilePackage(c *compiler.Compiler, path, goroot, name string) error {
 
 			if importNode, ok := i.(*parser.ImportNode); ok {
 
-				// Is built in to the compiler
-				if importNode.PackagePath == "external" {
-					continue
-				}
+				for _, packagePath := range importNode.PackagePaths {
 
-				searchPaths := []string{
-					path + "/vendor/" + importNode.PackagePath,
-					goroot + "/" + importNode.PackagePath,
-				}
-
-				importSuccessful := false
-
-				for _, sp := range searchPaths {
-					fp, err := os.Stat(sp)
-					if err != nil || !fp.IsDir() {
+					// Is built in to the compiler
+					if packagePath == "external" {
 						continue
 					}
 
-					if debug {
-						log.Printf("Loading %s from %s", importNode.PackagePath, sp)
+					searchPaths := []string{
+						path + "/vendor/" + packagePath,
+						goroot + "/" + packagePath,
 					}
 
-					err = compilePackage(c, sp, goroot, importNode.PackagePath)
-					if err != nil {
-						return err
+					importSuccessful := false
+
+					for _, sp := range searchPaths {
+						fp, err := os.Stat(sp)
+						if err != nil || !fp.IsDir() {
+							continue
+						}
+
+						if debug {
+							log.Printf("Loading %s from %s", packagePath, sp)
+						}
+
+						err = compilePackage(c, sp, goroot, packagePath)
+						if err != nil {
+							return err
+						}
+
+						importSuccessful = true
 					}
 
-					importSuccessful = true
-				}
-
-				if !importSuccessful {
-					return fmt.Errorf("Unable to import: %s", importNode.PackagePath)
+					if !importSuccessful {
+						return fmt.Errorf("Unable to import: %s", packagePath)
+					}
 				}
 
 				continue
