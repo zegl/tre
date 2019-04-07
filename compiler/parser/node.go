@@ -345,11 +345,11 @@ func (dn DereferenceNode) String() string {
 
 type ImportNode struct {
 	baseNode
-	PackagePath string
+	PackagePaths []string
 }
 
 func (in ImportNode) String() string {
-	return fmt.Sprintf("import %s", in.PackagePath)
+	return fmt.Sprintf("import (%s)", strings.Join(in.PackagePaths, ", "))
 }
 
 type NegateNode struct {
