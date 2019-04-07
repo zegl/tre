@@ -210,15 +210,27 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		})
 	}
 
+	// Single return value (not via parameters)
+	// Add to variable block
+	if len(v.ReturnValues) == 1 {
+		r := v.ReturnValues[0]
+		all := c.contextBlock.NewAlloca(funcRetType.LLVM())
+		retVar := value.Value{
+			Value: all,
+			Type: funcRetType,
+			IsVariable: true,
+		}
+		c.setVar(r.Name, retVar)
+		c.contextFuncRetVals = append(c.contextFuncRetVals, []value.Value{retVar})
+	}
+
 	c.compile(v.Body)
 
 	// Return void if there is no return type explicitly set
 	if len(v.ReturnValues) == 0 {
 		c.contextBlock.NewRet(nil)
-	}
-
-	// Pop func ret vals stack
-	if argumentReturnValuesCount > 0 {
+	} else {
+		// Pop return variables context
 		c.contextFuncRetVals = c.contextFuncRetVals[0 : len(c.contextFuncRetVals)-1]
 	}
 
@@ -300,22 +312,41 @@ func (c *Compiler) compileReturnNode(v *parser.ReturnNode) {
 	}
 
 	// Multiple value returns
-	for i, val := range v.Vals {
-		compVal := c.compileValue(val)
+	if len(v.Vals) > 1 {
+		for i, val := range v.Vals {
+			compVal := c.compileValue(val)
 
-		// TODO: Type cast if necessary
-		// compVal = c.valueToInterfaceValue(compVal, c.contextFunc.ReturnType)
+			// TODO: Type cast if necessary
+			// compVal = c.valueToInterfaceValue(compVal, c.contextFunc.ReturnType)
 
-		retVal := compVal.Value
+			retVal := compVal.Value
 
-		if compVal.IsVariable {
-			retVal = c.contextBlock.NewLoad(retVal)
+			if compVal.IsVariable {
+				retVal = c.contextBlock.NewLoad(retVal)
+			}
+
+			// Assign to ptr
+			retValPtr := c.contextFuncRetVals[len(c.contextFuncRetVals)-1][i]
+
+			c.contextBlock.NewStore(retVal, retValPtr.Value)
 		}
 
-		// Assign to ptr
-		retValPtr := c.contextFuncRetVals[len(c.contextFuncRetVals)-1][i]
+		c.contextBlock.NewRet(nil)
+		return
+	}
 
-		c.contextBlock.NewStore(retVal, retValPtr.Value)
+
+	// Naked return, func has one named return variable
+	if len(v.Vals) == 0 {
+		retVals := c.contextFuncRetVals[len(c.contextFuncRetVals)-1]
+		if len(retVals) == 1 {
+			val := retVals[0].Value
+			if retVals[0].IsVariable {
+				val = c.contextBlock.NewLoad(val)
+			}
+			c.contextBlock.NewRet(val)
+			return
+		}
 	}
 
 	// Return void in LLVM function

@@ -33,8 +33,8 @@ type Compiler struct {
 
 	contextFunc *types.Function
 
-	// Stack of return values pointers, is only used if a function returns more
-	// than one value
+	// Stack of return values pointers, is used both used if a function returns more
+	// than one value (arg pointers), and single stack based returns
 	contextFuncRetVals [][]value.Value
 
 	contextBlock *ir.Block

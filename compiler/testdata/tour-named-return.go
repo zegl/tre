@@ -2,15 +2,30 @@ package main
 
 import "external"
 
-func mulDiv(sum int) (x int, y int) {
-	x = sum * 2
-	y = sum / 2
+func multiNamedReturn(inp int) (x int, y int) {
+	x = inp * 2
+	y = inp / 2
 	return
 }
 
+func singleNamedReturn(inp int) (res int) {
+	res = inp * 3
+	return
+}
+
+func namedReturnNotUsed(inp int) (res int) {
+	res = inp * 3
+	return 500
+}
 
 func main() {
 	// 34 8
-	a, b := mulDiv(17)
+	a, b := multiNamedReturn(17)
 	external.Printf("%d %d\n", a, b)
+
+	// 54
+	external.Printf("%d\n", singleNamedReturn(18))
+
+	// 500
+	external.Printf("%d\n", namedReturnNotUsed(18))
 }
