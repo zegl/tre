@@ -166,6 +166,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 			retVals = append(retVals, value.Value{
 				Value: llvmParams[i],
 				Type:  retType,
+				IsVariable: false,
 			})
 		}
 
@@ -296,10 +297,16 @@ func (c *Compiler) compileReturnNode(v *parser.ReturnNode) {
 		// TODO: Type cast if necessary
 		// compVal = c.valueToInterfaceValue(compVal, c.contextFunc.ReturnType)
 
+		retVal := compVal.Value
+
+		if compVal.IsVariable {
+			retVal = c.contextBlock.NewLoad(retVal)
+		}
+
 		// Assign to ptr
 		retValPtr := c.contextFuncRetVals[len(c.contextFuncRetVals)-1][i]
 
-		c.contextBlock.NewStore(compVal.Value, retValPtr.Value)
+		c.contextBlock.NewStore(retVal, retValPtr.Value)
 	}
 
 	// Return void in LLVM function
