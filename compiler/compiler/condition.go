@@ -182,3 +182,29 @@ func (c *Compiler) compileConditionNode(v *parser.ConditionNode) {
 
 	c.popVariablesStack()
 }
+
+func (c *Compiler) compileDecrementNode(v *parser.DecrementNode) value.Value {
+	input := c.compileValue(v.Item)
+	val := input.Value
+	if input.IsVariable {
+		val = c.contextBlock.NewLoad(val)
+		added := c.contextBlock.NewAdd(val, constant.NewInt(val.Type().(*llvmTypes.IntType), -1))
+		c.contextBlock.NewStore(added, input.Value)
+		return input
+	} else {
+		panic("not implemented")
+	}
+}
+
+func (c *Compiler) compileIncrementNode(v *parser.IncrementNode) value.Value {
+	input := c.compileValue(v.Item)
+	val := input.Value
+	if input.IsVariable {
+		val = c.contextBlock.NewLoad(val)
+		added := c.contextBlock.NewAdd(val, constant.NewInt(val.Type().(*llvmTypes.IntType), 1))
+		c.contextBlock.NewStore(added, input.Value)
+		return input
+	} else {
+		panic("not implemented")
+	}
+}

@@ -430,3 +430,22 @@ type MultiValueNode struct {
 func (m MultiValueNode) String() string {
 	return fmt.Sprintf("multi(%+v)", m.Items)
 }
+
+type DecrementNode struct {
+	baseNode
+	Item Node
+}
+
+
+func (i DecrementNode) String() string {
+	return fmt.Sprintf("%s--", i.Item)
+}
+
+type IncrementNode struct {
+	baseNode
+	Item Node
+}
+
+func (i IncrementNode) String() string {
+	return fmt.Sprintf("%s++", i.Item)
+}

@@ -51,7 +51,9 @@ func (i Item) String() string {
 
 var operations = map[string]struct{}{
 	"+":   {},
+	"++":   {},
 	"-":   {},
+	"--":   {},
 	"*":   {}, // Multiplication and dereferencing
 	"/":   {},
 	"<":   {},

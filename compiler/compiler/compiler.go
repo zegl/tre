@@ -306,6 +306,10 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		return c.compileInitializeArrayNode(v)
 	case *parser.MultiValueNode:
 		return c.compileMultiValueNode(v)
+	case *parser.DecrementNode:
+		return c.compileDecrementNode(v)
+	case *parser.IncrementNode:
+		return c.compileIncrementNode(v)
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))
