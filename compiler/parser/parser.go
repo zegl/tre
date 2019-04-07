@@ -711,6 +711,16 @@ func (p *parser) aheadParse(input Node) Node {
 
 			return p.aheadParse(res)
 		}
+
+		if next.Val == "--" {
+			p.i++
+			return &DecrementNode{Item: input}
+		}
+
+		if next.Val == "++" {
+			p.i++
+			return &IncrementNode{Item: input}
+		}
 	}
 
 	if next.Type == lexer.SEPARATOR && next.Val == "(" {
