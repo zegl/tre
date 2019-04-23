@@ -402,7 +402,6 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 						break
 					}
 
-
 					// Check if comma or end parenthesis
 					commaOrEnd := p.lookAhead(0)
 					if commaOrEnd.Type == lexer.SEPARATOR && commaOrEnd.Val == "," {
@@ -653,6 +652,32 @@ func (p *parser) aheadParse(input Node) Node {
 			}
 
 			panic(fmt.Sprintf("%s can only be used after a name. Got: %+v", next.Val, input))
+		}
+
+		if next.Val == "+=" || next.Val == "-=" || next.Val == "*="|| next.Val == "/=" {
+			p.i++
+			p.i++
+
+			var op Operator
+			switch next.Val {
+			case "+=":
+				op = OP_ADD
+			case "-=":
+				op = OP_SUB
+			case "*=":
+				op = OP_MUL
+			case "/=":
+				op = OP_DIV
+			}
+
+			return &AssignNode{
+				Target: input,
+				Val: &OperatorNode{
+					Operator: op,
+					Left:     input,
+					Right:    p.parseOne(true),
+				},
+			}
 		}
 
 		if next.Val == "..." {

@@ -72,6 +72,10 @@ var operations = map[string]struct{}{
 	"&":   {},
 	"..":  {}, // is not a real operation. Is there so that ... can be found.
 	"...": {},
+	"+=": {},
+	"-=": {},
+	"*=": {},
+	"/=": {},
 }
 
 var separators = map[string]struct{}{
