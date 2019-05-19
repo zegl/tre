@@ -32,7 +32,13 @@ func TestAllPrograms(t *testing.T) {
 	}
 }
 
-func buildRunAndCheck(t *testing.T, path string, withOptimize bool) error {
+func buildRunAndCheck(t *testing.T, path string, withOptimize bool) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("Recovered in buildRunAndCheck: %+v", r)
+		}
+	}()
+
 	fp, err := os.Stat(path)
 	if err != nil {
 		return err
