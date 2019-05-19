@@ -32,6 +32,10 @@ func Parse(input []lexer.Item, debug bool) FileNode {
 }
 
 func (p *parser) parseOne(withAheadParse bool) (res Node) {
+	return p.parseOneWithOptions(withAheadParse, withAheadParse)
+}
+
+func (p *parser) parseOneWithOptions(withAheadParse, withIdentifierAheadParse bool) (res Node) {
 	current := p.input[p.i]
 
 	switch current.Type {
@@ -50,7 +54,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 	// - a NodeName (variables)
 	case lexer.IDENTIFIER:
 		res = &NameNode{Name: current.Val}
-		if withAheadParse {
+		if withIdentifierAheadParse {
 			res = p.aheadParse(res)
 		}
 		return
@@ -733,9 +737,9 @@ func (p *parser) aheadParse(input Node) Node {
 			}
 
 			if isComparision {
-				res.Right = p.parseOne(true)
+				res.Right = p.parseOneWithOptions(true, true)
 			} else {
-				res.Right = p.parseOne(false)
+				res.Right = p.parseOneWithOptions(false, true)
 				// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
 				res = sortInfix(res)
 			}
