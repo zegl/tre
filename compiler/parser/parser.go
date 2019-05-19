@@ -654,7 +654,7 @@ func (p *parser) aheadParse(input Node) Node {
 			panic(fmt.Sprintf("%s can only be used after a name. Got: %+v", next.Val, input))
 		}
 
-		if next.Val == "+=" || next.Val == "-=" || next.Val == "*="|| next.Val == "/=" {
+		if next.Val == "+=" || next.Val == "-=" || next.Val == "*=" || next.Val == "/=" {
 			p.i++
 			p.i++
 
@@ -726,15 +726,11 @@ func (p *parser) aheadParse(input Node) Node {
 			res := &OperatorNode{
 				Operator: opsCharToOp[next.Val],
 				Left:     input,
-				Right:    p.parseOne(true),
+				Right:    p.parseOne(false),
 			}
 
 			// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
-			if right, ok := res.Right.(*OperatorNode); ok {
-				return sortInfix(res, right)
-			}
-
-			return p.aheadParse(res)
+			return p.aheadParse(sortInfix(res))
 		}
 
 		if next.Val == "--" {
