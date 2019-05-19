@@ -32,10 +32,10 @@ func Parse(input []lexer.Item, debug bool) FileNode {
 }
 
 func (p *parser) parseOne(withAheadParse bool) (res Node) {
-	return p.parseOneWithOptions(withAheadParse, withAheadParse)
+	return p.parseOneWithOptions(withAheadParse, withAheadParse, withAheadParse)
 }
 
-func (p *parser) parseOneWithOptions(withAheadParse, withIdentifierAheadParse bool) (res Node) {
+func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentifierAhead bool) (res Node) {
 	current := p.input[p.i]
 
 	switch current.Type {
@@ -54,8 +54,8 @@ func (p *parser) parseOneWithOptions(withAheadParse, withIdentifierAheadParse bo
 	// - a NodeName (variables)
 	case lexer.IDENTIFIER:
 		res = &NameNode{Name: current.Val}
-		if withIdentifierAheadParse {
-			res = p.aheadParse(res)
+		if withIdentifierAhead {
+			res = p.aheadParseWithOptions(res, withArithAhead, withIdentifierAhead)
 		}
 		return
 
@@ -573,6 +573,10 @@ func (p *parser) parseOneWithOptions(withAheadParse, withIdentifierAheadParse bo
 }
 
 func (p *parser) aheadParse(input Node) Node {
+	return p.aheadParseWithOptions(input, true, true)
+}
+
+func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifierAhead bool) Node {
 	next := p.lookAhead(1)
 
 	if next.Type == lexer.OPERATOR {
@@ -582,10 +586,10 @@ func (p *parser) aheadParse(input Node) Node {
 			next = p.lookAhead(1)
 			if next.Type == lexer.IDENTIFIER {
 				p.i++
-				return p.aheadParse(&StructLoadElementNode{
+				return p.aheadParseWithOptions(&StructLoadElementNode{
 					Struct:      input,
 					ElementName: next.Val,
-				})
+				}, withArithAhead, withIdentifierAhead)
 			}
 
 			if next.Type == lexer.SEPARATOR && next.Val == "(" {
@@ -618,6 +622,7 @@ func (p *parser) aheadParse(input Node) Node {
 
 			if nameNode, ok := input.(*NameNode); ok {
 				if next.Val == ":=" {
+					// TODO: This needs to be a stack
 					p.inAllocRightHand = true
 					a := &AllocNode{
 						Name: nameNode.Name,
@@ -633,25 +638,9 @@ func (p *parser) aheadParse(input Node) Node {
 			}
 
 			if next.Val == "=" {
-				if loadNode, ok := input.(*StructLoadElementNode); ok {
-					return &AssignNode{
-						Target: loadNode,
-						Val:    p.parseOne(true),
-					}
-				}
-
-				if arrayNode, ok := input.(*LoadArrayElement); ok {
-					return &AssignNode{
-						Target: arrayNode,
-						Val:    p.parseOne(true),
-					}
-				}
-
-				if dereferenceNode, ok := input.(*DereferenceNode); ok {
-					return &AssignNode{
-						Target: dereferenceNode,
-						Val:    p.parseOne(true),
-					}
+				return &AssignNode{
+					Target: input,
+					Val:    p.parseOne(true),
 				}
 			}
 
@@ -728,7 +717,11 @@ func (p *parser) aheadParse(input Node) Node {
 		// Handle "Operations" both arith and comparision
 		if _, ok := opsCharToOp[next.Val]; ok {
 			operator := opsCharToOp[next.Val]
-			_, isComparision := compOperators[operator]
+			_, isArithOp := arithOperators[operator]
+
+			if !withArithAhead && isArithOp {
+				return input
+			}
 
 			p.i += 2
 			res := &OperatorNode{
@@ -736,15 +729,15 @@ func (p *parser) aheadParse(input Node) Node {
 				Left:     input,
 			}
 
-			if isComparision {
-				res.Right = p.parseOneWithOptions(true, true)
-			} else {
-				res.Right = p.parseOneWithOptions(false, true)
+			if isArithOp {
+				res.Right = p.parseOneWithOptions(false, false, true)
 				// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
 				res = sortInfix(res)
+			} else {
+				res.Right = p.parseOneWithOptions(true, true, true)
 			}
 
-			return p.aheadParse(res)
+			return p.aheadParseWithOptions(res, true, true)
 		}
 
 		if next.Val == "--" {

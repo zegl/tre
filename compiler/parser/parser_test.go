@@ -212,3 +212,47 @@ func TestInfixPriority4(t *testing.T) {
 
 	assert.Equal(t, expected, Parse(input, false))
 }
+
+func TestInfixPriority4Load(t *testing.T) {
+	input := []lexer.Item{
+		{Type: lexer.NUMBER, Val: "100"},
+		{Type: lexer.OPERATOR, Val: "/"},
+		{Type: lexer.IDENTIFIER, Val: "f"},
+		{Type: lexer.OPERATOR, Val: "."},
+		{Type: lexer.IDENTIFIER, Val: "a"},
+		{Type: lexer.OPERATOR, Val: "/"},
+		{Type: lexer.NUMBER, Val: "4"},
+		{Type: lexer.OPERATOR, Val: "*"},
+		{Type: lexer.NUMBER, Val: "7"},
+		{Type: lexer.EOF, Val: ""},
+	}
+
+	/*
+		OP(OP(OP(100/f.a)/4) * 7)
+	*/
+
+	expected := FileNode{
+		Instructions: []Node{
+			&OperatorNode{
+				Operator: OP_MUL,
+
+				Left: &OperatorNode{
+					Operator: OP_DIV,
+					Left: &OperatorNode{
+						Operator: OP_DIV,
+						Left:     &ConstantNode{Type: NUMBER, Value: 100},
+						Right: &StructLoadElementNode{
+							Struct:      &NameNode{Name: "f"},
+							ElementName: "a",
+						},
+					},
+					Right: &ConstantNode{Type: NUMBER, Value: 4},
+				},
+
+				Right: &ConstantNode{Type: NUMBER, Value: 7},
+			},
+		},
+	}
+
+	assert.Equal(t, expected, Parse(input, false))
+}

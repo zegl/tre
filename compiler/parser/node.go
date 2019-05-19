@@ -81,7 +81,7 @@ const (
 )
 
 var opsCharToOp map[string]Operator
-var compOperators map[Operator]struct{}
+var arithOperators map[Operator]struct{}
 
 func init() {
 	opsCharToOp = make(map[string]Operator)
@@ -93,13 +93,11 @@ func init() {
 		opsCharToOp[string(op)] = op
 	}
 
-	compOperators = make(map[Operator]struct{})
+	arithOperators = make(map[Operator]struct{})
 	for _, op := range []Operator{
-		OP_GT, OP_GTEQ,
-		OP_LT, OP_LTEQ,
-		OP_EQ, OP_NEQ,
+		OP_ADD, OP_SUB, OP_DIV, OP_MUL,
 	} {
-		compOperators[op] = struct{}{}
+		arithOperators[op] = struct{}{}
 	}
 }
 
@@ -278,7 +276,7 @@ type StructLoadElementNode struct {
 }
 
 func (slen StructLoadElementNode) String() string {
-	return fmt.Sprintf("load(%+v . %+v)", slen.Struct, slen.ElementName)
+	return fmt.Sprintf("load(%+v.%+v)", slen.Struct, slen.ElementName)
 }
 
 // LoadArrayElement loads a single element from an array
