@@ -81,6 +81,7 @@ const (
 )
 
 var opsCharToOp map[string]Operator
+var compOperators map[Operator]struct{}
 
 func init() {
 	opsCharToOp = make(map[string]Operator)
@@ -90,6 +91,15 @@ func init() {
 		OP_EQ, OP_NEQ,
 	} {
 		opsCharToOp[string(op)] = op
+	}
+
+	compOperators = make(map[Operator]struct{})
+	for _, op := range []Operator{
+		OP_GT, OP_GTEQ,
+		OP_LT, OP_LTEQ,
+		OP_EQ, OP_NEQ,
+	} {
+		compOperators[op] = struct{}{}
 	}
 }
 
@@ -435,7 +445,6 @@ type DecrementNode struct {
 	baseNode
 	Item Node
 }
-
 
 func (i DecrementNode) String() string {
 	return fmt.Sprintf("%s--", i.Item)

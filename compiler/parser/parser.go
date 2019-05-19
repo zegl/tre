@@ -721,16 +721,26 @@ func (p *parser) aheadParse(input Node) Node {
 			panic(fmt.Sprintf("Unexpected %+v, expected ]", expectEndBracket))
 		}
 
+		// Handle "Operations" both arith and comparision
 		if _, ok := opsCharToOp[next.Val]; ok {
+			operator := opsCharToOp[next.Val]
+			_, isComparision := compOperators[operator]
+
 			p.i += 2
 			res := &OperatorNode{
-				Operator: opsCharToOp[next.Val],
+				Operator: operator,
 				Left:     input,
-				Right:    p.parseOne(false),
 			}
 
-			// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
-			return p.aheadParse(sortInfix(res))
+			if isComparision {
+				res.Right = p.parseOne(true)
+			} else {
+				res.Right = p.parseOne(false)
+				// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
+				res = sortInfix(res)
+			}
+
+			return p.aheadParse(res)
 		}
 
 		if next.Val == "--" {
