@@ -15,7 +15,7 @@ type SwitchNode struct {
 }
 
 type SwitchCaseNode struct {
-	Condition   Node
+	Conditions  []Node
 	Body        []Node
 	Fallthrough bool
 }
@@ -48,12 +48,29 @@ func (p *parser) parseSwitch() *SwitchNode {
 		if next.Type == lexer.KEYWORD && next.Val == "case" {
 			p.i++
 			switchCase := SwitchCaseNode{
-				Condition: p.parseOne(true),
+				Conditions: []Node{p.parseOne(true)},
 			}
 
 			p.i++
-			p.expect(p.lookAhead(0), lexer.Item{Type: lexer.OPERATOR, Val: ":"})
-			p.i++
+
+			for {
+				curr := p.lookAhead(0)
+				if curr.Type == lexer.OPERATOR && curr.Val == ":" {
+					p.i++
+					break
+				}
+
+				if curr.Type == lexer.SEPARATOR && curr.Val == "," {
+					p.i++
+					switchCase.Conditions = append(append(switchCase.Conditions,
+						p.parseOne(true),
+					))
+					p.i++
+					continue
+				}
+
+				panic(fmt.Sprintf("Expected : or , in case. Got %+v", curr))
+			}
 
 			var reached lexer.Item
 			switchCase.Body, reached = p.parseUntilEither(

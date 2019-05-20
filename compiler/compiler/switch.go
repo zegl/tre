@@ -11,7 +11,8 @@ import (
 func (c *Compiler) compileSwitchNode(v *parser.SwitchNode) {
 	switchItem := c.compileValue(v.Item)
 
-	cases := make([]*ir.Case, len(v.Cases))
+	var cases []*ir.Case
+	caseBlocks := make([]*ir.Block, len(v.Cases))
 
 	afterSwitch := c.contextBlock.Parent.NewBlock(name.Block() + "after-switch")
 
@@ -27,22 +28,27 @@ func (c *Compiler) compileSwitchNode(v *parser.SwitchNode) {
 
 	// Parse all cases
 	for caseIndex, parseCase := range v.Cases {
-		item := c.compileValue(parseCase.Condition)
 		preCaseBlock := c.contextBlock
 		caseBlock := c.contextBlock.Parent.NewBlock(name.Block() + "case")
 		c.contextBlock = caseBlock
 		c.compile(parseCase.Body)
 		c.contextBlock = preCaseBlock
-		cases[caseIndex] = ir.NewCase(item.Value.(constant.Constant), caseBlock)
+
+		caseBlocks[caseIndex] = caseBlock
+
+		for _, cond := range parseCase.Conditions {
+			item := c.compileValue(cond)
+			cases = append(cases, ir.NewCase(item.Value.(constant.Constant), caseBlock))
+		}
 	}
 
 	for caseIndex, parseCase := range v.Cases {
 		if parseCase.Fallthrough {
 			// Jump to the next case body
-			cases[caseIndex].Target.Term = ir.NewBr(cases[caseIndex+1].Target)
+			caseBlocks[caseIndex].Term = ir.NewBr(caseBlocks[caseIndex+1])
 		} else {
 			// Jump to after switch
-			cases[caseIndex].Target.Term = ir.NewBr(afterSwitch)
+			caseBlocks[caseIndex].Term = ir.NewBr(afterSwitch)
 		}
 	}
 
