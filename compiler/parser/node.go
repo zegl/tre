@@ -81,6 +81,7 @@ const (
 )
 
 var opsCharToOp map[string]Operator
+var arithOperators map[Operator]struct{}
 
 func init() {
 	opsCharToOp = make(map[string]Operator)
@@ -90,6 +91,13 @@ func init() {
 		OP_EQ, OP_NEQ,
 	} {
 		opsCharToOp[string(op)] = op
+	}
+
+	arithOperators = make(map[Operator]struct{})
+	for _, op := range []Operator{
+		OP_ADD, OP_SUB, OP_DIV, OP_MUL,
+	} {
+		arithOperators[op] = struct{}{}
 	}
 }
 
@@ -178,6 +186,9 @@ type NameNode struct {
 }
 
 func (nn NameNode) String() string {
+	if nn.Type == nil {
+		return fmt.Sprintf("var(%s)", nn.Name)
+	}
 	return fmt.Sprintf("var(n:%s t:%s)", nn.Name, nn.Type)
 }
 
@@ -265,7 +276,7 @@ type StructLoadElementNode struct {
 }
 
 func (slen StructLoadElementNode) String() string {
-	return fmt.Sprintf("load(%+v . %+v)", slen.Struct, slen.ElementName)
+	return fmt.Sprintf("load(%+v.%+v)", slen.Struct, slen.ElementName)
 }
 
 // LoadArrayElement loads a single element from an array
@@ -435,7 +446,6 @@ type DecrementNode struct {
 	baseNode
 	Item Node
 }
-
 
 func (i DecrementNode) String() string {
 	return fmt.Sprintf("%s--", i.Item)

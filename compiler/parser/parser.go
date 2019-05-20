@@ -17,6 +17,8 @@ type parser struct {
 	inAllocRightHand bool
 
 	debug bool
+
+	types map[string]struct{}
 }
 
 func Parse(input []lexer.Item, debug bool) FileNode {
@@ -24,6 +26,12 @@ func Parse(input []lexer.Item, debug bool) FileNode {
 		i:     0,
 		input: input,
 		debug: debug,
+		types: map[string]struct{}{
+			"int":   {},
+			"int8":  {},
+			"int32": {},
+			"int64": {},
+		},
 	}
 
 	return FileNode{
@@ -32,6 +40,10 @@ func Parse(input []lexer.Item, debug bool) FileNode {
 }
 
 func (p *parser) parseOne(withAheadParse bool) (res Node) {
+	return p.parseOneWithOptions(withAheadParse, withAheadParse, withAheadParse)
+}
+
+func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentifierAhead bool) (res Node) {
 	current := p.input[p.i]
 
 	switch current.Type {
@@ -50,8 +62,8 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 	// - a NodeName (variables)
 	case lexer.IDENTIFIER:
 		res = &NameNode{Name: current.Val}
-		if withAheadParse {
-			res = p.aheadParse(res)
+		if withIdentifierAhead {
+			res = p.aheadParseWithOptions(res, withArithAhead, withIdentifierAhead)
 		}
 		return
 
@@ -489,7 +501,7 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 
 			// Register that this type exists
 			// TODO: Make it context sensitive (eg package level types, types in functions etc)
-			types[name.Val] = struct{}{}
+			p.types[name.Val] = struct{}{}
 
 			return
 		}
@@ -569,6 +581,10 @@ func (p *parser) parseOne(withAheadParse bool) (res Node) {
 }
 
 func (p *parser) aheadParse(input Node) Node {
+	return p.aheadParseWithOptions(input, true, true)
+}
+
+func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifierAhead bool) Node {
 	next := p.lookAhead(1)
 
 	if next.Type == lexer.OPERATOR {
@@ -578,10 +594,10 @@ func (p *parser) aheadParse(input Node) Node {
 			next = p.lookAhead(1)
 			if next.Type == lexer.IDENTIFIER {
 				p.i++
-				return p.aheadParse(&StructLoadElementNode{
+				return p.aheadParseWithOptions(&StructLoadElementNode{
 					Struct:      input,
 					ElementName: next.Val,
-				})
+				}, withArithAhead, withIdentifierAhead)
 			}
 
 			if next.Type == lexer.SEPARATOR && next.Val == "(" {
@@ -614,12 +630,14 @@ func (p *parser) aheadParse(input Node) Node {
 
 			if nameNode, ok := input.(*NameNode); ok {
 				if next.Val == ":=" {
+					// TODO: This needs to be a stack
+					prevInRight := p.inAllocRightHand
 					p.inAllocRightHand = true
 					a := &AllocNode{
 						Name: nameNode.Name,
 						Val:  p.parseOne(true),
 					}
-					p.inAllocRightHand = false
+					p.inAllocRightHand = prevInRight
 					return a
 				}
 				return &AssignNode{
@@ -629,32 +647,16 @@ func (p *parser) aheadParse(input Node) Node {
 			}
 
 			if next.Val == "=" {
-				if loadNode, ok := input.(*StructLoadElementNode); ok {
-					return &AssignNode{
-						Target: loadNode,
-						Val:    p.parseOne(true),
-					}
-				}
-
-				if arrayNode, ok := input.(*LoadArrayElement); ok {
-					return &AssignNode{
-						Target: arrayNode,
-						Val:    p.parseOne(true),
-					}
-				}
-
-				if dereferenceNode, ok := input.(*DereferenceNode); ok {
-					return &AssignNode{
-						Target: dereferenceNode,
-						Val:    p.parseOne(true),
-					}
+				return &AssignNode{
+					Target: input,
+					Val:    p.parseOne(true),
 				}
 			}
 
 			panic(fmt.Sprintf("%s can only be used after a name. Got: %+v", next.Val, input))
 		}
 
-		if next.Val == "+=" || next.Val == "-=" || next.Val == "*="|| next.Val == "/=" {
+		if next.Val == "+=" || next.Val == "-=" || next.Val == "*=" || next.Val == "/=" {
 			p.i++
 			p.i++
 
@@ -721,20 +723,30 @@ func (p *parser) aheadParse(input Node) Node {
 			panic(fmt.Sprintf("Unexpected %+v, expected ]", expectEndBracket))
 		}
 
+		// Handle "Operations" both arith and comparision
 		if _, ok := opsCharToOp[next.Val]; ok {
+			operator := opsCharToOp[next.Val]
+			_, isArithOp := arithOperators[operator]
+
+			if !withArithAhead && isArithOp {
+				return input
+			}
+
 			p.i += 2
 			res := &OperatorNode{
-				Operator: opsCharToOp[next.Val],
+				Operator: operator,
 				Left:     input,
-				Right:    p.parseOne(true),
 			}
 
-			// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
-			if right, ok := res.Right.(*OperatorNode); ok {
-				return sortInfix(res, right)
+			if isArithOp {
+				res.Right = p.parseOneWithOptions(false, false, true)
+				// Sort infix operations if necessary (eg: apply OP_MUL before OP_ADD)
+				res = sortInfix(res)
+			} else {
+				res.Right = p.parseOneWithOptions(true, true, true)
 			}
 
-			return p.aheadParse(res)
+			return p.aheadParseWithOptions(res, true, true)
 		}
 
 		if next.Val == "--" {
@@ -753,7 +765,7 @@ func (p *parser) aheadParse(input Node) Node {
 
 		p.i += 2 // identifier and left paren
 
-		if _, ok := types[current.Val]; ok {
+		if _, ok := p.types[current.Val]; ok {
 			val := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"})
 			if len(val) != 1 {
 				panic("type conversion must take only one argument")
@@ -782,7 +794,7 @@ func (p *parser) aheadParse(input Node) Node {
 	if next.Type == lexer.SEPARATOR && next.Val == "{" {
 		nameNode, isNamedNode := input.(*NameNode)
 		if isNamedNode {
-			_, isType := types[nameNode.Name]
+			_, isType := p.types[nameNode.Name]
 			if isType {
 				inputType := &SingleTypeNode{
 					TypeName: nameNode.Name,
