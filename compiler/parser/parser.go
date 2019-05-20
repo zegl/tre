@@ -17,6 +17,8 @@ type parser struct {
 	inAllocRightHand bool
 
 	debug bool
+
+	types map[string]struct{}
 }
 
 func Parse(input []lexer.Item, debug bool) FileNode {
@@ -24,6 +26,12 @@ func Parse(input []lexer.Item, debug bool) FileNode {
 		i:     0,
 		input: input,
 		debug: debug,
+		types: map[string]struct{}{
+			"int":   {},
+			"int8":  {},
+			"int32": {},
+			"int64": {},
+		},
 	}
 
 	return FileNode{
@@ -493,7 +501,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 
 			// Register that this type exists
 			// TODO: Make it context sensitive (eg package level types, types in functions etc)
-			types[name.Val] = struct{}{}
+			p.types[name.Val] = struct{}{}
 
 			return
 		}
@@ -623,12 +631,13 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 			if nameNode, ok := input.(*NameNode); ok {
 				if next.Val == ":=" {
 					// TODO: This needs to be a stack
+					prevInRight := p.inAllocRightHand
 					p.inAllocRightHand = true
 					a := &AllocNode{
 						Name: nameNode.Name,
 						Val:  p.parseOne(true),
 					}
-					p.inAllocRightHand = false
+					p.inAllocRightHand = prevInRight
 					return a
 				}
 				return &AssignNode{
@@ -756,7 +765,7 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 
 		p.i += 2 // identifier and left paren
 
-		if _, ok := types[current.Val]; ok {
+		if _, ok := p.types[current.Val]; ok {
 			val := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"})
 			if len(val) != 1 {
 				panic("type conversion must take only one argument")
@@ -785,7 +794,7 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 	if next.Type == lexer.SEPARATOR && next.Val == "{" {
 		nameNode, isNamedNode := input.(*NameNode)
 		if isNamedNode {
-			_, isType := types[nameNode.Name]
+			_, isType := p.types[nameNode.Name]
 			if isType {
 				inputType := &SingleTypeNode{
 					TypeName: nameNode.Name,
