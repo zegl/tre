@@ -11,12 +11,13 @@ type SwitchNode struct {
 	baseNode
 	Item        Node
 	Cases       []SwitchCaseNode
-	DefaultBody Node // can be null
+	DefaultBody []Node // can be null
 }
 
 type SwitchCaseNode struct {
-	Condition Node
-	Body      []Node
+	Condition   Node
+	Body        []Node
+	Fallthrough bool
 }
 
 func (s SwitchNode) String() string {
@@ -64,6 +65,11 @@ func (p *parser) parseSwitch() *SwitchNode {
 				},
 			)
 
+			if reached.Type == lexer.KEYWORD && reached.Val == "fallthrough" {
+				switchCase.Fallthrough = true
+				p.i++
+			}
+
 			s.Cases = append(s.Cases, switchCase)
 
 			// reached end of switch
@@ -72,9 +78,28 @@ func (p *parser) parseSwitch() *SwitchNode {
 			}
 		}
 
-		// TODO: default
-		// TODO: fallthrough
+		if next.Type == lexer.KEYWORD && next.Val == "default" {
+			p.i++
+			p.expect(p.lookAhead(0), lexer.Item{Type: lexer.OPERATOR, Val: ":"})
+			p.i++
+
+			body, reached := p.parseUntilEither(
+				[]lexer.Item{
+					{Type: lexer.SEPARATOR, Val: "}"},
+					{Type: lexer.KEYWORD, Val: "case"},
+				},
+			)
+
+			s.DefaultBody = body
+
+			// reached end of switch
+			if reached.Type == lexer.SEPARATOR && reached.Val == "}" {
+				break
+			}
+		}
 	}
+
+	log.Printf("%+v", s.Cases)
 
 	return s
 }
