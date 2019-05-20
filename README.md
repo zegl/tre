@@ -55,6 +55,8 @@ More examples of what's possible can be found in the [compiler testdata](https:/
 - [x] interfaces
 - [ ] [chan](https://github.com/zegl/tre/issues/78)
 - [ ] [goroutines](https://github.com/zegl/tre/issues/77)
+- [x] if/else if/else
+- [ ] switch
 
 ## Dependencies
 
