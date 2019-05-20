@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-func runSwitch(a int) {
+func runIntSwitch(a int) {
 	switch a {
 	case 3:
 		fmt.Println("three")
@@ -18,15 +18,25 @@ func runSwitch(a int) {
 	}
 }
 
-func main() {
-	// five
-	a := 5
-	runSwitch(a)
+func runBoolSwitch(a bool) {
+	switch a {
+	case false:
+		fmt.Println("false")
+	case true:
+		fmt.Println("true")
+	}
+}
 
-	// default
-	runSwitch(100)
+func main() {
+	a := 5
+	runIntSwitch(a) // five
+
+	runIntSwitch(100) // default
 
 	// four
 	// five
-	runSwitch(4)
+	runIntSwitch(4)
+
+	runBoolSwitch(false) // false
+	runBoolSwitch(true)  // true
 }
