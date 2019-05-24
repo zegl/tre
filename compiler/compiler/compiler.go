@@ -206,6 +206,9 @@ func (c *Compiler) compile(instructions []parser.Node) {
 			// Add to tre mapping
 			typeConvertMap[v.Name] = t
 
+		case *parser.SwitchNode:
+			c.compileSwitchNode(v)
+
 		default:
 			c.compileValue(v)
 			break

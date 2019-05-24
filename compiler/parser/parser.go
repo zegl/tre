@@ -573,6 +573,10 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 		if current.Val == "range" {
 			return p.parseRange()
 		}
+
+		if current.Val == "switch" {
+			return p.parseSwitch()
+		}
 	}
 
 	p.printInput()
