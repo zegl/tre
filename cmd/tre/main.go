@@ -1,33 +1,51 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
+	flag "github.com/spf13/pflag"
 	"github.com/zegl/tre/cmd/tre/build"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		log.Printf("No file specified. Usage: %s path/to/file.tre", os.Args[0])
-		os.Exit(1)
+var (
+	debug    bool
+	optimize bool
+	output   string
+)
+
+func init() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] <filename>\n", os.Args[0])
+		flag.PrintDefaults()
 	}
 
-	fs := flag.NewFlagSet("tre", flag.ExitOnError)
-	debug := fs.Bool("debug", false, "Emit debug information during compile time")
-	optimize := fs.Bool("optimize", false, "Enable clang optimization")
-	err := fs.Parse(os.Args[2:])
-	if err != nil {
-		panic(err)
+	flag.BoolVarP(&debug, "debug", "d", false, "Emit debug information during compile time")
+	flag.BoolVarP(&optimize, "optimize", "O", false, "Enable clang optimization")
+	flag.StringVarP(&output, "output", "o", "", "Output binary filename")
+}
+
+func main() {
+	flag.Parse()
+
+	if len(flag.Args()) < 1 {
+		log.Printf("No file specified. Usage: %s path/to/file.tre", os.Args[0])
+		os.Exit(1)
 	}
 
 	// "GOROOT" (treroot?) detection based on the binary path
 	treBinaryPath, _ := os.Executable()
 	goroot := filepath.Clean(treBinaryPath + "/../pkg/")
 
-	err = build.Build(os.Args[1], goroot, "output-binary", *debug, *optimize)
+	if output == "" {
+		basename := filepath.Base(os.Args[1])
+		output = strings.TrimSuffix(basename, filepath.Ext(basename))
+	}
+
+	err := build.Build(flag.Arg(0), goroot, output, debug, optimize)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)

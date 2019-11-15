@@ -1,0 +1,7 @@
+package main
+
+import "external"
+
+func main() {
+	external.Printf("Hello World!\n")
+}

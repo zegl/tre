@@ -1,3 +1,7 @@
+*~
+*.bak
+
 # Ignore binaries
-output-binary
-tre
+/cmd/tre/tre
+/hello
+/tre
