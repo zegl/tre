@@ -41,7 +41,7 @@ func main() {
 	goroot := filepath.Clean(treBinaryPath + "/../pkg/")
 
 	if output == "" {
-		basename := filepath.Base(os.Args[1])
+		basename := filepath.Base(flag.Arg(0))
 		output = strings.TrimSuffix(basename, filepath.Ext(basename))
 	}
 
