@@ -235,8 +235,8 @@ func (an AllocNode) String() string {
 type AssignNode struct {
 	baseNode
 
-	Target Node
-	Val    Node
+	Target []Node
+	Val    []Node
 }
 
 func (an AssignNode) String() string {
@@ -432,7 +432,7 @@ func (i TypeCastInterfaceNode) String() string {
 }
 
 // A node that contains multiple nodes
-// The right hand side of "a, b := 1, 2" is a MultiNode
+// The right hand side of "a, b := 1, 2" is a MultiValueNode
 type MultiValueNode struct {
 	baseNode
 	Items []Node

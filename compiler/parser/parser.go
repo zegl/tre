@@ -632,28 +632,29 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 		if next.Val == ":=" || next.Val == "=" {
 			p.i += 2
 
+			// TODO: This needs to be a stack
+			prevInRight := p.inAllocRightHand
+			val := p.parseOne(true)
+			p.inAllocRightHand = prevInRight
+
 			if nameNode, ok := input.(*NameNode); ok {
 				if next.Val == ":=" {
-					// TODO: This needs to be a stack
-					prevInRight := p.inAllocRightHand
-					p.inAllocRightHand = true
-					a := &AllocNode{
+					return &AllocNode{
 						Name: nameNode.Name,
-						Val:  p.parseOne(true),
+						Val:  val,
 					}
-					p.inAllocRightHand = prevInRight
-					return a
-				}
-				return &AssignNode{
-					Target: nameNode,
-					Val:    p.parseOne(true),
+				} else {
+					return &AssignNode{
+						Target: []Node{nameNode},
+						Val:    []Node{val},
+					}
 				}
 			}
 
 			if next.Val == "=" {
 				return &AssignNode{
-					Target: input,
-					Val:    p.parseOne(true),
+					Target: []Node{input},
+					Val:    []Node{val},
 				}
 			}
 
@@ -677,12 +678,12 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 			}
 
 			return &AssignNode{
-				Target: input,
-				Val: &OperatorNode{
+				Target: []Node{input},
+				Val: []Node{&OperatorNode{
 					Operator: op,
 					Left:     input,
 					Right:    p.parseOne(true),
-				},
+				}},
 			}
 		}
 
@@ -892,6 +893,19 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 				return p.aheadParse(nextAlloc)
 			}
 
+			if nextAssign, ok := nextName.(*AssignNode); ok {
+				nextTargets := []Node{input}
+				nextTargets = append(nextTargets, nextAssign.Target...)
+				nextAssign.Target = nextTargets
+
+				prev := p.inAllocRightHand
+				p.inAllocRightHand = true
+				r := p.aheadParse(nextAssign)
+				p.inAllocRightHand = prev
+
+				return r
+			}
+
 			// A MultiNameNode could not be created
 			// Reset the parsing index
 			p.i = preIndex
@@ -906,6 +920,11 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 			if inMultiValue, ok := input.(*MultiValueNode); ok {
 				inMultiValue.Items = append(inMultiValue.Items, p.parseOne(false))
 				return p.aheadParse(inMultiValue)
+			}
+
+			if inAssignValue, ok := input.(*AssignNode); ok {
+				inAssignValue.Val = append(inAssignValue.Val, p.parseOne(false))
+				return p.aheadParse(inAssignValue)
 			}
 
 			return p.aheadParse(&MultiValueNode{
