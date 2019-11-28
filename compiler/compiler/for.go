@@ -140,12 +140,12 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 		},
 
 		AfterIteration: &parser.AssignNode{
-			Target: &parser.NameNode{Name: forKeyName},
-			Val: &parser.OperatorNode{
+			Target: []parser.Node{&parser.NameNode{Name: forKeyName}},
+			Val: []parser.Node{&parser.OperatorNode{
 				Left:     &parser.NameNode{Name: forKeyName},
 				Operator: parser.OP_ADD,
 				Right:    &parser.ConstantNode{Type: parser.NUMBER, Value: 1},
-			},
+			}},
 		},
 
 		Block: modifiedBlock,

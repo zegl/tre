@@ -2,6 +2,8 @@ package compiler
 
 import (
 	"github.com/llir/llvm/ir"
+	irTypes "github.com/llir/llvm/ir/types"
+	llvmValue "github.com/llir/llvm/ir/value"
 	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -96,41 +98,69 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 }
 
 func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
-	dst := c.compileValue(v.Target)
-	llvmDst := dst.Value
-
 	// Allocate from type
-	if typeNode, ok := v.Val.(parser.TypeNode); ok {
+	if typeNode, ok := v.Val[0].(parser.TypeNode); ok {
 		if singleTypeNode, ok := typeNode.(*parser.SingleTypeNode); ok {
 			alloc := c.contextBlock.NewAlloca(parserTypeToType(singleTypeNode).LLVM())
-			c.contextBlock.NewStore(c.contextBlock.NewLoad(alloc), llvmDst)
+			dst := c.compileValue(v.Target[0])
+			c.contextBlock.NewStore(c.contextBlock.NewLoad(alloc), dst.Value)
 			return
 		}
-
 		panic("AssignNode from non TypeNode is not allowed")
 	}
 
+	tmpStores := make([]llvmValue.Value, len(v.Target))
+	realTargets := make([]value.Value, len(v.Target))
+
+	for i := range v.Target {
+		target := v.Target[i]
+
+		dst := c.compileValue(target)
+
+		// Allocate a temporary storage
+		llvmType := dst.Value.Type()
+
+		if dst.IsVariable {
+			p := llvmType.(*irTypes.PointerType)
+			llvmType = p.ElemType
+		}
+
+		singleAssignVal := c.compileSingleAssign(dst.Type, dst, v.Val[i])
+
+		tmpStore := c.contextBlock.NewAlloca(llvmType)
+		c.contextBlock.NewStore(singleAssignVal, tmpStore)
+		tmpStores[i] = tmpStore
+		realTargets[i] = dst
+	}
+
+	for i := range v.Target {
+		x := c.contextBlock.NewLoad(tmpStores[i])
+		c.contextBlock.NewStore(x, realTargets[i].Value)
+	}
+}
+
+func (c *Compiler) compileSingleAssign(temporaryDst types.Type, realDst value.Value, val parser.Node) llvmValue.Value {
 	// Push assign type stack
 	// Can be used later when evaluating integer constants
 	// Is also used by append()
-	c.contextAssignDest = append(c.contextAssignDest, dst)
+	c.contextAssignDest = append(c.contextAssignDest, realDst)
 
 	// Allocate from value
-	val := c.compileValue(v.Val)
+	comVal := c.compileValue(val)
 
 	// Cast to interface if needed
-	val = c.valueToInterfaceValue(val, dst.Type)
+	comVal = c.valueToInterfaceValue(comVal, temporaryDst)
 
-	llvmV := val.Value
+	llvmV := comVal.Value
 
-	if val.IsVariable {
+	if comVal.IsVariable {
 		llvmV = c.contextBlock.NewLoad(llvmV)
 	}
 
-	c.contextBlock.NewStore(llvmV, llvmDst)
-
 	// Pop assigng type stack
 	c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
+
+	return llvmV
 }
 
 func (c *Compiler) compileMultiValueNode(multi *parser.MultiValueNode) value.Value {
