@@ -71,7 +71,7 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 	var rangeItem parser.Node
 
 	if forAlloc, ok := v.BeforeLoop.(*parser.AllocNode); ok {
-		forAllocRange := forAlloc.Val.(*parser.RangeNode)
+		forAllocRange := forAlloc.Val[0].(*parser.RangeNode)
 		rangeItem = forAllocRange.Item
 	} else if forRange, ok := v.BeforeLoop.(*parser.RangeNode); ok {
 		rangeItem = forRange.Item
@@ -82,42 +82,38 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 	// Alloc the value of rangeItem and save it in a variable
 	rangeItemName := name.Var("range-item")
 	c.compileAllocNode(&parser.AllocNode{
-		Name: rangeItemName,
-		Val:  rangeItem,
+		Name: []string{rangeItemName},
+		Val:  []parser.Node{rangeItem},
 	})
 
 	// Call and alloc len() and save it in a variable
 	forItemLenName := name.Var("range-item-len")
 	c.compileAllocNode(&parser.AllocNode{
-		Name: forItemLenName,
-		Val: &parser.CallNode{
+		Name: []string{forItemLenName},
+		Val: []parser.Node{&parser.CallNode{
 			Function:  &parser.NameNode{Name: "len"},
 			Arguments: []parser.Node{&parser.NameNode{Name: rangeItemName}},
-		},
+		}},
 	})
 
 	forKeyName := name.Var("for-key")
 
 	// Ranges that use the key and value
 	if forAlloc, ok := v.BeforeLoop.(*parser.AllocNode); ok {
-		var keyName string
-		if forAlloc.MultiNames == nil {
-			keyName = forAlloc.Name
-		} else {
-			keyName = forAlloc.MultiNames.Names[0].Name
-		}
+		keyName := forAlloc.Name[0]
 
 		// Assignment of key
 		modifiedBlock = append(modifiedBlock, &parser.AllocNode{
-			Name: keyName,
-			Val:  &parser.NameNode{Name: forKeyName},
+			Name: []string{keyName},
+			Val:  []parser.Node{&parser.NameNode{Name: forKeyName}},
 		})
 
 		// Assignment of value
-		if forAlloc.MultiNames != nil && len(forAlloc.MultiNames.Names) >= 2 {
+
+		if len(forAlloc.Name) >= 2 {
 			modifiedBlock = append(modifiedBlock, &parser.AllocNode{
-				Name: forAlloc.MultiNames.Names[1].Name,
-				Val:  &parser.LoadArrayElement{Array: &parser.NameNode{Name: rangeItemName}, Pos: &parser.NameNode{Name: forKeyName}},
+				Name: []string{forAlloc.Name[1]},
+				Val:  []parser.Node{&parser.LoadArrayElement{Array: &parser.NameNode{Name: rangeItemName}, Pos: &parser.NameNode{Name: forKeyName}}},
 			})
 		}
 	}
@@ -129,7 +125,7 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 	}
 
 	c.compileForThreeType(&parser.ForNode{
-		BeforeLoop: &parser.AllocNode{Name: forKeyName, Val: &parser.ConstantNode{Type: parser.NUMBER, Value: 0}},
+		BeforeLoop: &parser.AllocNode{Name: []string{forKeyName}, Val: []parser.Node{&parser.ConstantNode{Type: parser.NUMBER, Value: 0}}},
 
 		Condition: &parser.OperatorNode{
 			Left:     typeCastedKey,
@@ -140,12 +136,12 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 		},
 
 		AfterIteration: &parser.AssignNode{
-			Target: &parser.NameNode{Name: forKeyName},
-			Val: &parser.OperatorNode{
+			Target: []parser.Node{&parser.NameNode{Name: forKeyName}},
+			Val: []parser.Node{&parser.OperatorNode{
 				Left:     &parser.NameNode{Name: forKeyName},
 				Operator: parser.OP_ADD,
 				Right:    &parser.ConstantNode{Type: parser.NUMBER, Value: 1},
-			},
+			}},
 		},
 
 		Block: modifiedBlock,

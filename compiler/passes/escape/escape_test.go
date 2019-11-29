@@ -19,8 +19,8 @@ func escapeTest(t *testing.T, input string, expected map[string]bool) {
 		if defFuncNode, ok := ins.(*parser.DefineFuncNode); ok {
 			for _, ins := range defFuncNode.Body {
 				if allocNode, ok := ins.(*parser.AllocNode); ok {
-					allocsChecked = append(allocsChecked, allocNode.Name)
-					assert.Equal(t, expected[allocNode.Name], allocNode.Escapes, allocNode.Name)
+					allocsChecked = append(allocsChecked, allocNode.Name[0])
+					assert.Equal(t, expected[allocNode.Name[0]], allocNode.Escapes, allocNode.Name)
 				}
 			}
 		}
@@ -94,22 +94,22 @@ func TestEscapesStructPointer(t *testing.T) {
 
 func TestEscapeNestedStruct(t *testing.T) {
 	escapeTest(t, `package main
-	
+
 		type Bar struct {
 			num int64
 		}
-		
+
 		type Foo struct {
 			num int64
 			bar *Bar
 		}
-		
+
 		func GetFooPtr() *Foo {
 			f := Foo{
 				num: 300,
 				bar: &Bar{num: 400},
 			}
-		
+
 			return &f
 		}`,
 		map[string]bool{

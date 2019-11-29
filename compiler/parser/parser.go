@@ -523,8 +523,8 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 			}
 
 			return &AllocNode{
-				Name: name.Val,
-				Val:  tp,
+				Name: []string{name.Val},
+				Val:  []Node{tp},
 			}
 		}
 
@@ -632,28 +632,29 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 		if next.Val == ":=" || next.Val == "=" {
 			p.i += 2
 
+			// TODO: This needs to be a stack
+			prevInRight := p.inAllocRightHand
+			val := p.parseOne(true)
+			p.inAllocRightHand = prevInRight
+
 			if nameNode, ok := input.(*NameNode); ok {
 				if next.Val == ":=" {
-					// TODO: This needs to be a stack
-					prevInRight := p.inAllocRightHand
-					p.inAllocRightHand = true
-					a := &AllocNode{
-						Name: nameNode.Name,
-						Val:  p.parseOne(true),
+					return &AllocNode{
+						Name: []string{nameNode.Name},
+						Val:  []Node{val},
 					}
-					p.inAllocRightHand = prevInRight
-					return a
-				}
-				return &AssignNode{
-					Target: nameNode,
-					Val:    p.parseOne(true),
+				} else {
+					return &AssignNode{
+						Target: []Node{nameNode},
+						Val:    []Node{val},
+					}
 				}
 			}
 
 			if next.Val == "=" {
 				return &AssignNode{
-					Target: input,
-					Val:    p.parseOne(true),
+					Target: []Node{input},
+					Val:    []Node{val},
 				}
 			}
 
@@ -677,12 +678,12 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 			}
 
 			return &AssignNode{
-				Target: input,
-				Val: &OperatorNode{
+				Target: []Node{input},
+				Val: []Node{&OperatorNode{
 					Operator: op,
 					Left:     input,
 					Right:    p.parseOne(true),
-				},
+				}},
 			}
 		}
 
@@ -874,22 +875,29 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 			nextName := p.parseOne(true)
 
 			if nextAlloc, ok := nextName.(*AllocNode); ok {
-				if nextAlloc.MultiNames == nil || len(nextAlloc.MultiNames.Names) == 0 {
-					nextAlloc.MultiNames = &MultiNameNode{
-						Names: []*NameNode{inputNamedNode, &NameNode{Name: nextAlloc.Name}},
-					}
-					nextAlloc.Name = ""
-				} else {
-					// Add the current one to the beging of the list
-					newMultiNames := []*NameNode{inputNamedNode}
-					if nextAlloc.MultiNames != nil {
-						newMultiNames = append(newMultiNames, nextAlloc.MultiNames.Names...)
-					}
+				nextNames := []string{inputNamedNode.Name}
+				nextNames = append(nextNames, nextAlloc.Name...)
+				nextAlloc.Name = nextNames
 
-					nextAlloc.MultiNames = &MultiNameNode{Names: newMultiNames}
-				}
+				prev := p.inAllocRightHand
+				p.inAllocRightHand = true
+				r := p.aheadParse(nextAlloc)
+				p.inAllocRightHand = prev
 
-				return p.aheadParse(nextAlloc)
+				return r
+			}
+
+			if nextAssign, ok := nextName.(*AssignNode); ok {
+				nextTargets := []Node{input}
+				nextTargets = append(nextTargets, nextAssign.Target...)
+				nextAssign.Target = nextTargets
+
+				prev := p.inAllocRightHand
+				p.inAllocRightHand = true
+				r := p.aheadParse(nextAssign)
+				p.inAllocRightHand = prev
+
+				return r
 			}
 
 			// A MultiNameNode could not be created
@@ -903,17 +911,17 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 
 			// Add to existing multi value if possible. Done on third argument
 			// and forward
-			if inMultiValue, ok := input.(*MultiValueNode); ok {
-				inMultiValue.Items = append(inMultiValue.Items, p.parseOne(false))
-				return p.aheadParse(inMultiValue)
+			if inAllocNode, ok := input.(*AllocNode); ok {
+				inAllocNode.Val = append(inAllocNode.Val, p.parseOne(false))
+				return p.aheadParse(inAllocNode)
 			}
 
-			return p.aheadParse(&MultiValueNode{
-				Items: []Node{
-					input,
-					p.parseOne(false),
-				},
-			})
+			if inAssignValue, ok := input.(*AssignNode); ok {
+				inAssignValue.Val = append(inAssignValue.Val, p.parseOne(false))
+				return p.aheadParse(inAssignValue)
+			}
+
+			panic("unexpected in alloc right hand")
 		}
 	}
 

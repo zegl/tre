@@ -17,12 +17,8 @@ func Escape(input parser.FileNode) parser.FileNode {
 
 				// Find all variables allocated in this function
 				if allocIns, ok := ins.(*parser.AllocNode); ok {
-					if allocIns.MultiNames != nil && len(allocIns.MultiNames.Names) > 0 {
-						for _, name := range allocIns.MultiNames.Names {
-							allocatedVars[name.Name] = insIndex
-						}
-					} else {
-						allocatedVars[allocIns.Name] = insIndex
+					for _, name := range allocIns.Name {
+						allocatedVars[name] = insIndex
 					}
 				}
 
