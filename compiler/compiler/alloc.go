@@ -112,6 +112,14 @@ func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
 	tmpStores := make([]llvmValue.Value, len(v.Target))
 	realTargets := make([]value.Value, len(v.Target))
 
+	// Skip temporary variables if we're assigning to one single var
+	if len(v.Target) == 1 {
+		dst := c.compileValue(v.Target[0])
+		s := c.compileSingleAssign(dst.Type, dst, v.Val[0])
+		c.contextBlock.NewStore(s, dst.Value)
+		return
+	}
+
 	for i := range v.Target {
 		target := v.Target[i]
 
