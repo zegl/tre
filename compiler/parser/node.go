@@ -216,18 +216,13 @@ func (rn ReturnNode) String() string {
 type AllocNode struct {
 	baseNode
 
-	Name       string
-	MultiNames *MultiNameNode
-	Escapes    bool
+	Escapes bool
 
-	Val Node
+	Name []string
+	Val  []Node
 }
 
 func (an AllocNode) String() string {
-	if an.MultiNames != nil && len(an.MultiNames.Names) > 0 {
-		return fmt.Sprintf("allocMulti(%+v) = %v", an.MultiNames, an.Val)
-	}
-
 	return fmt.Sprintf("alloc(%s) = %v (escapes: %v)", an.Name, an.Val, an.Escapes)
 }
 
@@ -429,17 +424,6 @@ type TypeCastInterfaceNode struct {
 
 func (i TypeCastInterfaceNode) String() string {
 	return fmt.Sprintf("castInterface(%s(%+v))", i.Type, i.Item)
-}
-
-// A node that contains multiple nodes
-// The right hand side of "a, b := 1, 2" is a MultiValueNode
-type MultiValueNode struct {
-	baseNode
-	Items []Node
-}
-
-func (m MultiValueNode) String() string {
-	return fmt.Sprintf("multi(%+v)", m.Items)
 }
 
 type DecrementNode struct {

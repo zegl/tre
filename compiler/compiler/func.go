@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
@@ -164,9 +165,9 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 
 		for i, retType := range treParams[:argumentReturnValuesCount] {
 			retVals = append(retVals, value.Value{
-				Value: llvmParams[i],
-				Type:  retType,
-				IsVariable: false,
+				Value:      llvmParams[i],
+				Type:       retType,
+				IsVariable: true,
 			})
 		}
 
@@ -216,8 +217,8 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		r := v.ReturnValues[0]
 		all := c.contextBlock.NewAlloca(funcRetType.LLVM())
 		retVar := value.Value{
-			Value: all,
-			Type: funcRetType,
+			Value:      all,
+			Type:       funcRetType,
 			IsVariable: true,
 		}
 		c.setVar(r.Name, retVar)
@@ -334,7 +335,6 @@ func (c *Compiler) compileReturnNode(v *parser.ReturnNode) {
 		c.contextBlock.NewRet(nil)
 		return
 	}
-
 
 	// Naked return, func has one named return variable
 	if len(v.Vals) == 0 {

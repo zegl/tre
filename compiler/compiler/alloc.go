@@ -18,81 +18,85 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 	}()
 
 	// Allocate from type
-	if typeNode, ok := v.Val.(parser.TypeNode); ok {
-		treType := parserTypeToType(typeNode)
+	if len(v.Val) == 1 {
+		if typeNode, ok := v.Val[0].(parser.TypeNode); ok {
+			treType := parserTypeToType(typeNode)
 
-		var alloc *ir.InstAlloca
+			var alloc *ir.InstAlloca
 
-		if sliceType, ok := treType.(*types.Slice); ok {
-			alloc = sliceType.SliceZero(c.contextBlock, c.externalFuncs.Malloc.LlvmFunction, 2)
-		} else {
-			alloc = c.contextBlock.NewAlloca(treType.LLVM())
-			treType.Zero(c.contextBlock, alloc)
+			if sliceType, ok := treType.(*types.Slice); ok {
+				alloc = sliceType.SliceZero(c.contextBlock, c.externalFuncs.Malloc.LlvmFunction, 2)
+			} else {
+				alloc = c.contextBlock.NewAlloca(treType.LLVM())
+				treType.Zero(c.contextBlock, alloc)
+			}
+
+			alloc.SetName(name.Var(v.Name[0]))
+
+			c.setVar(v.Name[0], value.Value{
+				Value:      alloc,
+				Type:       treType,
+				IsVariable: true,
+			})
+			return
+		}
+	}
+
+	for valIndex, valNode := range v.Val {
+		// Allocate from value
+		val := c.compileValue(valNode)
+
+		if _, ok := val.Type.(*types.MultiValue); ok {
+			if len(v.Name) != len(val.MultiValues) {
+				panic("Variable count on left and right side does not match")
+			}
+
+			// Is currently expecting that the variables are already allocated in this block.
+			// Will only add the vars to the map of variables
+			for i, multiVal := range val.MultiValues {
+				c.setVar(v.Name[i], multiVal)
+			}
+
+			return
 		}
 
-		alloc.SetName(name.Var(v.Name))
+		// Single variable allocation
+		llvmVal := val.Value
 
-		c.setVar(v.Name, value.Value{
+		// Non-allocation needed pointers
+		if ptrVal, ok := val.Type.(*types.Pointer); ok && ptrVal.IsNonAllocDereference {
+			c.setVar(v.Name[valIndex], value.Value{
+				Type:       val.Type,
+				Value:      llvmVal,
+				IsVariable: false,
+			})
+			return
+		}
+
+		// Non-allocation needed structs
+		if structVal, ok := val.Type.(*types.Struct); ok && structVal.IsHeapAllocated {
+			c.setVar(v.Name[valIndex], value.Value{
+				Type:       val.Type,
+				Value:      llvmVal,
+				IsVariable: true,
+			})
+			return
+		}
+
+		if val.IsVariable {
+			llvmVal = c.contextBlock.NewLoad(llvmVal)
+		}
+
+		alloc := c.contextBlock.NewAlloca(llvmVal.Type())
+		alloc.SetName(name.Var(v.Name[valIndex]))
+		c.contextBlock.NewStore(llvmVal, alloc)
+
+		c.setVar(v.Name[valIndex], value.Value{
+			Type:       val.Type,
 			Value:      alloc,
-			Type:       treType,
 			IsVariable: true,
 		})
-		return
 	}
-
-	// Allocate from value
-	val := c.compileValue(v.Val)
-
-	if _, ok := val.Type.(*types.MultiValue); ok {
-		if len(v.MultiNames.Names) != len(val.MultiValues) {
-			panic("Variable count on left and right side does not match")
-		}
-
-		// Is currently expecting that the variables are already allocated in this block.
-		// Will only add the vars to the map of variables
-		for i, multiVal := range val.MultiValues {
-			c.setVar(v.MultiNames.Names[i].Name, multiVal)
-		}
-
-		return
-	}
-
-	// Single variable allocation
-	llvmVal := val.Value
-
-	// Non-allocation needed pointers
-	if ptrVal, ok := val.Type.(*types.Pointer); ok && ptrVal.IsNonAllocDereference {
-		c.setVar(v.Name, value.Value{
-			Type:       val.Type,
-			Value:      llvmVal,
-			IsVariable: false,
-		})
-		return
-	}
-
-	// Non-allocation needed structs
-	if structVal, ok := val.Type.(*types.Struct); ok && structVal.IsHeapAllocated {
-		c.setVar(v.Name, value.Value{
-			Type:       val.Type,
-			Value:      llvmVal,
-			IsVariable: true,
-		})
-		return
-	}
-
-	if val.IsVariable {
-		llvmVal = c.contextBlock.NewLoad(llvmVal)
-	}
-
-	alloc := c.contextBlock.NewAlloca(llvmVal.Type())
-	alloc.SetName(name.Var(v.Name))
-	c.contextBlock.NewStore(llvmVal, alloc)
-
-	c.setVar(v.Name, value.Value{
-		Type:       val.Type,
-		Value:      alloc,
-		IsVariable: true,
-	})
 
 	return
 }
@@ -169,20 +173,4 @@ func (c *Compiler) compileSingleAssign(temporaryDst types.Type, realDst value.Va
 	c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
 
 	return llvmV
-}
-
-func (c *Compiler) compileMultiValueNode(multi *parser.MultiValueNode) value.Value {
-	var valTypes []types.Type
-	var vals []value.Value
-
-	for _, v := range multi.Items {
-		comp := c.compileValue(v)
-		valTypes = append(valTypes, comp.Type)
-		vals = append(vals, comp)
-	}
-
-	return value.Value{
-		Type:        &types.MultiValue{Types: valTypes},
-		MultiValues: vals,
-	}
 }

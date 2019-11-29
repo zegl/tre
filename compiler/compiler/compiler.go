@@ -307,8 +307,6 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		return c.compileDefineFuncNode(v)
 	case *parser.InitializeArrayNode:
 		return c.compileInitializeArrayNode(v)
-	case *parser.MultiValueNode:
-		return c.compileMultiValueNode(v)
 	case *parser.DecrementNode:
 		return c.compileDecrementNode(v)
 	case *parser.IncrementNode:
