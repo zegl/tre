@@ -3,6 +3,7 @@ package compiler
 import (
 	"fmt"
 	"github.com/llir/llvm/ir"
+
 	"github.com/zegl/tre/compiler/compiler/name"
 
 	"github.com/zegl/tre/compiler/compiler/internal"
@@ -18,13 +19,18 @@ import (
 )
 
 var typeConvertMap = map[string]types.Type{
-	"bool":   types.Bool,
-	"int":    types.I64, // TODO: Size based on arch
-	"int8":   types.I8,
-	"int16":  types.I16,
-	"int32":  types.I32,
-	"int64":  types.I64,
-	"string": types.String,
+	"bool":    types.Bool,
+	"int":     types.I64, // TODO: Size based on arch
+	"int8":    types.I8,
+	"uint8":   types.U8,
+	"int16":   types.I16,
+	"uint16":  types.U16,
+	"int32":   types.I32,
+	"uint32":  types.U32,
+	"int64":   types.I64,
+	"uint64":  types.U64,
+	"uintptr": types.Uintptr,
+	"string":  types.String,
 }
 
 // Is used in interfaces to keep track of the backing data type

@@ -6,6 +6,9 @@ import (
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+	"log"
+	"math/big"
+
 	"github.com/zegl/tre/compiler/compiler/name"
 
 	"github.com/zegl/tre/compiler/compiler/strings"
@@ -22,6 +25,8 @@ type Type interface {
 	GetMethod(string) (*Method, bool)
 
 	Zero(*ir.Block, llvmValue.Value)
+
+	IsSigned() bool
 }
 
 type backingType struct {
@@ -46,6 +51,10 @@ func (backingType) Size() int64 {
 
 func (backingType) Zero(*ir.Block, llvmValue.Value) {
 	// NOOP
+}
+
+func (backingType) IsSigned() bool {
+	return false
 }
 
 type Struct struct {
@@ -170,6 +179,7 @@ type Int struct {
 	Type     *types.IntType
 	TypeName string
 	TypeSize int64
+	Signed   bool
 }
 
 func (i Int) LLVM() types.Type {
@@ -185,7 +195,22 @@ func (i Int) Size() int64 {
 }
 
 func (i Int) Zero(block *ir.Block, alloca llvmValue.Value) {
-	block.NewStore(constant.NewInt(i.Type, 0), alloca)
+	b := big.NewInt(0)
+	if !i.IsSigned() {
+		log.Println("set uint")
+		b.SetUint64(0)
+	}
+
+	c := &constant.Int{
+		Typ: i.Type,
+		X:   b,
+	}
+
+	block.NewStore(c, alloca)
+}
+
+func (i Int) IsSigned() bool {
+	return i.Signed
 }
 
 type StringType struct {
