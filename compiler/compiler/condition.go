@@ -96,7 +96,11 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 	case parser.OP_MUL:
 		opRes = c.contextBlock.NewMul(leftLLVM, rightLLVM)
 	case parser.OP_DIV:
-		opRes = c.contextBlock.NewSDiv(leftLLVM, rightLLVM) // SDiv == Signed Division
+		if left.Type.IsSigned() {
+			opRes = c.contextBlock.NewSDiv(leftLLVM, rightLLVM) // SDiv == Signed Division
+		} else {
+			opRes = c.contextBlock.NewUDiv(leftLLVM, rightLLVM) // SDiv == Signed Division
+		}
 	default:
 		// Boolean operations
 		return value.Value{

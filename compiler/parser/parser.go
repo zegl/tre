@@ -28,9 +28,15 @@ func Parse(input []lexer.Item, debug bool) FileNode {
 		debug: debug,
 		types: map[string]struct{}{
 			"int":   {},
+			"uint":   {},
 			"int8":  {},
+			"uint8":  {},
 			"int32": {},
+			"uint32": {},
 			"int64": {},
+			"uint64": {},
+			"uintptr": {},
+			"string": {},
 		},
 	}
 
