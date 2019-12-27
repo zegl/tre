@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 
 	"github.com/zegl/tre/compiler/compiler/types"
@@ -39,11 +40,11 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 	rightLLVM := right.Value
 
 	if left.IsVariable {
-		leftLLVM = c.contextBlock.NewLoad(leftLLVM)
+		leftLLVM = c.contextBlock.NewLoad(pointer.ElemType(leftLLVM), leftLLVM)
 	}
 
 	if right.IsVariable {
-		rightLLVM = c.contextBlock.NewLoad(rightLLVM)
+		rightLLVM = c.contextBlock.NewLoad(pointer.ElemType(rightLLVM), rightLLVM)
 	}
 
 	if !leftLLVM.Type().Equal(rightLLVM.Type()) {
@@ -69,15 +70,15 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 			alloc := c.contextBlock.NewAlloca(typeConvertMap["string"].LLVM())
 
 			// Save length of the string
-			lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
+			lenItem := c.contextBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
 			c.contextBlock.NewStore(sumLen, lenItem)
 
 			// Save i8* version of string
-			strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
+			strItem := c.contextBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
 			c.contextBlock.NewStore(backingArray, strItem)
 
 			return value.Value{
-				Value:      c.contextBlock.NewLoad(alloc),
+				Value:      c.contextBlock.NewLoad(pointer.ElemType(alloc), alloc),
 				Type:       types.String,
 				IsVariable: false,
 			}
@@ -122,7 +123,7 @@ func (c *Compiler) compileSubNode(v *parser.SubNode) value.Value {
 	rVal := right.Value
 
 	if right.IsVariable {
-		rVal = c.contextBlock.NewLoad(rVal)
+		rVal = c.contextBlock.NewLoad(pointer.ElemType(rVal), rVal)
 	}
 
 	res := c.contextBlock.NewSub(
@@ -191,7 +192,7 @@ func (c *Compiler) compileDecrementNode(v *parser.DecrementNode) value.Value {
 	input := c.compileValue(v.Item)
 	val := input.Value
 	if input.IsVariable {
-		val = c.contextBlock.NewLoad(val)
+		val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
 		added := c.contextBlock.NewAdd(val, constant.NewInt(val.Type().(*llvmTypes.IntType), -1))
 		c.contextBlock.NewStore(added, input.Value)
 		return input
@@ -204,7 +205,7 @@ func (c *Compiler) compileIncrementNode(v *parser.IncrementNode) value.Value {
 	input := c.compileValue(v.Item)
 	val := input.Value
 	if input.IsVariable {
-		val = c.contextBlock.NewLoad(val)
+		val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
 		added := c.contextBlock.NewAdd(val, constant.NewInt(val.Type().(*llvmTypes.IntType), 1))
 		c.contextBlock.NewStore(added, input.Value)
 		return input

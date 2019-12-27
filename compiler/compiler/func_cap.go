@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
 )
@@ -10,7 +11,7 @@ func (c *Compiler) capFuncCall(v *parser.CallNode) value.Value {
 
 	if arg.Type.Name() == "slice" {
 		val := arg.Value
-		val = c.contextBlock.NewLoad(val)
+		val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
 
 		return value.Value{
 			Value:      c.contextBlock.NewExtractValue(val, 1),

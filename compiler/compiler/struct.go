@@ -5,6 +5,7 @@ import (
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -52,10 +53,10 @@ func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode)
 			val := src.Value
 
 			if isPointer && !isPointerNonAllocDereference && src.IsVariable {
-				val = c.contextBlock.NewLoad(val)
+				val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
 			}
 
-			retVal := c.contextBlock.NewGetElementPtr(val, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(memberIndex)))
+			retVal := c.contextBlock.NewGetElementPtr(pointer.ElemType(val), val, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(memberIndex)))
 
 			return value.Value{
 				Type:       structType.Members[v.ElementName],
@@ -88,10 +89,10 @@ func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode)
 			}
 
 			// Load jump function
-			jumpTable := c.contextBlock.NewGetElementPtr(src.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 2))
-			jumpLoad := c.contextBlock.NewLoad(jumpTable)
-			jumpFunc := c.contextBlock.NewGetElementPtr(jumpLoad, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, methodIndex))
-			jumpFuncLoad := c.contextBlock.NewLoad(jumpFunc)
+			jumpTable := c.contextBlock.NewGetElementPtr(pointer.ElemType(src.Value), src.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 2))
+			jumpLoad := c.contextBlock.NewLoad(pointer.ElemType(jumpTable), jumpTable)
+			jumpFunc := c.contextBlock.NewGetElementPtr(pointer.ElemType(jumpLoad), jumpLoad, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, methodIndex))
+			jumpFuncLoad := c.contextBlock.NewLoad(pointer.ElemType(jumpFunc), jumpFunc)
 
 			// Set jump function
 			ifaceMethod.LlvmJumpFunction = jumpFuncLoad
@@ -134,7 +135,7 @@ func (c *Compiler) compileInitStructWithValues(v *parser.InitializeStructNode) v
 			panic("Unknown struct key: " + key)
 		}
 
-		itemPtr := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(keyIndex)))
+		itemPtr := c.contextBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(keyIndex)))
 		itemPtr.SetName(name.Var(key))
 
 		compiledVal := c.compileValue(val)

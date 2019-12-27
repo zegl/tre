@@ -8,6 +8,8 @@ import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/value"
+
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 )
 
 func Constant(in string) *constant.CharArray {
@@ -15,7 +17,7 @@ func Constant(in string) *constant.CharArray {
 }
 
 func Toi8Ptr(block *ir.Block, src value.Value) *ir.InstGetElementPtr {
-	return block.NewGetElementPtr(src, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, 0))
+	return block.NewGetElementPtr(pointer.ElemType(src), src, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, 0))
 }
 
 func TreStringToi8Ptr(block *ir.Block, src value.Value) *ir.InstExtractValue {

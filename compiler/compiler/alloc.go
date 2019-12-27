@@ -4,6 +4,7 @@ import (
 	"github.com/llir/llvm/ir"
 	irTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -84,7 +85,7 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 		}
 
 		if val.IsVariable {
-			llvmVal = c.contextBlock.NewLoad(llvmVal)
+			llvmVal = c.contextBlock.NewLoad(pointer.ElemType(llvmVal), llvmVal)
 		}
 
 		alloc := c.contextBlock.NewAlloca(llvmVal.Type())
@@ -107,7 +108,7 @@ func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
 		if singleTypeNode, ok := typeNode.(*parser.SingleTypeNode); ok {
 			alloc := c.contextBlock.NewAlloca(parserTypeToType(singleTypeNode).LLVM())
 			dst := c.compileValue(v.Target[0])
-			c.contextBlock.NewStore(c.contextBlock.NewLoad(alloc), dst.Value)
+			c.contextBlock.NewStore(c.contextBlock.NewLoad(pointer.ElemType(alloc), alloc), dst.Value)
 			return
 		}
 		panic("AssignNode from non TypeNode is not allowed")
@@ -146,7 +147,7 @@ func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
 	}
 
 	for i := range v.Target {
-		x := c.contextBlock.NewLoad(tmpStores[i])
+		x := c.contextBlock.NewLoad(pointer.ElemType(tmpStores[i]), tmpStores[i])
 		c.contextBlock.NewStore(x, realTargets[i].Value)
 	}
 }
@@ -166,7 +167,7 @@ func (c *Compiler) compileSingleAssign(temporaryDst types.Type, realDst value.Va
 	llvmV := comVal.Value
 
 	if comVal.IsVariable {
-		llvmV = c.contextBlock.NewLoad(llvmV)
+		llvmV = c.contextBlock.NewLoad(pointer.ElemType(llvmV), llvmV)
 	}
 
 	// Pop assigng type stack

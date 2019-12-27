@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/strings"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -49,15 +50,15 @@ func (c *Compiler) compileConstantNode(v *parser.ConstantNode) value.Value {
 		alloc := c.contextBlock.NewAlloca(typeConvertMap["string"].LLVM())
 
 		// Save length of the string
-		lenItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
+		lenItem := c.contextBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
 		c.contextBlock.NewStore(constant.NewInt(llvmTypes.I64, int64(len(v.ValueStr))), lenItem)
 
 		// Save i8* version of string
-		strItem := c.contextBlock.NewGetElementPtr(alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
+		strItem := c.contextBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
 		c.contextBlock.NewStore(strings.Toi8Ptr(c.contextBlock, constString), strItem)
 
 		return value.Value{
-			Value:      c.contextBlock.NewLoad(alloc),
+			Value:      c.contextBlock.NewLoad(pointer.ElemType(alloc), alloc),
 			Type:       types.String,
 			IsVariable: false,
 		}

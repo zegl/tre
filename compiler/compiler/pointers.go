@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 
 	"github.com/zegl/tre/compiler/compiler/types"
@@ -12,7 +13,7 @@ import (
 func (c *Compiler) compileGetReferenceNode(v *parser.GetReferenceNode) value.Value {
 	val := c.compileValue(v.Item)
 
-	// Case where allocation is not neccesary, as all LLVM values are pointers by default
+	// Case where allocation is not necessary, as all LLVM values are pointers by default
 	if val.IsVariable {
 		if _, ok := val.Type.(*types.Pointer); !ok {
 			return value.Value{
@@ -65,7 +66,7 @@ func (c *Compiler) compileDereferenceNode(v *parser.DereferenceNode) value.Value
 		}
 
 		return value.Value{
-			Value:      c.contextBlock.NewLoad(val.Value),
+			Value:      c.contextBlock.NewLoad(pointer.ElemType(val.Value), val.Value),
 			Type:       ptrVal.Type,
 			IsVariable: false,
 		}

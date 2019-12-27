@@ -6,6 +6,7 @@ import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 )
@@ -34,11 +35,11 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 
 	ifaceStruct := c.contextBlock.NewAlloca(targetType.LLVM())
 
-	dataPtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
+	dataPtr := c.contextBlock.NewGetElementPtr(pointer.ElemType(ifaceStruct), ifaceStruct, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
 	bitcastedVal := c.contextBlock.NewBitCast(val, llvmTypes.NewPointer(llvmTypes.I8))
 	c.contextBlock.NewStore(bitcastedVal, dataPtr)
 
-	dataTypePtr := c.contextBlock.NewGetElementPtr(ifaceStruct, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
+	dataTypePtr := c.contextBlock.NewGetElementPtr(pointer.ElemType(ifaceStruct), ifaceStruct, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
 
 	backingTypID := getTypeID(v.Type.Name())
 	c.contextBlock.NewStore(constant.NewInt(llvmTypes.I32, backingTypID), dataTypePtr)
@@ -46,7 +47,7 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 	// Create interface jump table if needed
 	var funcTableAlloca *ir.InstAlloca
 	if len(iface.RequiredMethods) > 0 {
-		funcTablePtr := c.contextBlock.NewGetElementPtr(ifaceStruct,
+		funcTablePtr := c.contextBlock.NewGetElementPtr(pointer.ElemType(ifaceStruct), ifaceStruct,
 			constant.NewInt(llvmTypes.I32, 0),
 			constant.NewInt(llvmTypes.I32, 2),
 		)
@@ -63,7 +64,7 @@ func (c *Compiler) valueToInterfaceValue(v value.Value, targetType types.Type) v
 
 	// Add methods to the iface table
 	for methodIndex, methodName := range iface.SortedRequiredMethods() {
-		functionPointer := c.contextBlock.NewGetElementPtr(funcTableAlloca,
+		functionPointer := c.contextBlock.NewGetElementPtr(pointer.ElemType(funcTableAlloca), funcTableAlloca,
 			constant.NewInt(llvmTypes.I32, 0),
 			constant.NewInt(llvmTypes.I32, int64(methodIndex)),
 		)

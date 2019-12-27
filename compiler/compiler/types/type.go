@@ -6,9 +6,9 @@ import (
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
-	"log"
 	"math/big"
 
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 
 	"github.com/zegl/tre/compiler/compiler/strings"
@@ -79,7 +79,7 @@ func (s Struct) Name() string {
 
 func (s Struct) Zero(block *ir.Block, alloca llvmValue.Value) {
 	for key, valType := range s.Members {
-		ptr := block.NewGetElementPtr(alloca,
+		ptr := block.NewGetElementPtr(pointer.ElemType(alloca), alloca,
 			constant.NewInt(types.I32, 0),
 			constant.NewInt(types.I32, int64(s.MemberIndexes[key])),
 		)
@@ -197,7 +197,6 @@ func (i Int) Size() int64 {
 func (i Int) Zero(block *ir.Block, alloca llvmValue.Value) {
 	b := big.NewInt(0)
 	if !i.IsSigned() {
-		log.Println("set uint")
 		b.SetUint64(0)
 	}
 
@@ -235,8 +234,8 @@ func (StringType) Size() int64 {
 }
 
 func (s StringType) Zero(block *ir.Block, alloca llvmValue.Value) {
-	lenPtr := block.NewGetElementPtr(alloca, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
-	backingDataPtr := block.NewGetElementPtr(alloca, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 1))
+	lenPtr := block.NewGetElementPtr(pointer.ElemType(alloca), alloca, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
+	backingDataPtr := block.NewGetElementPtr(pointer.ElemType(alloca), alloca, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 1))
 	block.NewStore(constant.NewInt(types.I64, 0), lenPtr)
 	block.NewStore(strings.Toi8Ptr(block, EmptyStringConstant), backingDataPtr)
 }
@@ -258,7 +257,7 @@ func (a Array) Name() string {
 
 func (a Array) Zero(block *ir.Block, alloca llvmValue.Value) {
 	for i := uint64(0); i < a.Len; i++ {
-		ptr := block.NewGetElementPtr(alloca, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, int64(i)))
+		ptr := block.NewGetElementPtr(pointer.ElemType(alloca), alloca, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, int64(i)))
 		a.Type.Zero(block, ptr)
 	}
 }
@@ -290,13 +289,13 @@ func (s Slice) SliceZero(block *ir.Block, mallocFunc llvmValue.Named, initCap in
 
 	emptySlize := block.NewAlloca(s.LLVM())
 
-	len := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
+	len := block.NewGetElementPtr(pointer.ElemType(emptySlize), emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
 	len.SetName(name.Var("len"))
-	cap := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 1))
+	cap := block.NewGetElementPtr(pointer.ElemType(emptySlize), emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 1))
 	cap.SetName(name.Var("cap"))
-	offset := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 2))
+	offset := block.NewGetElementPtr(pointer.ElemType(emptySlize), emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 2))
 	offset.SetName(name.Var("offset"))
-	backingArray := block.NewGetElementPtr(emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 3))
+	backingArray := block.NewGetElementPtr(pointer.ElemType(emptySlize), emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 3))
 	backingArray.SetName(name.Var("backing"))
 
 	block.NewStore(constant.NewInt(types.I32, 0), len)
