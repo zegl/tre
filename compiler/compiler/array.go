@@ -6,6 +6,8 @@ import (
 	"github.com/llir/llvm/ir/enum"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -42,7 +44,7 @@ func (c *Compiler) compileInitializeArrayWithValues(len uint64, itemType types.T
 	arrayType.Zero(c.contextBlock, allocArray)
 
 	for i, val := range values {
-		dst := c.contextBlock.NewGetElementPtr(allocArray, constant.NewInt(llvmTypes.I64, 0), constant.NewInt(llvmTypes.I64, int64(i)))
+		dst := c.contextBlock.NewGetElementPtr(pointer.ElemType(allocArray), allocArray, constant.NewInt(llvmTypes.I64, 0), constant.NewInt(llvmTypes.I64, int64(i)))
 		dst.SetName(name.Var("init-arr-value"))
 		c.contextBlock.NewStore(
 			val.Value,
@@ -63,7 +65,7 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 	index := c.compileValue(v.Pos)
 	indexVal := index.Value
 	if index.IsVariable {
-		indexVal = c.contextBlock.NewLoad(indexVal)
+		indexVal = c.contextBlock.NewLoad(pointer.ElemType(indexVal), indexVal)
 	}
 
 	var runtimeLength llvmValue.Value
@@ -93,7 +95,7 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 
 		retType = slice.Type
 
-		arrayValue = c.contextBlock.NewLoad(arrayValue)
+		arrayValue = c.contextBlock.NewLoad(pointer.ElemType(arrayValue), arrayValue)
 
 		// One more load is needed when the slice is a window into a LLVM array
 		if _, ok := arrayValue.Type().(*llvmTypes.PointerType); ok {
@@ -101,7 +103,7 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 		}
 
 		if isSliceOfArray {
-			arrayValue = c.contextBlock.NewLoad(arrayValue)
+			arrayValue = c.contextBlock.NewLoad(pointer.ElemType(arrayValue), arrayValue)
 		}
 
 		indexVal = c.contextBlock.NewTrunc(indexVal, i32.LLVM())
@@ -127,7 +129,7 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 		// Get backing array from string type
 		if arr.Type.Name() == "string" {
 			if arr.IsVariable {
-				arrayValue = c.contextBlock.NewLoad(arrayValue)
+				arrayValue = c.contextBlock.NewLoad(pointer.ElemType(arrayValue), arrayValue)
 			}
 
 			runtimeLength = c.contextBlock.NewExtractValue(arrayValue, 0)
@@ -192,7 +194,7 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 	indicies = append(indicies, indexVal)
 
 	return value.Value{
-		Value:      c.contextBlock.NewGetElementPtr(arrayValue, indicies...),
+		Value:      c.contextBlock.NewGetElementPtr(pointer.ElemType(arrayValue), arrayValue, indicies...),
 		Type:       retType,
 		IsVariable: true,
 	}

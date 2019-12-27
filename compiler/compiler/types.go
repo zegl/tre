@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/llir/llvm/ir"
 
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 
 	"github.com/zegl/tre/compiler/compiler/internal"
@@ -153,7 +154,7 @@ func (c *Compiler) compileTypeCastNode(v *parser.TypeCastNode) value.Value {
 
 	llvmVal := val.Value
 	if val.IsVariable {
-		llvmVal = c.contextBlock.NewLoad(llvmVal)
+		llvmVal = c.contextBlock.NewLoad(pointer.ElemType(llvmVal), llvmVal)
 	}
 
 	// Same size, nothing to do here
@@ -194,8 +195,8 @@ func (c *Compiler) compileTypeCastInterfaceNode(v *parser.TypeCastInterfaceNode)
 
 	interfaceVal := c.compileValue(v.Item)
 
-	interfaceDataType := c.contextBlock.NewGetElementPtr(interfaceVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
-	loadedInterfaceDataType := c.contextBlock.NewLoad(interfaceDataType)
+	interfaceDataType := c.contextBlock.NewGetElementPtr(pointer.ElemType(interfaceVal.Value), interfaceVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
+	loadedInterfaceDataType := c.contextBlock.NewLoad(pointer.ElemType(interfaceDataType), interfaceDataType)
 
 	trueBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-was-correct-type")
 	falseBlock := c.contextBlock.Parent.NewBlock(name.Block() + "-was-other-type")
@@ -210,10 +211,10 @@ func (c *Compiler) compileTypeCastInterfaceNode(v *parser.TypeCastInterfaceNode)
 
 	trueBlock.NewStore(constant.NewInt(llvmTypes.I1, 1), okVal)
 
-	backingDataPtr := trueBlock.NewGetElementPtr(interfaceVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
-	loadedBackingDataPtr := trueBlock.NewLoad(backingDataPtr)
+	backingDataPtr := trueBlock.NewGetElementPtr(pointer.ElemType(interfaceVal.Value), interfaceVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
+	loadedBackingDataPtr := trueBlock.NewLoad(pointer.ElemType(backingDataPtr), backingDataPtr)
 	casted := trueBlock.NewBitCast(loadedBackingDataPtr, llvmTypes.NewPointer(tryCastToType.LLVM()))
-	loadedCasted := trueBlock.NewLoad(casted)
+	loadedCasted := trueBlock.NewLoad(pointer.ElemType(casted), casted)
 	trueBlock.NewStore(loadedCasted, resCastedVal)
 
 	c.contextBlock = afterBlock

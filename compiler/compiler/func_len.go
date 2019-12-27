@@ -5,6 +5,8 @@ import (
 
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
+
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
 )
@@ -20,7 +22,7 @@ func (c *Compiler) lenFuncCall(v *parser.CallNode) value.Value {
 
 		val := arg.Value
 		if arg.IsVariable {
-			val = c.contextBlock.NewLoad(val)
+			val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
 		}
 
 		return value.Value{
@@ -44,10 +46,10 @@ func (c *Compiler) lenFuncCall(v *parser.CallNode) value.Value {
 
 	if arg.Type.Name() == "slice" {
 		val := arg.Value
-		val = c.contextBlock.NewLoad(val)
+		val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
 
 		if _, ok := val.Type().(*llvmTypes.PointerType); ok {
-			val = c.contextBlock.NewLoad(val)
+			val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
 		}
 
 		return value.Value{

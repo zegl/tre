@@ -8,6 +8,7 @@ import (
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
 	"github.com/zegl/tre/compiler/compiler/internal"
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -275,7 +276,7 @@ func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Func) *ir.Func {
 
 	// TODO: Don't do this if the method has a pointer receiver
 	if !isPointerType {
-		bitcasted = block.NewLoad(bitcasted)
+		bitcasted = block.NewLoad(pointer.ElemType(bitcasted), bitcasted)
 	}
 
 	callArgs := []llvmValue.Value{bitcasted}
@@ -304,7 +305,7 @@ func (c *Compiler) compileReturnNode(v *parser.ReturnNode) {
 		val = c.valueToInterfaceValue(val, c.contextFunc.LlvmReturnType)
 
 		if val.IsVariable {
-			c.contextBlock.NewRet(c.contextBlock.NewLoad(val.Value))
+			c.contextBlock.NewRet(c.contextBlock.NewLoad(pointer.ElemType(val.Value), val.Value))
 			return
 		}
 
@@ -323,7 +324,7 @@ func (c *Compiler) compileReturnNode(v *parser.ReturnNode) {
 			retVal := compVal.Value
 
 			if compVal.IsVariable {
-				retVal = c.contextBlock.NewLoad(retVal)
+				retVal = c.contextBlock.NewLoad(pointer.ElemType(retVal), retVal)
 			}
 
 			// Assign to ptr
@@ -342,7 +343,7 @@ func (c *Compiler) compileReturnNode(v *parser.ReturnNode) {
 		if len(retVals) == 1 {
 			val := retVals[0].Value
 			if retVals[0].IsVariable {
-				val = c.contextBlock.NewLoad(val)
+				val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
 			}
 			c.contextBlock.NewRet(val)
 			return
@@ -421,8 +422,8 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 			args = methodCallArgs
 		} else if ifaceMethod, ok := funcByVal.Type.(*types.InterfaceMethod); ok {
 
-			ifaceInstance := c.contextBlock.NewGetElementPtr(funcByVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
-			ifaceInstanceLoad := c.contextBlock.NewLoad(ifaceInstance)
+			ifaceInstance := c.contextBlock.NewGetElementPtr(pointer.ElemType(funcByVal.Value), funcByVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
+			ifaceInstanceLoad := c.contextBlock.NewLoad(pointer.ElemType(ifaceInstance), ifaceInstance)
 
 			// Add instance as the first argument
 			var methodCallArgs []value.Value
@@ -492,7 +493,7 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 		val := v.Value
 
 		if v.IsVariable {
-			val = c.contextBlock.NewLoad(val)
+			val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
 		}
 
 		// Convert strings and arrays to i8* when calling external functions
