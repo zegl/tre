@@ -1,6 +1,7 @@
 version: 2
 jobs:
-  tests-cover-clang-8-0-0:
+  # This testsuite runs the tests in convermode, and uploads the results to codecov
+  tests-stretch-clang-8-0-0:
     docker:
       - image: golang:1.13-stretch
     working_directory: /src/tre
@@ -17,9 +18,9 @@ jobs:
       - run: go test -v --cover --coverpkg="github.com/zegl/tre/..." --coverprofile=coverage.txt --covermode=count github.com/zegl/tre/compiler
       - run: bash <(curl -s https://codecov.io/bash)
 
-  tests-clang-9-0-0:
+  tests-buster-9-0-0:
     docker:
-      - image: golang:1.13-stretch
+      - image: golang:1.13-buster
     working_directory: /src/tre
     steps:
       - run: apt-get update -q &&
@@ -37,5 +38,5 @@ workflows:
   version: 2
   build:
     jobs:
-      - "tests-cover-clang-8-0-0"
-      - "tests-clang-9-0-0"
+      - "tests-stretch-clang-8-0-0"
+      - "tests-buster-9-0-0"
