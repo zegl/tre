@@ -69,7 +69,7 @@ func (i Interface) LLVM() types.Type {
 }
 
 func (Interface) Size() int64 {
-	return 8*2+4
+	return 64/8 * 3
 }
 
 type InterfaceMethod struct {
