@@ -1,8 +1,8 @@
 version: 2
 jobs:
-  go-tests:
+  tests-cover-clang-8-0-0:
     docker:
-      - image: golang:1.12-stretch
+      - image: golang:1.13-stretch
     working_directory: /src/tre
     steps:
       - run: apt-get update -q &&
@@ -17,8 +17,25 @@ jobs:
       - run: go test -v --cover --coverpkg="github.com/zegl/tre/..." --coverprofile=coverage.txt --covermode=count github.com/zegl/tre/compiler
       - run: bash <(curl -s https://codecov.io/bash)
 
+  tests-clang-9-0-0:
+    docker:
+      - image: golang:1.13-stretch
+    working_directory: /src/tre
+    steps:
+      - run: apt-get update -q &&
+          apt-get install -y wget xz-utils &&
+          mkdir -p /src/llvm && cd /src/llvm &&
+          wget http://releases.llvm.org/9.0.0/clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz -O llvm.tar.xz &&
+          tar -xf llvm.tar.xz --strip-components 1 &&
+          ln -s /src/llvm/bin/clang /usr/local/bin/clang &&
+          cd /src/tre
+      - checkout
+      - run: go test -v github.com/zegl/tre/compiler/... github.com/zegl/tre/cmd/...
+      - run: go test -v github.com/zegl/tre/compiler
+
 workflows:
   version: 2
   build:
     jobs:
-      - "go-tests"
+      - "tests-cover-clang-8-0-0"
+      - "tests-clang-9-0-0"
