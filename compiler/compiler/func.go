@@ -359,26 +359,23 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 
 	name, isNameNode := v.Function.(*parser.NameNode)
 
-	// len() functions
-	if isNameNode && name.Name == "len" {
-		return c.lenFuncCall(v)
-	}
-
-	// cap() function
-	if isNameNode && name.Name == "cap" {
-		return c.capFuncCall(v)
-	}
-
-	// append() function
-	if isNameNode && name.Name == "append" {
-		return c.appendFuncCall(v)
+	if isNameNode {
+		switch name.Name {
+		case "len":
+			return c.lenFuncCall(v)
+		case "cap":
+			return c.capFuncCall(v)
+		case "append":
+			return c.appendFuncCall(v)
+		case "print":
+			return c.printFuncCall(v)
+		}
 	}
 
 	var fnType *types.Function
 	var fn llvmValue.Named
 
 	if isNameNode {
-
 		// Check if it's a function
 		namedFn := c.varByName(name.Name)
 		if ft, ok := namedFn.Type.(*types.Function); ok {

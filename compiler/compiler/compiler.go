@@ -58,6 +58,9 @@ type Compiler struct {
 	contextAlloc []*parser.AllocNode
 
 	stringConstants map[string]*ir.Global
+
+	// runtime.GOOS and runtime.GOARCH
+	GOOS, GOARCH string
 }
 
 var (
@@ -113,6 +116,10 @@ func NewCompiler() *Compiler {
 	}
 
 	c.module.TargetTriple = fmt.Sprintf("%s-%s", targetTriple[0], targetTriple[1])
+
+	// TODO: Allow cross compilation
+	c.GOOS = runtime.GOOS
+	c.GOARCH = runtime.GOARCH
 
 	return c
 }

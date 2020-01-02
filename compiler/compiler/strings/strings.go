@@ -17,10 +17,22 @@ func Constant(in string) *constant.CharArray {
 }
 
 func Toi8Ptr(block *ir.Block, src value.Value) *ir.InstGetElementPtr {
-	return block.NewGetElementPtr(pointer.ElemType(src), src, constant.NewInt(types.I64, 0), constant.NewInt(types.I64, 0))
+	return block.NewGetElementPtr(pointer.ElemType(src), src, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
 }
 
-func TreStringToi8Ptr(block *ir.Block, src value.Value) *ir.InstExtractValue {
+func Len(block *ir.Block, src value.Value) value.Value {
+	if _, ok := src.Type().(*types.PointerType); ok {
+		l := block.NewGetElementPtr(pointer.ElemType(src), src, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
+		return block.NewLoad(pointer.ElemType(l), l)
+	}
+	return block.NewExtractValue(src, 0)
+}
+
+func TreToI8Ptr(block *ir.Block, src value.Value) value.Value {
+	if _, ok := src.Type().(*types.PointerType); ok {
+		l := block.NewGetElementPtr(pointer.ElemType(src), src, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 1))
+		return block.NewLoad(pointer.ElemType(l), l)
+	}
 	return block.NewExtractValue(src, 1)
 }
 
