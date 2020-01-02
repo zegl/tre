@@ -60,5 +60,5 @@ More examples of what's possible can be found in the [compiler testdata](https:/
 
 ## Dependencies
 
-* [clang](https://clang.llvm.org/) - (only tested with version 6)
+* [clang](https://clang.llvm.org/) - Supports 8.0 and 9.0
 * [llir/llvm](https://github.com/llir/llvm)
