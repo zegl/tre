@@ -1,2 +1,2 @@
-status = [ 'ci/circleci: go-tests' ]
+status = [ 'ci/circleci: tests-%' ]
 delete_merged_branches = true
