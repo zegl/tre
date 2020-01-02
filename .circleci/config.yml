@@ -18,13 +18,13 @@ jobs:
       - run: go test -v --cover --coverpkg="github.com/zegl/tre/..." --coverprofile=coverage.txt --covermode=count github.com/zegl/tre/compiler
       - run: bash <(curl -s https://codecov.io/bash)
 
-  tests-buster-9-0-0:
+  tests-buster-clang-9-0-0:
     docker:
       - image: golang:1.13-buster
     working_directory: /src/tre
     steps:
       - run: apt-get update -q &&
-          apt-get install -y wget xz-utils &&
+          apt-get install -y wget xz-utils libtinfo5 &&
           mkdir -p /src/llvm && cd /src/llvm &&
           wget http://releases.llvm.org/9.0.0/clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz -O llvm.tar.xz &&
           tar -xf llvm.tar.xz --strip-components 1 &&
@@ -39,4 +39,4 @@ workflows:
   build:
     jobs:
       - "tests-stretch-clang-8-0-0"
-      - "tests-buster-9-0-0"
+      - "tests-buster-clang-9-0-0"
