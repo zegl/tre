@@ -385,10 +385,12 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 			// The function should always be in the value, not the type
 			if ft.LlvmFunction.Name() == "UNNAMEDFUNC" {
 				fn = namedFn.Value.(llvmValue.Named)
+				if namedFn.IsVariable {
+					fn = c.contextBlock.NewLoad(pointer.ElemType(fn), fn)
+				}
 			} else {
 				fn = ft.LlvmFunction
 			}
-
 		} else {
 			funcByVal := c.compileValue(v.Function)
 			if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
