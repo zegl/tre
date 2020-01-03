@@ -11,9 +11,9 @@ import (
 func TestCall(t *testing.T) {
 	input := []lexer.Item{
 		{Type: lexer.IDENTIFIER, Val: "printf"},
-		{Type: lexer.SEPARATOR, Val: "("},
+		{Type: lexer.OPERATOR, Val: "("},
 		{Type: lexer.NUMBER, Val: "1"},
-		{Type: lexer.SEPARATOR, Val: ")"},
+		{Type: lexer.OPERATOR, Val: ")"},
 		{Type: lexer.EOF, Val: ""},
 	}
 

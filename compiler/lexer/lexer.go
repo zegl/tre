@@ -13,8 +13,6 @@ const (
 	NUMBER
 	STRING
 	OPERATOR
-	SEPARATOR
-
 	EOF
 	EOL
 )
@@ -38,8 +36,6 @@ func (i Item) String() string {
 		t = "STRING"
 	case OPERATOR:
 		t = "OPERATOR"
-	case SEPARATOR:
-		t = "SEPARATOR"
 	case EOF:
 		t = "EOF"
 	case EOL:
@@ -49,42 +45,58 @@ func (i Item) String() string {
 	return fmt.Sprintf("{Type:%s, Val:%s, Line:%d}", t, i.Val, i.Line)
 }
 
+// https://golang.org/ref/spec#Operators_and_punctuation
 var operations = map[string]struct{}{
 	"+":   {},
-	"++":   {},
-	"-":   {},
-	"--":   {},
-	"*":   {}, // Multiplication and dereferencing
-	"/":   {},
-	"<":   {},
-	">":   {},
-	"<=":  {},
-	">=":  {},
+	"&":   {},
+	"+=":  {},
+	"&=":  {},
+	"&&":  {},
 	"==":  {},
 	"!=":  {},
-	"=":   {},
-	"!":   {},
-	":":   {}, // is not really a operation. Is only defined here so that := can be found.
-	":=":  {},
-	".":   {},
+	"(":   {},
+	")":   {},
+	"-":   {},
+	"|":   {},
+	"-=":  {},
+	"|=":  {},
+	"||":  {},
+	"<":   {},
+	"<=":  {},
 	"[":   {},
 	"]":   {},
-	"&":   {},
-	"..":  {}, // is not a real operation. Is there so that ... can be found.
+	"*":   {},
+	"^":   {},
+	"*=":  {},
+	"^=":  {},
+	"<-":  {},
+	">":   {},
+	">=":  {},
+	"{":   {},
+	"}":   {},
+	"/":   {},
+	"<<":  {},
+	"/=":  {},
+	"<<=": {},
+	"++":  {},
+	"=":   {},
+	":=":  {},
+	",":   {},
+	";":   {},
+	"%":   {},
+	">>":  {},
+	"%=":  {},
+	">>=": {},
+	"--":  {},
+	"!":   {},
 	"...": {},
-	"+=": {},
-	"-=": {},
-	"*=": {},
-	"/=": {},
-}
+	".":   {},
+	":":   {},
+	"&^":  {},
+	"&^=": {},
 
-var separators = map[string]struct{}{
-	")": {},
-	"(": {},
-	"}": {},
-	"{": {},
-	",": {},
-	";": {},
+	// TODO: Remove
+	"..": {}, // is not a real operation. Is there so that ... can be found.
 }
 
 func Lex(inputFullSource string) []Item {
@@ -129,12 +141,6 @@ func Lex(inputFullSource string) []Item {
 				}
 
 				res = append(res, Item{Type: OPERATOR, Val: operator, Line: line})
-				i++
-				continue
-			}
-
-			if _, ok := separators[string(input[i])]; ok {
-				res = append(res, Item{Type: SEPARATOR, Val: string(input[i]), Line: line})
 				i++
 				continue
 			}

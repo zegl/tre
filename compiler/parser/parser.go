@@ -147,7 +147,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 				p.i++
 
 				next = p.lookAhead(0)
-				if next.Type != lexer.SEPARATOR || next.Val != "{" {
+				if next.Type != lexer.OPERATOR || next.Val != "{" {
 					log.Printf("%+v", next)
 					panic("expected { after type in slice init")
 				}
@@ -156,7 +156,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 
 				prevInAlloc := p.inAllocRightHand
 				p.inAllocRightHand = false
-				items := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+				items := p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: "}"})
 				p.inAllocRightHand = prevInAlloc
 
 				res = &InitializeSliceNode{
@@ -195,7 +195,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 
 			p.i++
 			p.expect(p.lookAhead(0), lexer.Item{
-				Type: lexer.SEPARATOR,
+				Type: lexer.OPERATOR,
 				Val:  "{",
 			})
 
@@ -203,7 +203,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 
 			prevInAlloc := p.inAllocRightHand
 			p.inAllocRightHand = false
-			items := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+			items := p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: "}"})
 			p.inAllocRightHand = prevInAlloc
 
 			// Array init
@@ -231,7 +231,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 			getCondition := func() *OperatorNode {
 				p.i++
 
-				condNodes := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
+				condNodes := p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: "{"})
 				if len(condNodes) != 1 {
 					panic("could not parse if-condition")
 				}
@@ -256,7 +256,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 
 			outerConditionNode := &ConditionNode{
 				Cond: getCondition(),
-				True: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"}),
+				True: p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: "}"}),
 			}
 
 			lastConditionNode := outerConditionNode
@@ -277,7 +277,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 
 					newCondNode := &ConditionNode{
 						Cond: getCondition(),
-						True: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"}),
+						True: p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: "}"}),
 					}
 
 					lastConditionNode.False = []Node{newCondNode}
@@ -287,12 +287,12 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 				}
 
 				expectOpenBrack := p.lookAhead(0)
-				if expectOpenBrack.Type != lexer.SEPARATOR || expectOpenBrack.Val != "{" {
+				if expectOpenBrack.Type != lexer.OPERATOR || expectOpenBrack.Val != "{" {
 					panic("Expected { after else")
 				}
 
 				p.i++
-				lastConditionNode.False = p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+				lastConditionNode.False = p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: "}"})
 			}
 
 			return outerConditionNode
@@ -321,7 +321,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 			var canBeMethod bool
 
 			checkIfOpeningParen := p.lookAhead(0)
-			if checkIfOpeningParen.Type == lexer.SEPARATOR && checkIfOpeningParen.Val == "(" {
+			if checkIfOpeningParen.Type == lexer.OPERATOR && checkIfOpeningParen.Val == "(" {
 				p.i++
 				argsOrMethodType = p.parseFunctionArguments()
 				canBeMethod = true
@@ -331,7 +331,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 			checkIfOpeningParen = p.lookAhead(1)
 
 			if canBeMethod && checkIfIdentifier.Type == lexer.IDENTIFIER &&
-				checkIfOpeningParen.Type == lexer.SEPARATOR && checkIfOpeningParen.Val == "(" {
+				checkIfOpeningParen.Type == lexer.OPERATOR && checkIfOpeningParen.Val == "(" {
 
 				defineFunc.IsMethod = true
 				defineFunc.IsNamed = true
@@ -359,7 +359,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 
 			name := p.lookAhead(0)
 			openParen := p.lookAhead(1)
-			if name.Type == lexer.IDENTIFIER && openParen.Type == lexer.SEPARATOR && openParen.Val == "(" {
+			if name.Type == lexer.IDENTIFIER && openParen.Type == lexer.OPERATOR && openParen.Val == "(" {
 				defineFunc.Name = name.Val
 				defineFunc.IsNamed = true
 
@@ -376,7 +376,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 			var retTypesNodeNames []*NameNode
 
 			checkIfOpeningCurly := p.lookAhead(0)
-			if checkIfOpeningCurly.Type != lexer.SEPARATOR || checkIfOpeningCurly.Val != "{" {
+			if checkIfOpeningCurly.Type != lexer.OPERATOR || checkIfOpeningCurly.Val != "{" {
 
 				// Check if next is an opening parenthesis
 				// Is optional if there's only one return type, is required
@@ -384,7 +384,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 				var allowMultiRetVals bool
 
 				checkIfOpenParen := p.lookAhead(0)
-				if checkIfOpenParen.Type == lexer.SEPARATOR && checkIfOpenParen.Val == "(" {
+				if checkIfOpenParen.Type == lexer.OPERATOR && checkIfOpenParen.Val == "(" {
 					allowMultiRetVals = true
 					p.i++
 				}
@@ -422,12 +422,12 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 
 					// Check if comma or end parenthesis
 					commaOrEnd := p.lookAhead(0)
-					if commaOrEnd.Type == lexer.SEPARATOR && commaOrEnd.Val == "," {
+					if commaOrEnd.Type == lexer.OPERATOR && commaOrEnd.Val == "," {
 						p.i++
 						continue
 					}
 
-					if commaOrEnd.Type == lexer.SEPARATOR && commaOrEnd.Val == ")" {
+					if commaOrEnd.Type == lexer.OPERATOR && commaOrEnd.Val == ")" {
 						p.i++
 						break
 					}
@@ -438,13 +438,13 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 			defineFunc.ReturnValues = retTypesNodeNames
 
 			openBracket := p.lookAhead(0)
-			if openBracket.Type != lexer.SEPARATOR || openBracket.Val != "{" {
+			if openBracket.Type != lexer.OPERATOR || openBracket.Val != "{" {
 				panic("func arguments must be followed by {. Got " + openBracket.Val)
 			}
 
 			p.i++
 
-			defineFunc.Body = p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+			defineFunc.Body = p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: "}"})
 
 			return p.aheadParse(defineFunc)
 		}
@@ -465,7 +465,7 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 				p.i++
 
 				checkIfComma := p.lookAhead(0)
-				if checkIfComma.Type == lexer.SEPARATOR && checkIfComma.Val == "," {
+				if checkIfComma.Type == lexer.OPERATOR && checkIfComma.Val == "," {
 					p.i++
 					continue
 				}
@@ -610,7 +610,7 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 				}, withArithAhead, withIdentifierAhead)
 			}
 
-			if next.Type == lexer.SEPARATOR && next.Val == "(" {
+			if next.Type == lexer.OPERATOR && next.Val == "(" {
 				p.i++
 				p.i++
 
@@ -622,7 +622,7 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 				p.i++
 
 				expectEndParen := p.lookAhead(0)
-				p.expect(expectEndParen, lexer.Item{Type: lexer.SEPARATOR, Val: ")"})
+				p.expect(expectEndParen, lexer.Item{Type: lexer.OPERATOR, Val: ")"})
 
 				p.i++
 
@@ -771,13 +771,13 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 		}
 	}
 
-	if next.Type == lexer.SEPARATOR && next.Val == "(" {
+	if next.Type == lexer.OPERATOR && next.Val == "(" {
 		current := p.lookAhead(0)
 
 		p.i += 2 // identifier and left paren
 
 		if _, ok := p.types[current.Val]; ok {
-			val := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"})
+			val := p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: ")"})
 			if len(val) != 1 {
 				panic("type conversion must take only one argument")
 			}
@@ -793,7 +793,7 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 		p.inAllocRightHand = false
 		callNode := p.aheadParse(&CallNode{
 			Function:  input,
-			Arguments: p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ")"}),
+			Arguments: p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: ")"}),
 		})
 		p.inAllocRightHand = beforeAllocRightHand
 		return callNode
@@ -802,7 +802,7 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 	// Initialize structs with values:
 	//   Foo{Bar: 123}
 	//   Foo{Bar: 123, Bax: hello(123)}
-	if next.Type == lexer.SEPARATOR && next.Val == "{" {
+	if next.Type == lexer.OPERATOR && next.Val == "{" {
 		nameNode, isNamedNode := input.(*NameNode)
 		if isNamedNode {
 			_, isType := p.types[nameNode.Name]
@@ -824,7 +824,7 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 
 					// Find end of parsing
 					checkIfEndBracket := p.lookAhead(0)
-					if checkIfEndBracket.Type == lexer.SEPARATOR && checkIfEndBracket.Val == "}" {
+					if checkIfEndBracket.Type == lexer.OPERATOR && checkIfEndBracket.Val == "}" {
 						p.i++
 						break
 					}
@@ -847,12 +847,12 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 					p.i++
 
 					commaOrEnd := p.lookAhead(0)
-					if commaOrEnd.Type == lexer.SEPARATOR && commaOrEnd.Val == "," {
+					if commaOrEnd.Type == lexer.OPERATOR && commaOrEnd.Val == "," {
 						p.i++
 						continue
 					}
 
-					if commaOrEnd.Type == lexer.SEPARATOR && commaOrEnd.Val == "}" {
+					if commaOrEnd.Type == lexer.OPERATOR && commaOrEnd.Val == "}" {
 						break
 					}
 				}
@@ -865,7 +865,7 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 		}
 	}
 
-	if next.Type == lexer.SEPARATOR && next.Val == "," {
+	if next.Type == lexer.OPERATOR && next.Val == "," {
 		// MultiName node parsing ("a, b, c := ...")
 		if inputNamedNode, ok := input.(*NameNode); ok {
 
@@ -958,7 +958,7 @@ func (p *parser) parseUntilEither(untils []lexer.Item) (res []Node, reached lexe
 		}
 
 		// Ignore comma
-		if current.Type == lexer.SEPARATOR && current.Val == "," {
+		if current.Type == lexer.OPERATOR && current.Val == "," {
 			p.i++
 			continue
 		}
@@ -978,13 +978,13 @@ func (p *parser) parseFunctionArguments() []*NameNode {
 
 	for {
 		current := p.input[p.i]
-		if current.Type == lexer.SEPARATOR && current.Val == ")" {
+		if current.Type == lexer.OPERATOR && current.Val == ")" {
 			p.i++
 			return res
 		}
 
 		if i > 0 {
-			if current.Type != lexer.SEPARATOR && current.Val != "," {
+			if current.Type != lexer.OPERATOR && current.Val != "," {
 				panic("arguments must be separated by commas. Got: " + fmt.Sprintf("%+v", current))
 			}
 
@@ -1048,7 +1048,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		}
 
 		current = p.lookAhead(0)
-		if current.Type != lexer.SEPARATOR || current.Val != "{" {
+		if current.Type != lexer.OPERATOR || current.Val != "{" {
 			panic("struct must be followed by {")
 		}
 		p.i++
@@ -1063,7 +1063,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 			}
 
 			// Stop at }
-			if itemName.Type == lexer.SEPARATOR && itemName.Val == "}" {
+			if itemName.Type == lexer.OPERATOR && itemName.Val == "}" {
 				break
 			}
 
@@ -1089,7 +1089,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 
 	if current.Type == lexer.KEYWORD && current.Val == "interface" {
 		p.i++
-		p.expect(p.lookAhead(0), lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
+		p.expect(p.lookAhead(0), lexer.Item{Type: lexer.OPERATOR, Val: "{"})
 		p.i++
 
 		ifaceType := &InterfaceTypeNode{
@@ -1103,7 +1103,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 				p.i++
 				continue
 			}
-			if current.Type == lexer.SEPARATOR && current.Val == "}" {
+			if current.Type == lexer.OPERATOR && current.Val == "}" {
 				break
 			}
 
@@ -1114,19 +1114,19 @@ func (p *parser) parseOneType() (TypeNode, error) {
 			methodDef := InterfaceMethod{}
 
 			p.i++
-			p.expect(p.lookAhead(0), lexer.Item{Type: lexer.SEPARATOR, Val: "("})
+			p.expect(p.lookAhead(0), lexer.Item{Type: lexer.OPERATOR, Val: "("})
 
 			// Check if the method takes any arguments
 			for {
 				p.i++
 				current = p.lookAhead(0)
-				if current.Type == lexer.SEPARATOR && current.Val == ")" {
+				if current.Type == lexer.OPERATOR && current.Val == ")" {
 					p.i++
 					break
 				}
 
 				current = p.lookAhead(0)
-				if current.Type == lexer.SEPARATOR && current.Val == "," {
+				if current.Type == lexer.OPERATOR && current.Val == "," {
 					continue
 				}
 
@@ -1222,7 +1222,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		p.i++
 
 		expectOpenParen := p.lookAhead(0)
-		if expectOpenParen.Type != lexer.SEPARATOR && expectOpenParen.Val != "(" {
+		if expectOpenParen.Type != lexer.OPERATOR && expectOpenParen.Val != "(" {
 			return nil, errors.New("parse func failed, expected ( after func")
 		}
 		p.i++
@@ -1234,7 +1234,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 
 			for {
 				checkIfEndParen := p.lookAhead(0)
-				if checkIfEndParen.Type == lexer.SEPARATOR && checkIfEndParen.Val == ")" {
+				if checkIfEndParen.Type == lexer.OPERATOR && checkIfEndParen.Val == ")" {
 					break
 				}
 
@@ -1248,12 +1248,12 @@ func (p *parser) parseOneType() (TypeNode, error) {
 				p.i++
 
 				expectCommaOrEndParen := p.lookAhead(0)
-				if expectCommaOrEndParen.Type == lexer.SEPARATOR && expectCommaOrEndParen.Val == "," {
+				if expectCommaOrEndParen.Type == lexer.OPERATOR && expectCommaOrEndParen.Val == "," {
 					p.i++
 					continue
 				}
 
-				if expectCommaOrEndParen.Type == lexer.SEPARATOR && expectCommaOrEndParen.Val == ")" {
+				if expectCommaOrEndParen.Type == lexer.OPERATOR && expectCommaOrEndParen.Val == ")" {
 					continue
 				}
 
@@ -1279,7 +1279,7 @@ func (p *parser) parseOneType() (TypeNode, error) {
 		checkIfParenOrType := p.lookAhead(1)
 
 		// Multiple types
-		if checkIfParenOrType.Type == lexer.SEPARATOR && checkIfParenOrType.Val == "(" {
+		if checkIfParenOrType.Type == lexer.OPERATOR && checkIfParenOrType.Val == "(" {
 			p.i++
 			p.i++
 

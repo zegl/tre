@@ -66,11 +66,21 @@ type OperatorNode struct {
 
 type Operator string
 
+// https://golang.org/ref/spec#Arithmetic_operators
 const (
-	OP_ADD Operator = "+"
-	OP_SUB          = "-"
-	OP_DIV          = "/"
-	OP_MUL          = "*"
+	OP_ADD       Operator = "+"
+	OP_SUB                = "-"
+	OP_DIV                = "/"
+	OP_MUL                = "*"
+	OP_REMAINDER          = "%"
+
+	OP_BIT_AND   = "&"
+	OP_BIT_OR    = "|"
+	OP_BIT_XOR   = "^"
+	OP_BIT_CLEAR = "&^" // AND NOT
+
+	OP_LEFT_SHIFT  = "<<"
+	OP_RIGHT_SHIFT = ">>"
 
 	OP_GT   = ">"
 	OP_GTEQ = ">="
@@ -78,6 +88,9 @@ const (
 	OP_LTEQ = "<="
 	OP_EQ   = "=="
 	OP_NEQ  = "!="
+
+	OP_LOGICAL_AND = "&&"
+	OP_LOGICAL_OR  = "||"
 )
 
 var opsCharToOp map[string]Operator
@@ -86,9 +99,10 @@ var arithOperators map[Operator]struct{}
 func init() {
 	opsCharToOp = make(map[string]Operator)
 	for _, op := range []Operator{
-		OP_ADD, OP_SUB, OP_DIV, OP_MUL,
-		OP_GT, OP_GTEQ, OP_LT, OP_LTEQ,
-		OP_EQ, OP_NEQ,
+		OP_ADD, OP_SUB, OP_DIV, OP_MUL, OP_REMAINDER,
+		OP_BIT_AND, OP_BIT_OR, OP_BIT_XOR, OP_BIT_CLEAR,
+		OP_LEFT_SHIFT, OP_RIGHT_SHIFT,
+		OP_GT, OP_GTEQ, OP_LT, OP_LTEQ, OP_EQ, OP_NEQ,
 	} {
 		opsCharToOp[string(op)] = op
 	}
