@@ -27,16 +27,16 @@ func Parse(input []lexer.Item, debug bool) FileNode {
 		input: input,
 		debug: debug,
 		types: map[string]struct{}{
-			"int":   {},
-			"uint":   {},
-			"int8":  {},
-			"uint8":  {},
-			"int32": {},
-			"uint32": {},
-			"int64": {},
-			"uint64": {},
+			"int":     {},
+			"uint":    {},
+			"int8":    {},
+			"uint8":   {},
+			"int32":   {},
+			"uint32":  {},
+			"int64":   {},
+			"uint64":  {},
 			"uintptr": {},
-			"string": {},
+			"string":  {},
 		},
 	}
 
@@ -216,6 +216,15 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 				res = p.aheadParse(res)
 			}
 			return
+		}
+
+		if current.Val == "(" {
+			p.i++
+			i := p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: ")"})
+			if len(i) != 1 {
+				panic("Expected exactly one item in GroupNode '('")
+			}
+			return p.aheadParseWithOptions(&GroupNode{Item: i[0]}, true, false)
 		}
 
 	case lexer.KEYWORD:

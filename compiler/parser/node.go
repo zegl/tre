@@ -457,3 +457,12 @@ type IncrementNode struct {
 func (i IncrementNode) String() string {
 	return fmt.Sprintf("%s++", i.Item)
 }
+
+type GroupNode struct {
+	baseNode
+	Item Node
+}
+
+func (i GroupNode) String() string {
+	return fmt.Sprintf("( %s )", i.Item)
+}

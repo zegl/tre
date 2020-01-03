@@ -318,6 +318,8 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 		return c.compileDecrementNode(v)
 	case *parser.IncrementNode:
 		return c.compileIncrementNode(v)
+	case *parser.GroupNode:
+		return c.compileGroupNode(v)
 	}
 
 	panic("compileValue fail: " + fmt.Sprintf("%T: %+v", node, node))

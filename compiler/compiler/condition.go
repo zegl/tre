@@ -227,3 +227,7 @@ func (c *Compiler) compileIncrementNode(v *parser.IncrementNode) value.Value {
 		panic("not implemented")
 	}
 }
+
+func (c *Compiler) compileGroupNode(v *parser.GroupNode) value.Value {
+	return c.compileValue(v.Item)
+}
