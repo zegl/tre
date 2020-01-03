@@ -38,14 +38,18 @@ func main() {
 
 	// "GOROOT" (treroot?) detection based on the binary path
 	treBinaryPath, _ := os.Executable()
-	goroot := filepath.Clean(treBinaryPath + "/../pkg/")
+
+	goroots := []string{
+		filepath.Clean(treBinaryPath + "/../pkg/"),
+		"/Users/gustav/src/go/src",
+	}
 
 	if output == "" {
 		basename := filepath.Base(flag.Arg(0))
 		output = strings.TrimSuffix(basename, filepath.Ext(basename))
 	}
 
-	err := build.Build(flag.Arg(0), goroot, output, debug, optimize)
+	err := build.Build(flag.Arg(0), goroots, output, debug, optimize)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)

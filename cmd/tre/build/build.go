@@ -17,11 +17,11 @@ import (
 
 var debug bool
 
-func Build(path, goroot, outputBinaryPath string, setDebug bool, optimize bool) error {
+func Build(path string, goroots []string, outputBinaryPath string, setDebug bool, optimize bool) error {
 	c := compiler.NewCompiler()
 	debug = setDebug
 
-	err := compilePackage(c, path, goroot, "main")
+	err := compilePackage(c, path, goroots, "main")
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func Build(path, goroot, outputBinaryPath string, setDebug bool, optimize bool) 
 
 	clangArgs := []string{
 		"-Wno-override-module", // Disable override target triple warnings
-		tmpDir+"/main.ll",      // Path to LLVM IR
+		tmpDir + "/main.ll",    // Path to LLVM IR
 		"-o", outputBinaryPath, // Output path
 	}
 
@@ -74,13 +74,15 @@ func Build(path, goroot, outputBinaryPath string, setDebug bool, optimize bool) 
 	return nil
 }
 
-func compilePackage(c *compiler.Compiler, path, goroot, name string) error {
+func compilePackage(c *compiler.Compiler, path string, goroots []string, name string) error {
 	f, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
 
 	var parsedFiles []parser.FileNode
+
+	log.Println(path)
 
 	// Parse all files in the folder
 	if f.IsDir() {
@@ -120,10 +122,12 @@ func compilePackage(c *compiler.Compiler, path, goroot, name string) error {
 						continue
 					}
 
-					searchPaths := []string{
-						path + "/vendor/" + packagePath,
-						goroot + "/" + packagePath,
+					searchPaths := []string{path + "/vendor/" + packagePath}
+					for _, p := range goroots {
+						searchPaths = append(searchPaths, p+"/"+packagePath)
 					}
+
+					log.Println(searchPaths)
 
 					importSuccessful := false
 
@@ -137,7 +141,7 @@ func compilePackage(c *compiler.Compiler, path, goroot, name string) error {
 							log.Printf("Loading %s from %s", packagePath, sp)
 						}
 
-						err = compilePackage(c, sp, goroot, packagePath)
+						err = compilePackage(c, sp, goroots, packagePath)
 						if err != nil {
 							return err
 						}
@@ -164,6 +168,8 @@ func compilePackage(c *compiler.Compiler, path, goroot, name string) error {
 }
 
 func parseFile(path string) parser.FileNode {
+	log.Println(path)
+
 	// Read specified input file
 	fileContents, err := ioutil.ReadFile(path)
 	if err != nil {
