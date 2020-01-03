@@ -57,9 +57,9 @@ func TestLexerSimpleCall(t *testing.T) {
 
 	expected := []Item{
 		{Type: IDENTIFIER, Val: "foo", Line: 1},
-		{Type: SEPARATOR, Val: "(", Line: 1},
+		{Type: OPERATOR, Val: "(", Line: 1},
 		{Type: IDENTIFIER, Val: "bar", Line: 1},
-		{Type: SEPARATOR, Val: ")", Line: 1},
+		{Type: OPERATOR, Val: ")", Line: 1},
 		{Type: EOF, Val: ""},
 	}
 
@@ -71,9 +71,9 @@ func TestLexerSimpleCallWithString(t *testing.T) {
 
 	expected := []Item{
 		{Type: IDENTIFIER, Val: "foo", Line: 1},
-		{Type: SEPARATOR, Val: "(", Line: 1},
+		{Type: OPERATOR, Val: "(", Line: 1},
 		{Type: STRING, Val: "bar", Line: 1},
-		{Type: SEPARATOR, Val: ")", Line: 1},
+		{Type: OPERATOR, Val: ")", Line: 1},
 		{Type: EOF, Val: ""},
 	}
 
@@ -107,11 +107,11 @@ func TestLexerSimpleCallWithTwoStrings(t *testing.T) {
 
 	expected := []Item{
 		{Type: IDENTIFIER, Val: "foo", Line: 1},
-		{Type: SEPARATOR, Val: "(", Line: 1},
+		{Type: OPERATOR, Val: "(", Line: 1},
 		{Type: STRING, Val: "bar", Line: 1},
-		{Type: SEPARATOR, Val: ",", Line: 1},
+		{Type: OPERATOR, Val: ",", Line: 1},
 		{Type: STRING, Val: "baz", Line: 1},
-		{Type: SEPARATOR, Val: ")", Line: 1},
+		{Type: OPERATOR, Val: ")", Line: 1},
 		{Type: EOF, Val: ""},
 	}
 
@@ -123,11 +123,11 @@ func TestLexerSimpleCallWithStringNum(t *testing.T) {
 
 	expected := []Item{
 		{Type: IDENTIFIER, Val: "printf", Line: 1},
-		{Type: SEPARATOR, Val: "(", Line: 1},
+		{Type: OPERATOR, Val: "(", Line: 1},
 		{Type: STRING, Val: "%d\n", Line: 1},
-		{Type: SEPARATOR, Val: ",", Line: 1},
+		{Type: OPERATOR, Val: ",", Line: 1},
 		{Type: NUMBER, Val: "123", Line: 1},
-		{Type: SEPARATOR, Val: ")", Line: 1},
+		{Type: OPERATOR, Val: ")", Line: 1},
 		{Type: EOF, Val: ""},
 	}
 

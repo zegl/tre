@@ -18,14 +18,14 @@ func (p *parser) parseImport() *ImportNode {
 	}
 
 	// Multiple imports
-	p.expect(lexer.Item{Type: lexer.SEPARATOR, Val: "("}, p.lookAhead(0))
+	p.expect(lexer.Item{Type: lexer.OPERATOR, Val: "("}, p.lookAhead(0))
 	p.i++
 
 	var imports []string
 
 	for {
 		checkIfEndParen := p.lookAhead(0)
-		if checkIfEndParen.Type == lexer.SEPARATOR && checkIfEndParen.Val == ")" {
+		if checkIfEndParen.Type == lexer.OPERATOR && checkIfEndParen.Val == ")" {
 			break
 		}
 		if checkIfEndParen.Type == lexer.EOL {

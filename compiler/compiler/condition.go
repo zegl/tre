@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+
 	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 
@@ -102,6 +103,19 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 		} else {
 			opRes = c.contextBlock.NewUDiv(leftLLVM, rightLLVM) // SDiv == Signed Division
 		}
+	case parser.OP_BIT_AND:
+		opRes = c.contextBlock.NewAnd(leftLLVM, rightLLVM)
+	case parser.OP_BIT_OR:
+		opRes = c.contextBlock.NewOr(leftLLVM, rightLLVM)
+	case parser.OP_BIT_XOR:
+		opRes = c.contextBlock.NewXor(leftLLVM, rightLLVM)
+	case parser.OP_BIT_CLEAR:
+		not := c.contextBlock.NewXor(rightLLVM, constant.NewInt(rightLLVM.Type().(*llvmTypes.IntType), -1))
+	 	opRes = c.contextBlock.NewAnd(leftLLVM, not)
+	case parser.OP_LEFT_SHIFT:
+		opRes = c.contextBlock.NewShl(leftLLVM, rightLLVM)
+	case parser.OP_RIGHT_SHIFT:
+		opRes = c.contextBlock.NewLShr(leftLLVM, rightLLVM)
 	default:
 		// Boolean operations
 		return value.Value{
@@ -131,9 +145,9 @@ func (c *Compiler) compileSubNode(v *parser.SubNode) value.Value {
 		rVal,
 	)
 
-	return value.Value {
-		Value: res,
-		Type: right.Type,
+	return value.Value{
+		Value:      res,
+		Type:       right.Type,
 		IsVariable: false,
 	}
 }

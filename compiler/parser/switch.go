@@ -33,7 +33,7 @@ func (p *parser) parseSwitch() *SwitchNode {
 	}
 
 	p.i++
-	p.expect(p.lookAhead(0), lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
+	p.expect(p.lookAhead(0), lexer.Item{Type: lexer.OPERATOR, Val: "{"})
 	p.i++
 
 	for {
@@ -60,7 +60,7 @@ func (p *parser) parseSwitch() *SwitchNode {
 					break
 				}
 
-				if curr.Type == lexer.SEPARATOR && curr.Val == "," {
+				if curr.Type == lexer.OPERATOR && curr.Val == "," {
 					p.i++
 					switchCase.Conditions = append(append(switchCase.Conditions,
 						p.parseOne(true),
@@ -75,7 +75,7 @@ func (p *parser) parseSwitch() *SwitchNode {
 			var reached lexer.Item
 			switchCase.Body, reached = p.parseUntilEither(
 				[]lexer.Item{
-					{Type: lexer.SEPARATOR, Val: "}"},
+					{Type: lexer.OPERATOR, Val: "}"},
 					{Type: lexer.KEYWORD, Val: "case"},
 					{Type: lexer.KEYWORD, Val: "default"},
 					{Type: lexer.KEYWORD, Val: "fallthrough"},
@@ -90,7 +90,7 @@ func (p *parser) parseSwitch() *SwitchNode {
 			s.Cases = append(s.Cases, switchCase)
 
 			// reached end of switch
-			if reached.Type == lexer.SEPARATOR && reached.Val == "}" {
+			if reached.Type == lexer.OPERATOR && reached.Val == "}" {
 				break
 			}
 		}
@@ -102,7 +102,7 @@ func (p *parser) parseSwitch() *SwitchNode {
 
 			body, reached := p.parseUntilEither(
 				[]lexer.Item{
-					{Type: lexer.SEPARATOR, Val: "}"},
+					{Type: lexer.OPERATOR, Val: "}"},
 					{Type: lexer.KEYWORD, Val: "case"},
 				},
 			)
@@ -110,7 +110,7 @@ func (p *parser) parseSwitch() *SwitchNode {
 			s.DefaultBody = body
 
 			// reached end of switch
-			if reached.Type == lexer.SEPARATOR && reached.Val == "}" {
+			if reached.Type == lexer.OPERATOR && reached.Val == "}" {
 				break
 			}
 		}

@@ -26,8 +26,8 @@ func (p *parser) parseFor() *ForNode {
 
 	p.i++
 	beforeLoop, reachedItem := p.parseUntilEither([]lexer.Item{
-		{Type: lexer.SEPARATOR, Val: ";"}, // three type for
-		{Type: lexer.SEPARATOR, Val: "{"}, // range type for
+		{Type: lexer.OPERATOR, Val: ";"}, // three type for
+		{Type: lexer.OPERATOR, Val: "{"}, // range type for
 	})
 
 	if len(beforeLoop) != 1 {
@@ -44,7 +44,7 @@ func (p *parser) parseFor() *ForNode {
 
 	if isThreeTypeFor {
 		p.i++
-		loopCondition := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: ";"})
+		loopCondition := p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: ";"})
 		if len(loopCondition) != 1 {
 			panic("Expected only one condition in for loop")
 		}
@@ -56,7 +56,7 @@ func (p *parser) parseFor() *ForNode {
 		}
 
 		p.i++
-		afterIteration := p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "{"})
+		afterIteration := p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: "{"})
 		if len(afterIteration) != 1 {
 			panic("Expected only one afterIteration in for loop")
 		}
@@ -64,7 +64,7 @@ func (p *parser) parseFor() *ForNode {
 	}
 
 	p.i++
-	res.Block = p.parseUntil(lexer.Item{Type: lexer.SEPARATOR, Val: "}"})
+	res.Block = p.parseUntil(lexer.Item{Type: lexer.OPERATOR, Val: "}"})
 
 	return res
 }
