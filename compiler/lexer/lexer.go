@@ -176,7 +176,7 @@ func Lex(inputFullSource string) []Item {
 
 			// NAME
 			// Consists of a-z, parse until the last allowed char
-			if (input[i] >= 'a' && input[i] <= 'z') || (input[i] >= 'A' && input[i] <= 'Z') {
+			if (input[i] >= 'a' && input[i] <= 'z') || (input[i] >= 'A' && input[i] <= 'Z') || input[i] == '_' {
 				name := ""
 
 				for i < len(input) && ((input[i] >= 'a' && input[i] <= 'z') ||
