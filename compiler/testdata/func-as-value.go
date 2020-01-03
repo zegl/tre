@@ -13,7 +13,17 @@ func main() {
 	}
 	external.Printf("%d\n", f2(2)) // 200
 
-	func(){
+	func() {
 		external.Printf("inside\n") // inside
 	}()
+
+	var f3 func(int) int
+
+	f3 = func(a int) int {
+		return a + 1
+	}
+
+	b := f3(2)
+
+	external.Printf("%d", b)
 }
