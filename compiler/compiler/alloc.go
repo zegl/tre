@@ -21,7 +21,7 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 	// Allocate from type
 	if len(v.Val) == 1 {
 		if typeNode, ok := v.Val[0].(parser.TypeNode); ok {
-			treType := parserTypeToType(typeNode)
+			treType := c.parserTypeToType(typeNode)
 
 			var alloc *ir.InstAlloca
 
@@ -106,7 +106,7 @@ func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
 	// Allocate from type
 	if typeNode, ok := v.Val[0].(parser.TypeNode); ok {
 		if singleTypeNode, ok := typeNode.(*parser.SingleTypeNode); ok {
-			alloc := c.contextBlock.NewAlloca(parserTypeToType(singleTypeNode).LLVM())
+			alloc := c.contextBlock.NewAlloca(c.parserTypeToType(singleTypeNode).LLVM())
 			dst := c.compileValue(v.Target[0])
 			c.contextBlock.NewStore(c.contextBlock.NewLoad(pointer.ElemType(alloc), alloc), dst.Value)
 			return
