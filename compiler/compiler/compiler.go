@@ -90,6 +90,7 @@ func NewCompiler() *Compiler {
 
 	c.createExternalPackage()
 	c.addGlobal()
+	c.pushVariablesStack()
 
 	// Triple examples:
 	// x86_64-apple-macosx10.13.0
