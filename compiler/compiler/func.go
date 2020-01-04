@@ -1,7 +1,6 @@
 package compiler
 
 import (
-	"fmt"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
@@ -379,72 +378,54 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 	var fnType *types.Function
 	var fn llvmValue.Named
 
-	if isNameNode {
-		// Check if it's a function
-		namedFn := c.compileNameNode(name)
-		if ft, ok := namedFn.Type.(*types.Function); ok {
-			fnType = ft
-
-			fn = namedFn.Value.(llvmValue.Named)
-			if namedFn.IsVariable {
-				fn = c.contextBlock.NewLoad(pointer.ElemType(fn), fn)
-			}
-		} else {
-			funcByVal := c.compileValue(v.Function)
-			if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
-				fn = funcByVal.Value.(llvmValue.Named)
-				fnType = checkIfFunc
-			} else {
-				panic(fmt.Sprintf("no such function: %v", v))
-			}
+	funcByVal := c.compileValue(v.Function)
+	if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
+		fnType = checkIfFunc
+		fn = funcByVal.Value.(llvmValue.Named)
+		if funcByVal.IsVariable {
+			fn = c.contextBlock.NewLoad(pointer.ElemType(fn), fn)
 		}
+	} else if checkIfMethod, ok := funcByVal.Type.(*types.Method); ok {
+		fnType = checkIfMethod.Function
+		fn = checkIfMethod.LlvmFunction
+
+		var methodCallArgs []value.Value
+
+		// Should be loaded if the method is not a pointer receiver
+		funcByVal.IsVariable = !checkIfMethod.PointerReceiver
+
+		// Add instance as the first argument
+		methodCallArgs = append(methodCallArgs, funcByVal)
+		methodCallArgs = append(methodCallArgs, args...)
+		args = methodCallArgs
+	} else if ifaceMethod, ok := funcByVal.Type.(*types.InterfaceMethod); ok {
+
+		ifaceInstance := c.contextBlock.NewGetElementPtr(pointer.ElemType(funcByVal.Value), funcByVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
+		ifaceInstanceLoad := c.contextBlock.NewLoad(pointer.ElemType(ifaceInstance), ifaceInstance)
+
+		// Add instance as the first argument
+		var methodCallArgs []value.Value
+		methodCallArgs = append(methodCallArgs, value.Value{
+			Value: ifaceInstanceLoad,
+		})
+		methodCallArgs = append(methodCallArgs, args...)
+		args = methodCallArgs
+
+		var returnType types.Type
+		if len(ifaceMethod.ReturnTypes) > 0 {
+			returnType = ifaceMethod.ReturnTypes[0]
+		} else {
+			returnType = types.Void
+		}
+
+		fnType = &types.Function{
+			// TODO: We probably need to add more fields here?
+			FuncType:       ifaceMethod.LlvmJumpFunction.Type(),
+			LlvmReturnType: returnType,
+		}
+		fn = ifaceMethod.LlvmJumpFunction
 	} else {
-		funcByVal := c.compileValue(v.Function)
-		if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
-			fnType = checkIfFunc
-			fn = funcByVal.Value.(llvmValue.Named)
-		} else if checkIfMethod, ok := funcByVal.Type.(*types.Method); ok {
-			fnType = checkIfMethod.Function
-			fn = checkIfMethod.LlvmFunction
-
-			var methodCallArgs []value.Value
-
-			// Should be loaded if the method is not a pointer receiver
-			funcByVal.IsVariable = !checkIfMethod.PointerReceiver
-
-			// Add instance as the first argument
-			methodCallArgs = append(methodCallArgs, funcByVal)
-			methodCallArgs = append(methodCallArgs, args...)
-			args = methodCallArgs
-		} else if ifaceMethod, ok := funcByVal.Type.(*types.InterfaceMethod); ok {
-
-			ifaceInstance := c.contextBlock.NewGetElementPtr(pointer.ElemType(funcByVal.Value), funcByVal.Value, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
-			ifaceInstanceLoad := c.contextBlock.NewLoad(pointer.ElemType(ifaceInstance), ifaceInstance)
-
-			// Add instance as the first argument
-			var methodCallArgs []value.Value
-			methodCallArgs = append(methodCallArgs, value.Value{
-				Value: ifaceInstanceLoad,
-			})
-			methodCallArgs = append(methodCallArgs, args...)
-			args = methodCallArgs
-
-			var returnType types.Type
-			if len(ifaceMethod.ReturnTypes) > 0 {
-				returnType = ifaceMethod.ReturnTypes[0]
-			} else {
-				returnType = types.Void
-			}
-
-			fnType = &types.Function{
-				// TODO: We probably need to add more fields here?
-				FuncType:       ifaceMethod.LlvmJumpFunction.Type(),
-				LlvmReturnType: returnType,
-			}
-			fn = ifaceMethod.LlvmJumpFunction
-		} else {
-			panic("expected function or method, got something else")
-		}
+		panic("expected function or method, got something else")
 	}
 
 	// If the last argument is a slice that is "de variadicified"
