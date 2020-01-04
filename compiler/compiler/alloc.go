@@ -2,8 +2,10 @@ package compiler
 
 import (
 	"github.com/llir/llvm/ir"
+	"github.com/llir/llvm/ir/constant"
 	irTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+
 	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
@@ -22,6 +24,20 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 	if len(v.Val) == 1 {
 		if typeNode, ok := v.Val[0].(parser.TypeNode); ok {
 			treType := c.parserTypeToType(typeNode)
+
+			// Package level variables
+			// TODO: Zeroing
+			if c.contextBlock == nil {
+				globType := treType.LLVM()
+				glob := c.module.NewGlobal(name.Var(v.Name[0]), globType)
+				glob.Init = constant.NewZeroInitializer(globType)
+				c.currentPackage.DefinePkgVar(v.Name[0], value.Value{
+					Value:      glob,
+					Type:       treType,
+					IsVariable: true,
+				})
+				return
+			}
 
 			var alloc *ir.InstAlloca
 
