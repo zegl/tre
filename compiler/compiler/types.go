@@ -128,7 +128,7 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 		return &types.Function{
 			ArgumentTypes:  treParams,
 			ReturnTypes:    treReturnTypes,
-			LlvmFunction:   fn,
+			FuncType:       fn.Type(),
 			LlvmReturnType: retType,
 		}
 	}

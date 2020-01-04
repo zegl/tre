@@ -5,6 +5,7 @@ import (
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+
 	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
@@ -15,14 +16,14 @@ import (
 func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode) value.Value {
 	src := c.compileValue(v.Struct)
 
+	// TODO: Represent packages in a better way
 	if packageRef, ok := src.Type.(*types.PackageInstance); ok {
-		if f, ok := packageRef.Funcs[v.ElementName]; ok {
+		if f, ok := packageRef.GetFunc(v.ElementName); ok {
 			return value.Value{
 				Type: f,
 			}
 		}
-
-		panic(fmt.Sprintf("Package %s has no such method %s", packageRef.Name(), v.ElementName))
+		panic(fmt.Sprintf("Package %s has no member %s", packageRef.Name(), v.ElementName))
 	}
 
 	// Use this type, or the type behind the pointer
@@ -120,7 +121,7 @@ func (c *Compiler) compileInitStructWithValues(v *parser.InitializeStructNode) v
 
 	// Allocate on the heap or on the stack
 	if len(c.contextAlloc) > 0 && c.contextAlloc[len(c.contextAlloc)-1].Escapes {
-		mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs.Malloc.LlvmFunction, constant.NewInt(llvmTypes.I64, structType.Size()))
+		mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs.Malloc.Value.(llvmValue.Named), constant.NewInt(llvmTypes.I64, structType.Size()))
 		alloc = c.contextBlock.NewBitCast(mallocatedSpaceRaw, llvmTypes.NewPointer(structType.LLVM()))
 		structType.IsHeapAllocated = true
 	} else {

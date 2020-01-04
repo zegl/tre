@@ -5,6 +5,7 @@ import (
 
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
+	llvmValue "github.com/llir/llvm/ir/value"
 
 	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -15,7 +16,7 @@ func (c *Compiler) lenFuncCall(v *parser.CallNode) value.Value {
 	arg := c.compileValue(v.Arguments[0])
 
 	if arg.Type.Name() == "string" {
-		f, ok := c.funcByName("len_string")
+		f, ok := c.packages["global"].GetPkgVar("len_string")
 		if !ok {
 			panic("could not find len_string func")
 		}
@@ -26,8 +27,8 @@ func (c *Compiler) lenFuncCall(v *parser.CallNode) value.Value {
 		}
 
 		return value.Value{
-			Value:      c.contextBlock.NewCall(f.LlvmFunction, val),
-			Type:       f.LlvmReturnType,
+			Value:      c.contextBlock.NewCall(f.Value.(llvmValue.Named), val),
+			Type:       f.Type,
 			IsVariable: false,
 		}
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
+	llvmValue "github.com/llir/llvm/ir/value"
 )
 
 type Compiler struct {
@@ -24,11 +25,10 @@ type Compiler struct {
 	// functions provided by the OS, such as printf and malloc
 	externalFuncs ExternalFuncs
 
-	// functions provided by the language, such as println
-	globalFuncs map[string]*types.Function
+	packages       map[string]*pkg
+	currentPackage *pkg
 
-	packages           map[string]*types.PackageInstance
-	currentPackage     *types.PackageInstance
+	// TODO: Replace with currentPackage.Name()
 	currentPackageName string
 
 	contextFunc *types.Function
@@ -71,10 +71,9 @@ var (
 
 func NewCompiler() *Compiler {
 	c := &Compiler{
-		module:      ir.NewModule(),
-		globalFuncs: make(map[string]*types.Function),
+		module: ir.NewModule(),
 
-		packages: make(map[string]*types.PackageInstance),
+		packages: make(map[string]*pkg),
 
 		contextFuncRetVals: make([][]value.Value, 0),
 
@@ -141,9 +140,7 @@ func (c *Compiler) Compile(root parser.PackageNode) (err error) {
 		}
 	}()
 
-	c.currentPackage = &types.PackageInstance{
-		Funcs: make(map[string]*types.Function),
-	}
+	c.currentPackage = NewPkg(root.Name)
 	c.currentPackageName = root.Name
 	c.packages[c.currentPackageName] = c.currentPackage
 
@@ -165,12 +162,21 @@ func (c *Compiler) addGlobal() {
 	types.EmptyStringConstant = c.module.NewGlobalDef(strings.NextStringName(), strings.Constant(""))
 	types.EmptyStringConstant.Immutable = true
 
-	// len_string
+	// TODO: Use a different name? Runtime?
+	global := NewPkg("global")
+
 	strLen := internal.StringLen(types.ModuleStringType)
-	c.globalFuncs["len_string"] = &types.Function{
-		LlvmFunction:   strLen,
-		LlvmReturnType: types.I64,
-	}
+	global.DefinePkgVar("len_string", value.Value{
+		Type: &types.Function{
+			FuncType:       strLen.Type(),
+			LlvmReturnType: types.I64,
+		},
+		Value:      strLen,
+		IsVariable: false,
+	})
+
+	c.packages["global"] = global
+
 	c.module.Funcs = append(c.module.Funcs, strLen)
 }
 
@@ -223,40 +229,30 @@ func (c *Compiler) compile(instructions []parser.Node) {
 	}
 }
 
-func (c *Compiler) funcByName(name string) (*types.Function, bool) {
-	if f, ok := c.globalFuncs[name]; ok {
-		return f, true
+func (c *Compiler) compileNameNode(v *parser.NameNode) value.Value {
+	pkg := c.currentPackage
+
+	if len(v.Package) > 0 {
+		// Imported package?
+		if p, ok := c.packages[v.Package]; ok {
+			pkg = p
+		} else {
+			panic(fmt.Sprintf("package %s does not exist", v.Package))
+		}
 	}
 
-	// Function in the current package
-	if f, ok := c.currentPackage.Funcs[name]; ok {
-		return f, true
-	}
-
-	return nil, false
-}
-
-func (c *Compiler) varByName(name string) value.Value {
 	// Search scope in reverse (most specific first)
 	for i := len(c.contextBlockVariables) - 1; i >= 0; i-- {
-		if val, ok := c.contextBlockVariables[i][name]; ok {
+		if val, ok := c.contextBlockVariables[i][v.Name]; ok {
 			return val
 		}
 	}
 
-	// Check functions in scope
-	if fn, ok := c.funcByName(name); ok {
-		return value.Value{Type: fn, Value: fn.LlvmFunction}
+	if pkgVar, ok := pkg.GetPkgVar(v.Name); ok {
+		return pkgVar
 	}
 
-	// Imported package?
-	if pkg, ok := c.packages[name]; ok {
-		return value.Value{
-			Type: pkg,
-		}
-	}
-
-	panic("undefined variable: " + name)
+	panic(fmt.Sprintf("package %s has no memeber %s", v.Package, v.Name))
 }
 
 func (c *Compiler) setVar(name string, val value.Value) {
@@ -281,7 +277,7 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 	case *parser.SubNode:
 		return c.compileSubNode(v)
 	case *parser.NameNode:
-		return c.varByName(v.Name)
+		return c.compileNameNode(v)
 	case *parser.CallNode:
 		return c.compileCallNode(v)
 	case *parser.TypeCastNode:
@@ -328,8 +324,8 @@ func (c *Compiler) compileValue(node parser.Node) value.Value {
 func (c *Compiler) panic(block *ir.Block, message string) {
 	globMsg := c.module.NewGlobalDef(strings.NextStringName(), strings.Constant("runtime panic: "+message+"\n"))
 	globMsg.Immutable = true
-	block.NewCall(c.externalFuncs.Printf.LlvmFunction, strings.Toi8Ptr(block, globMsg))
-	block.NewCall(c.externalFuncs.Exit.LlvmFunction, constant.NewInt(llvmTypes.I32, 1))
+	block.NewCall(c.externalFuncs.Printf.Value.(llvmValue.Named), strings.Toi8Ptr(block, globMsg))
+	block.NewCall(c.externalFuncs.Exit.Value.(llvmValue.Named), constant.NewInt(llvmTypes.I32, 1))
 }
 
 type Panic string
