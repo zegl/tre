@@ -68,7 +68,11 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 			// Append right to backing array
 			c.contextBlock.NewCall(c.externalFuncs.Strcat.Value.(llvmValue.Named), backingArray, c.contextBlock.NewExtractValue(rightLLVM, 1))
 
-			alloc := c.contextBlock.NewAlloca(typeConvertMap["string"].LLVM())
+			sType, ok := c.packages["global"].GetPkgType("string")
+			if !ok {
+				panic("string type not found")
+			}
+			alloc := c.contextBlock.NewAlloca(sType.LLVM())
 
 			// Save length of the string
 			lenItem := c.contextBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
@@ -111,7 +115,7 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 		opRes = c.contextBlock.NewXor(leftLLVM, rightLLVM)
 	case parser.OP_BIT_CLEAR:
 		not := c.contextBlock.NewXor(rightLLVM, constant.NewInt(rightLLVM.Type().(*llvmTypes.IntType), -1))
-	 	opRes = c.contextBlock.NewAnd(leftLLVM, not)
+		opRes = c.contextBlock.NewAnd(leftLLVM, not)
 	case parser.OP_LEFT_SHIFT:
 		opRes = c.contextBlock.NewShl(leftLLVM, rightLLVM)
 	case parser.OP_RIGHT_SHIFT:

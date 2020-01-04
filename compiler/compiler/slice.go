@@ -56,7 +56,11 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 	dst := safeBlock.NewCall(c.externalFuncs.Strndup.Value.(llvmValue.Named), offset, length)
 
 	// Convert *i8 to %string
-	alloc := safeBlock.NewAlloca(typeConvertMap["string"].LLVM())
+	sType, ok := c.packages["global"].GetPkgType("string")
+	if !ok {
+		panic("string type not found")
+	}
+	alloc := c.contextBlock.NewAlloca(sType.LLVM())
 
 	// Save length of the string
 	lenItem := safeBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
@@ -70,7 +74,7 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 
 	return value.Value{
 		Value:      safeBlock.NewLoad(pointer.ElemType(alloc), alloc),
-		Type:       typeConvertMap["string"],
+		Type:       sType,
 		IsVariable: false,
 	}
 }
@@ -325,7 +329,7 @@ func (c *Compiler) generateAppendToSliceBlock(appendToSliceBlock *ir.Block, slic
 }
 
 func (c *Compiler) compileInitializeSliceNode(v *parser.InitializeSliceNode) value.Value {
-	itemType := parserTypeToType(v.Type)
+	itemType := c.parserTypeToType(v.Type)
 
 	var values []value.Value
 

@@ -15,7 +15,7 @@ import (
 )
 
 func (c *Compiler) compileInitializeArrayNode(v *parser.InitializeArrayNode) value.Value {
-	itemType := parserTypeToType(v.Type)
+	itemType := c.parserTypeToType(v.Type)
 
 	var values []value.Value
 

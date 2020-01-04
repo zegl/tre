@@ -1193,6 +1193,20 @@ func (p *parser) parseOneType() (TypeNode, error) {
 	}
 
 	if current.Type == lexer.IDENTIFIER {
+		// Types from other packages ("foo.Bar")
+		isTypeFromPkg := p.lookAhead(1)
+		if isTypeFromPkg.Type == lexer.OPERATOR && isTypeFromPkg.Val == "." {
+			typeName := p.lookAhead(2)
+			p.expect(typeName, lexer.Item{Type: lexer.IDENTIFIER})
+			p.i += 2
+			return &SingleTypeNode{
+				PackageName: current.Val,
+				TypeName:    typeName.Val,
+				IsVariadic:  isVariadic,
+			}, nil
+		}
+
+		// Types from the current package
 		return &SingleTypeNode{
 			TypeName:   current.Val,
 			IsVariadic: isVariadic,

@@ -110,7 +110,7 @@ func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode)
 }
 
 func (c *Compiler) compileInitStructWithValues(v *parser.InitializeStructNode) value.Value {
-	treType := parserTypeToType(v.Type)
+	treType := c.parserTypeToType(v.Type)
 
 	structType, ok := treType.(*types.Struct)
 	if !ok {

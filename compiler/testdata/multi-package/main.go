@@ -1,11 +1,15 @@
-package main  import "external"
+package main
 
-import "sub"
-
-// Hello
-// World
+import (
+	"external"
+	"sub"
+)
 
 func main() {
-	external.Printf("Hello\n")
-	external.Printf("%s\n", sub.World())
+	external.Printf("%s\n", sub.World()) // World
+
+	var a sub.AnotherInt
+	a = 10
+
+	external.Printf("%d\n", a.Plus5()) // 15
 }

@@ -175,6 +175,19 @@ func (c *Compiler) addGlobal() {
 		IsVariable: false,
 	})
 
+	global.DefinePkgType("bool", types.Bool)
+	global.DefinePkgType("int", types.I64) // TODO: Size based on arch
+	global.DefinePkgType("int8", types.I8)
+	global.DefinePkgType("uint8", types.U8)
+	global.DefinePkgType("int16", types.I16)
+	global.DefinePkgType("uint16", types.U16)
+	global.DefinePkgType("int32", types.I32)
+	global.DefinePkgType("uint32", types.U32)
+	global.DefinePkgType("int64", types.I64)
+	global.DefinePkgType("uint64", types.U64)
+	global.DefinePkgType("uintptr", types.Uintptr)
+	global.DefinePkgType("string", types.String)
+
 	c.packages["global"] = global
 
 	c.module.Funcs = append(c.module.Funcs, strLen)
@@ -208,7 +221,7 @@ func (c *Compiler) compile(instructions []parser.Node) {
 			break
 
 		case *parser.DefineTypeNode:
-			t := parserTypeToType(v.Type)
+			t := c.parserTypeToType(v.Type)
 
 			// Add type to module and override the structtype to use the named
 			// type in the module
@@ -217,7 +230,7 @@ func (c *Compiler) compile(instructions []parser.Node) {
 			}
 
 			// Add to tre mapping
-			typeConvertMap[v.Name] = t
+			c.currentPackage.DefinePkgType(v.Name, t)
 
 		case *parser.SwitchNode:
 			c.compileSwitchNode(v)

@@ -14,12 +14,12 @@ import (
 	"github.com/zegl/tre/compiler/parser"
 )
 
-func funcType(params, returnTypes []parser.TypeNode) (retType types.Type, treReturnTypes []types.Type, argTypes []*ir.Param, treParams []types.Type, isVariadicFunc bool, argumentReturnValuesCount int) {
+func (c *Compiler) funcType(params, returnTypes []parser.TypeNode) (retType types.Type, treReturnTypes []types.Type, argTypes []*ir.Param, treParams []types.Type, isVariadicFunc bool, argumentReturnValuesCount int) {
 	llvmParams := make([]*ir.Param, len(params))
 	treParams = make([]types.Type, len(params))
 
 	for k, par := range params {
-		paramType := parserTypeToType(par)
+		paramType := c.parserTypeToType(par)
 
 		// Variadic arguments are converted into a slice
 		// The function takes a slice as the argument, the caller has to convert
@@ -52,7 +52,7 @@ func funcType(params, returnTypes []parser.TypeNode) (retType types.Type, treRet
 
 	// Use LLVM function return value if there's only one return value
 	if len(returnTypes) == 1 {
-		funcRetType = parserTypeToType(returnTypes[0])
+		funcRetType = c.parserTypeToType(returnTypes[0])
 		treReturnTypes = []types.Type{funcRetType}
 	} else if len(returnTypes) > 0 {
 		// Return values via argument pointers
@@ -60,7 +60,7 @@ func funcType(params, returnTypes []parser.TypeNode) (retType types.Type, treRet
 		var llvmReturnTypesParams []*ir.Param
 
 		for _, ret := range returnTypes {
-			t := parserTypeToType(ret)
+			t := c.parserTypeToType(ret)
 			treReturnTypes = append(treReturnTypes, t)
 			llvmReturnTypesParams = append(llvmReturnTypesParams, ir.NewParam(name.Var("ret"), llvmTypes.NewPointer(t.LLVM())))
 		}
@@ -111,7 +111,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		retTypes[k] = v.Type
 	}
 
-	funcRetType, treReturnTypes, llvmParams, treParams, isVariadicFunc, argumentReturnValuesCount := funcType(argTypes, retTypes)
+	funcRetType, treReturnTypes, llvmParams, treParams, isVariadicFunc, argumentReturnValuesCount := c.funcType(argTypes, retTypes)
 
 	if c.currentPackageName == "main" && v.Name == "main" {
 		if len(v.ReturnValues) != 0 {
@@ -134,7 +134,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 
 	// Save as a method on the type
 	if v.IsMethod {
-		if t, ok := typeConvertMap[v.MethodOnType.TypeName]; ok {
+		if t, ok := c.currentPackage.GetPkgType(v.MethodOnType.TypeName); ok {
 			t.AddMethod(v.Name, &types.Method{
 				Function:        typesFunc,
 				LlvmFunction:    fn,

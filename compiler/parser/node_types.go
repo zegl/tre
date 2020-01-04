@@ -18,9 +18,10 @@ type TypeNode interface {
 type SingleTypeNode struct {
 	baseNode
 
-	SourceName string
-	TypeName   string
-	IsVariadic bool
+	PackageName string
+	SourceName  string
+	TypeName    string
+	IsVariadic  bool
 }
 
 func (stn SingleTypeNode) Type() string {
@@ -28,7 +29,7 @@ func (stn SingleTypeNode) Type() string {
 }
 
 func (stn SingleTypeNode) String() string {
-	return "type(" + stn.Type() + ")"
+	return fmt.Sprintf("type(%s.%s)", stn.PackageName, stn.Type())
 }
 
 func (stn SingleTypeNode) Variadic() bool {

@@ -47,7 +47,11 @@ func (c *Compiler) compileConstantNode(v *parser.ConstantNode) value.Value {
 			c.stringConstants[v.ValueStr] = constString
 		}
 
-		alloc := c.contextBlock.NewAlloca(typeConvertMap["string"].LLVM())
+		sType, ok := c.packages["global"].GetPkgType("string")
+		if !ok {
+			panic("string type not found")
+		}
+		alloc := c.contextBlock.NewAlloca(sType.LLVM())
 
 		// Save length of the string
 		lenItem := c.contextBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))

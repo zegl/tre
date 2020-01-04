@@ -19,21 +19,6 @@ import (
 	llvmValue "github.com/llir/llvm/ir/value"
 )
 
-var typeConvertMap = map[string]types.Type{
-	"bool":    types.Bool,
-	"int":     types.I64, // TODO: Size based on arch
-	"int8":    types.I8,
-	"uint8":   types.U8,
-	"int16":   types.I16,
-	"uint16":  types.U16,
-	"int32":   types.I32,
-	"uint32":  types.U32,
-	"int64":   types.I64,
-	"uint64":  types.U64,
-	"uintptr": types.Uintptr,
-	"string":  types.String,
-}
-
 // Is used in interfaces to keep track of the backing data type
 var typeIDs = map[string]int64{}
 var nextTypeID int64
@@ -48,17 +33,30 @@ func getTypeID(typeName string) int64 {
 	return nextTypeID
 }
 
-func parserTypeToType(typeNode parser.TypeNode) types.Type {
+func (c *Compiler) parserTypeToType(typeNode parser.TypeNode) types.Type {
 	switch t := typeNode.(type) {
 	case *parser.SingleTypeNode:
-		if res, ok := typeConvertMap[t.TypeName]; ok {
+		if len(t.PackageName) > 0 {
+			tp, ok := c.packages[t.PackageName].GetPkgType(t.TypeName)
+			if !ok {
+				panic("unknown type: " + t.PackageName + "." + t.TypeName)
+			}
+			return tp
+		}
+
+		if res, ok := c.currentPackage.GetPkgType(t.TypeName); ok {
+			return res
+		}
+
+		// TODO: Find a better way to organize builtin types
+		if res, ok := c.packages["global"].GetPkgType(t.TypeName); ok {
 			return res
 		}
 
 		panic("unknown type: " + t.TypeName)
 
 	case *parser.ArrayTypeNode:
-		itemType := parserTypeToType(t.ItemType)
+		itemType := c.parserTypeToType(t.ItemType)
 		return &types.Array{
 			Type:     itemType,
 			LlvmType: llvmTypes.NewArray(uint64(t.Len), itemType.LLVM()),
@@ -75,7 +73,7 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 		}
 
 		for i, tt := range t.Types {
-			ty := parserTypeToType(tt)
+			ty := c.parserTypeToType(tt)
 			members[inverseNamesIndex[i]] = ty
 			structTypes = append(structTypes, ty.LLVM())
 		}
@@ -88,7 +86,7 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 		}
 
 	case *parser.SliceTypeNode:
-		itemType := parserTypeToType(t.ItemType)
+		itemType := c.parserTypeToType(t.ItemType)
 		return &types.Slice{
 			Type:     itemType,
 			LlvmType: internal.Slice(itemType.LLVM()),
@@ -104,10 +102,10 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 			}
 
 			for _, arg := range def.ArgumentTypes {
-				ifaceMethod.ArgumentTypes = append(ifaceMethod.ArgumentTypes, parserTypeToType(arg))
+				ifaceMethod.ArgumentTypes = append(ifaceMethod.ArgumentTypes, c.parserTypeToType(arg))
 			}
 			for _, ret := range def.ReturnTypes {
-				ifaceMethod.ReturnTypes = append(ifaceMethod.ReturnTypes, parserTypeToType(ret))
+				ifaceMethod.ReturnTypes = append(ifaceMethod.ReturnTypes, c.parserTypeToType(ret))
 			}
 
 			requiredMethods[name] = ifaceMethod
@@ -117,11 +115,11 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 
 	case *parser.PointerTypeNode:
 		return &types.Pointer{
-			Type: parserTypeToType(t.ValueType),
+			Type: c.parserTypeToType(t.ValueType),
 		}
 
 	case *parser.FuncTypeNode:
-		retType, treReturnTypes, llvmArgTypes, treParams, _, _ := funcType(t.ArgTypes, t.RetTypes)
+		retType, treReturnTypes, llvmArgTypes, treParams, _, _ := c.funcType(t.ArgTypes, t.RetTypes)
 
 		fn := ir.NewFunc("UNNAMEDFUNC", retType.LLVM(), llvmArgTypes...)
 
@@ -147,7 +145,7 @@ func (c *Compiler) compileTypeCastNode(v *parser.TypeCastNode) value.Value {
 		panic("TypeCast origin must be int type")
 	}
 
-	targetType := parserTypeToType(v.Type)
+	targetType := c.parserTypeToType(v.Type)
 	target, ok := targetType.LLVM().(*llvmTypes.IntType)
 	if !ok {
 		panic("TypeCast target must be int type")
@@ -183,7 +181,7 @@ func (c *Compiler) compileTypeCastNode(v *parser.TypeCastNode) value.Value {
 }
 
 func (c *Compiler) compileTypeCastInterfaceNode(v *parser.TypeCastInterfaceNode) value.Value {
-	tryCastToType := parserTypeToType(v.Type)
+	tryCastToType := c.parserTypeToType(v.Type)
 
 	// Allocate the OK variable
 	okVal := c.contextBlock.NewAlloca(types.Bool.LLVM())
@@ -228,8 +226,8 @@ func (c *Compiler) compileTypeCastInterfaceNode(v *parser.TypeCastInterfaceNode)
 			},
 		},
 		MultiValues: []value.Value{
-			value.Value{Type: tryCastToType, Value: resCastedVal, IsVariable: true},
-			value.Value{Type: types.Bool, Value: okVal, IsVariable: true},
+			{Type: tryCastToType, Value: resCastedVal, IsVariable: true},
+			{Type: types.Bool, Value: okVal, IsVariable: true},
 		},
 	}
 }
