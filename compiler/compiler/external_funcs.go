@@ -3,144 +3,94 @@ package compiler
 import (
 	"github.com/llir/llvm/ir"
 	llvmTypes "github.com/llir/llvm/ir/types"
+
 	"github.com/zegl/tre/compiler/compiler/types"
+	"github.com/zegl/tre/compiler/compiler/value"
 )
 
+// ExternalFuncs and the "external" package contains a mapping to glibc functions.
+// These are used to make bootstrapping of the language easier. The end goal is to not depend on glibc.
 type ExternalFuncs struct {
-	Printf  *types.Function
-	Malloc  *types.Function
-	Realloc *types.Function
-	Memcpy  *types.Function
-	Strcat  *types.Function
-	Strcpy  *types.Function
-	Strncpy *types.Function
-	Strndup *types.Function
-	Exit    *types.Function
+	Printf  value.Value
+	Malloc  value.Value
+	Realloc value.Value
+	Memcpy  value.Value
+	Strcat  value.Value
+	Strcpy  value.Value
+	Strncpy value.Value
+	Strndup value.Value
+	Exit    value.Value
 }
 
 func (c *Compiler) createExternalPackage() {
-	externalPackageFuncs := make(map[string]*types.Function)
+	external := NewPkg("external")
 
-	{
-		printfFunc := c.module.NewFunc("printf",
-			i32.LLVM(),
-			ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-		)
-		printfFunc.Sig.Variadic = true
-
-		c.externalFuncs.Printf = &types.Function{
-			LlvmReturnType: types.Void,
-			LlvmFunction:   printfFunc,
-			IsExternal:     true,
+	setExternal := func(internalName string, fn *ir.Func, variadic bool) value.Value {
+		fn.Sig.Variadic = variadic
+		val := value.Value{
+			Type: &types.Function{
+				LlvmReturnType: types.Void,
+				FuncType:       fn.Type(),
+				IsExternal:     true,
+			},
+			Value: fn,
 		}
-		externalPackageFuncs["Printf"] = c.externalFuncs.Printf
+		external.DefinePkgVar(internalName, val)
+		return val
 	}
 
-	{
-		c.externalFuncs.Malloc = &types.Function{
-			LlvmReturnType: types.Void,
-			LlvmFunction: c.module.NewFunc("malloc",
-				llvmTypes.NewPointer(i8.LLVM()),
-				ir.NewParam("", i64.LLVM()),
-			),
-			IsExternal: true,
-		}
-		externalPackageFuncs["malloc"] = c.externalFuncs.Malloc
-	}
+	c.externalFuncs.Printf = setExternal("Printf", c.module.NewFunc("printf",
+		i32.LLVM(),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+	), true)
 
-	{
-		c.externalFuncs.Realloc = &types.Function{
-			LlvmReturnType: types.Void,
-			LlvmFunction: c.module.NewFunc("realloc",
-				llvmTypes.NewPointer(i8.LLVM()),
-				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-				ir.NewParam("", i64.LLVM()),
-			),
-			IsExternal: true,
-		}
-		externalPackageFuncs["realloc"] = c.externalFuncs.Realloc
-	}
+	c.externalFuncs.Malloc = setExternal("malloc", c.module.NewFunc("malloc",
+		llvmTypes.NewPointer(i8.LLVM()),
+		ir.NewParam("", i64.LLVM()),
+	), false)
 
-	{
-		c.externalFuncs.Memcpy = &types.Function{
-			LlvmReturnType: types.Void,
-			LlvmFunction: c.module.NewFunc("memcpy",
-				llvmTypes.NewPointer(i8.LLVM()),
-				ir.NewParam("dest", llvmTypes.NewPointer(i8.LLVM())),
-				ir.NewParam("src", llvmTypes.NewPointer(i8.LLVM())),
-				ir.NewParam("n", i64.LLVM()),
-			),
-			IsExternal: true,
-		}
-		externalPackageFuncs["memcpy"] = c.externalFuncs.Memcpy
-	}
+	c.externalFuncs.Realloc = setExternal("realloc", c.module.NewFunc("realloc",
+		llvmTypes.NewPointer(i8.LLVM()),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("", i64.LLVM()),
+	), false)
 
-	{
-		c.externalFuncs.Strcat = &types.Function{
-			LlvmReturnType: types.Void,
-			LlvmFunction: c.module.NewFunc("strcat",
-				llvmTypes.NewPointer(i8.LLVM()),
-				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-			),
-			IsExternal: true,
-		}
-		externalPackageFuncs["strcat"] = c.externalFuncs.Strcat
-	}
+	c.externalFuncs.Memcpy = setExternal("memcpy", c.module.NewFunc("memcpy",
+		llvmTypes.NewPointer(i8.LLVM()),
+		ir.NewParam("dest", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("src", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("n", i64.LLVM()),
+	), false)
 
-	{
-		c.externalFuncs.Strcpy = &types.Function{
-			LlvmReturnType: types.Void,
-			LlvmFunction: c.module.NewFunc("strcpy",
-				llvmTypes.NewPointer(i8.LLVM()),
-				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-			),
-			IsExternal: true,
-		}
-		externalPackageFuncs["strcpy"] = c.externalFuncs.Strcpy
-	}
+	c.externalFuncs.Strcat = setExternal("strcat", c.module.NewFunc("strcat",
+		llvmTypes.NewPointer(i8.LLVM()),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+	), false)
 
-	{
-		c.externalFuncs.Strncpy = &types.Function{
-			LlvmReturnType: types.Void,
-			LlvmFunction: c.module.NewFunc("strncpy",
-				llvmTypes.NewPointer(i8.LLVM()),
-				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-				ir.NewParam("", i64.LLVM()),
-			),
-			IsExternal: true,
-		}
-		externalPackageFuncs["strncpy"] = c.externalFuncs.Strncpy
-	}
+	c.externalFuncs.Strcpy = setExternal("strcpy", c.module.NewFunc("strcpy",
+		llvmTypes.NewPointer(i8.LLVM()),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+	), false)
 
-	{
-		c.externalFuncs.Strndup = &types.Function{
-			LlvmReturnType: types.Void,
-			LlvmFunction: c.module.NewFunc("strndup",
-				llvmTypes.NewPointer(i8.LLVM()),
-				ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
-				ir.NewParam("", i64.LLVM()),
-			),
-			IsExternal: true,
-		}
-		externalPackageFuncs["strndup"] = c.externalFuncs.Strndup
-	}
+	c.externalFuncs.Strncpy = setExternal("strncpy", c.module.NewFunc("strncpy",
+		llvmTypes.NewPointer(i8.LLVM()),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("", i64.LLVM()),
+	), false)
 
-	{
-		c.externalFuncs.Exit = &types.Function{
-			LlvmReturnType: types.Void,
-			LlvmFunction: c.module.NewFunc("exit",
-				llvmTypes.Void,
-				ir.NewParam("", i32.LLVM()),
-			),
-			IsExternal: true,
-		}
-		externalPackageFuncs["Exit"] = c.externalFuncs.Exit
-	}
+	c.externalFuncs.Strndup = setExternal("strndup", c.module.NewFunc("strndup",
+		llvmTypes.NewPointer(i8.LLVM()),
+		ir.NewParam("", llvmTypes.NewPointer(i8.LLVM())),
+		ir.NewParam("", i64.LLVM()),
+	), false)
 
-	c.packages["external"] = &types.PackageInstance{
-		Funcs: externalPackageFuncs,
-	}
+	c.externalFuncs.Exit = setExternal("exit", c.module.NewFunc("exit",
+		llvmTypes.Void,
+		ir.NewParam("", i32.LLVM()),
+	), false)
+
+	c.packages["external"] = external
 }

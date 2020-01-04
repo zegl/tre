@@ -53,7 +53,7 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 		length = constant.NewInt(llvmTypes.I64, 1)
 	}
 
-	dst := safeBlock.NewCall(c.externalFuncs.Strndup.LlvmFunction, offset, length)
+	dst := safeBlock.NewCall(c.externalFuncs.Strndup.Value.(llvmValue.Named), offset, length)
 
 	// Convert *i8 to %string
 	alloc := safeBlock.NewAlloca(typeConvertMap["string"].LLVM())
@@ -240,7 +240,7 @@ func (c *Compiler) generateCopySliceBlock(copySliceBlock *ir.Block, appendToSlic
 	twiceCap := copySliceBlock.NewMul(loadedPrevCap, constant.NewInt(llvmTypes.I32, 2))
 	twiceCap64 := copySliceBlock.NewZExt(twiceCap, i64.LLVM())
 	sizeTimesCap := copySliceBlock.NewMul(twiceCap64, constant.NewInt(llvmTypes.I64, input.Type.Size()))
-	mallocatedSpaceRaw := copySliceBlock.NewCall(c.externalFuncs.Malloc.LlvmFunction, sizeTimesCap)
+	mallocatedSpaceRaw := copySliceBlock.NewCall(c.externalFuncs.Malloc.Value.(llvmValue.Named), sizeTimesCap)
 	mallocatedSpaceRaw.SetName(name.Var("slice-grow"))
 
 	// Store new cap
@@ -350,7 +350,7 @@ func (c *Compiler) compileInitializeSliceWithValues(itemType types.Type, values 
 	}
 
 	// Create slice with cap set to the requested size
-	allocSlice := sliceType.SliceZero(c.contextBlock, c.externalFuncs.Malloc.LlvmFunction, len(values))
+	allocSlice := sliceType.SliceZero(c.contextBlock, c.externalFuncs.Malloc.Value.(llvmValue.Named), len(values))
 
 	backingArrayPtr := c.contextBlock.NewGetElementPtr(pointer.ElemType(allocSlice), allocSlice,
 		constant.NewInt(llvmTypes.I32, 0),

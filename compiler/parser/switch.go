@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/zegl/tre/compiler/lexer"
 )
@@ -38,7 +37,6 @@ func (p *parser) parseSwitch() *SwitchNode {
 
 	for {
 		next := p.lookAhead(0)
-		log.Printf("next: %+v", next)
 
 		if next.Type == lexer.EOL {
 			p.i++
@@ -115,8 +113,6 @@ func (p *parser) parseSwitch() *SwitchNode {
 			}
 		}
 	}
-
-	log.Printf("%+v", s.Cases)
 
 	return s
 }

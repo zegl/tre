@@ -2,11 +2,11 @@ package compiler
 
 import (
 	"fmt"
-
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
+
 	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
@@ -126,7 +126,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 	fn := c.module.NewFunc(compiledName, funcRetType.LLVM(), llvmParams...)
 
 	typesFunc := &types.Function{
-		LlvmFunction:   fn,
+		FuncType:       fn.Type(),
 		LlvmReturnType: funcRetType,
 		ReturnTypes:    treReturnTypes,
 		IsVariadic:     isVariadicFunc,
@@ -138,6 +138,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		if t, ok := typeConvertMap[v.MethodOnType.TypeName]; ok {
 			t.AddMethod(v.Name, &types.Method{
 				Function:        typesFunc,
+				LlvmFunction:    fn,
 				PointerReceiver: v.IsPointerReceiver,
 				MethodName:      v.Name,
 			})
@@ -148,7 +149,10 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		// Make this method available in interfaces via a jump function
 		typesFunc.JumpFunction = c.compileInterfaceMethodJump(fn)
 	} else if v.IsNamed {
-		c.currentPackage.Funcs[v.Name] = typesFunc
+		c.currentPackage.DefinePkgVar(v.Name, value.Value{
+			Type:  typesFunc,
+			Value: fn,
+		})
 	}
 
 	entry := fn.NewBlock(name.Block())
@@ -248,7 +252,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 
 	return value.Value{
 		Type:  typesFunc,
-		Value: typesFunc.LlvmFunction,
+		Value: fn,
 	}
 }
 
@@ -377,36 +381,31 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 
 	if isNameNode {
 		// Check if it's a function
-		namedFn := c.varByName(name.Name)
+		namedFn := c.compileNameNode(name)
 		if ft, ok := namedFn.Type.(*types.Function); ok {
 			fnType = ft
 
-			// TODO: Get rid of this difference
-			// The function should always be in the value, not the type
-			if ft.LlvmFunction.Name() == "UNNAMEDFUNC" {
-				fn = namedFn.Value.(llvmValue.Named)
-			} else {
-				fn = ft.LlvmFunction
+			fn = namedFn.Value.(llvmValue.Named)
+			if namedFn.IsVariable {
+				fn = c.contextBlock.NewLoad(pointer.ElemType(fn), fn)
 			}
-
 		} else {
 			funcByVal := c.compileValue(v.Function)
 			if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
+				fn = funcByVal.Value.(llvmValue.Named)
 				fnType = checkIfFunc
-				fn = checkIfFunc.LlvmFunction
 			} else {
 				panic(fmt.Sprintf("no such function: %v", v))
 			}
 		}
-
 	} else {
 		funcByVal := c.compileValue(v.Function)
 		if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
 			fnType = checkIfFunc
-			fn = checkIfFunc.LlvmFunction
+			fn = funcByVal.Value.(llvmValue.Named)
 		} else if checkIfMethod, ok := funcByVal.Type.(*types.Method); ok {
 			fnType = checkIfMethod.Function
-			fn = checkIfMethod.Function.LlvmFunction
+			fn = checkIfMethod.LlvmFunction
 
 			var methodCallArgs []value.Value
 
@@ -439,7 +438,7 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 
 			fnType = &types.Function{
 				// TODO: We probably need to add more fields here?
-				LlvmFunction:   ifaceMethod.LlvmJumpFunction,
+				FuncType:       ifaceMethod.LlvmJumpFunction.Type(),
 				LlvmReturnType: returnType,
 			}
 			fn = ifaceMethod.LlvmJumpFunction

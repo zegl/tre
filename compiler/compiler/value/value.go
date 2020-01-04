@@ -2,6 +2,7 @@ package value
 
 import (
 	llvmValue "github.com/llir/llvm/ir/value"
+
 	"github.com/zegl/tre/compiler/compiler/types"
 )
 
@@ -11,7 +12,7 @@ type Value struct {
 
 	// Is true when Value points to an LLVM Allocated variable, and is false
 	// when the value is a constant.
-	// This is used to know if a "load" instruction is neccesary or not.
+	// This is used to know if a "load" instruction is necessary or not.
 	// Pointers are not considered "variables" in this context.
 	IsVariable bool
 

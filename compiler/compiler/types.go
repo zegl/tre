@@ -126,9 +126,10 @@ func parserTypeToType(typeNode parser.TypeNode) types.Type {
 		fn := ir.NewFunc("UNNAMEDFUNC", retType.LLVM(), llvmArgTypes...)
 
 		return &types.Function{
-			ArgumentTypes: treParams,
-			ReturnTypes:   treReturnTypes,
-			LlvmFunction:  fn,
+			ArgumentTypes:  treParams,
+			ReturnTypes:    treReturnTypes,
+			FuncType:       fn.Type(),
+			LlvmReturnType: retType,
 		}
 	}
 

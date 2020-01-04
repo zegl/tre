@@ -195,15 +195,16 @@ func (dfn DefineFuncNode) String() string {
 type NameNode struct {
 	baseNode
 
-	Name string
-	Type TypeNode
+	Package string
+	Name    string
+	Type    TypeNode
 }
 
 func (nn NameNode) String() string {
 	if nn.Type == nil {
-		return fmt.Sprintf("var(%s)", nn.Name)
+		return fmt.Sprintf("var(%s·%s)", nn.Package, nn.Name)
 	}
-	return fmt.Sprintf("var(n:%s t:%s)", nn.Name, nn.Type)
+	return fmt.Sprintf("var(n:%s·%s t:%s)", nn.Package, nn.Name, nn.Type)
 }
 
 type MultiNameNode struct {
@@ -276,7 +277,7 @@ func (dtn DefineTypeNode) String() string {
 	return fmt.Sprintf("defineType %s = %+v", dtn.Name, dtn.Type)
 }
 
-// StructLoadElementNode retreives a value by key from a struct
+// StructLoadElementNode retrieves a value by key from a struct
 type StructLoadElementNode struct {
 	baseNode
 

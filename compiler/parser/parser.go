@@ -19,13 +19,18 @@ type parser struct {
 	debug bool
 
 	types map[string]struct{}
+
+	// names of packages imported in this file
+	// used to detect the difference in "a.b" where a is a package or a struct
+	packages map[string]struct{}
 }
 
 func Parse(input []lexer.Item, debug bool) FileNode {
 	p := &parser{
-		i:     0,
-		input: input,
-		debug: debug,
+		i:        0,
+		input:    input,
+		debug:    debug,
+		packages: map[string]struct{}{},
 		types: map[string]struct{}{
 			"int":     {},
 			"uint":    {},
@@ -570,7 +575,11 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 		}
 
 		if current.Val == "import" {
-			return p.parseImport()
+			imp := p.parseImport()
+			for _, n := range imp.PackagePaths {
+				p.packages[n] = struct{}{}
+			}
+			return imp
 		}
 
 		if current.Val == "true" || current.Val == "false" {
@@ -613,6 +622,16 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 			next = p.lookAhead(1)
 			if next.Type == lexer.IDENTIFIER {
 				p.i++
+
+				if prevNameNode, ok := input.(*NameNode); ok {
+					if _, isPkg := p.packages[prevNameNode.Name]; isPkg {
+						return p.aheadParseWithOptions(&NameNode{
+							Package: prevNameNode.Name,
+							Name:    next.Val,
+						}, withArithAhead, withIdentifierAhead)
+					}
+				}
+
 				return p.aheadParseWithOptions(&StructLoadElementNode{
 					Struct:      input,
 					ElementName: next.Val,

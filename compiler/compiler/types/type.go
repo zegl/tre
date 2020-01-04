@@ -99,6 +99,7 @@ type Method struct {
 	backingType
 
 	Function        *Function
+	LlvmFunction    llvmValue.Named
 	PointerReceiver bool
 	MethodName      string
 }
@@ -114,7 +115,8 @@ func (m Method) Name() string {
 type Function struct {
 	backingType
 
-	LlvmFunction llvmValue.Named
+	// LlvmFunction llvmValue.Named
+	FuncType types.Type
 
 	// The return type of the LLVM function (is always 1)
 	LlvmReturnType Type
@@ -130,7 +132,7 @@ type Function struct {
 }
 
 func (f Function) LLVM() types.Type {
-	return f.LlvmFunction.Type()
+	return f.FuncType
 }
 
 func (f Function) Name() string {
