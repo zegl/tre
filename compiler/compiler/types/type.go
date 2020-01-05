@@ -282,22 +282,20 @@ func (Slice) Size() int64 {
 	return 3*4 + 8 // 3 int32s and a pointer
 }
 
-func (s Slice) SliceZero(block *ir.Block, mallocFunc llvmValue.Named, initCap int) *ir.InstAlloca {
+func (s Slice) SliceZero(block *ir.Block, mallocFunc llvmValue.Named, initCap int, emptySlice llvmValue.Value) {
 	// The cap must always be larger than 0
 	// Use 2 as the default value
 	if initCap < 2 {
 		initCap = 2
 	}
 
-	emptySlize := block.NewAlloca(s.LLVM())
-
-	len := block.NewGetElementPtr(pointer.ElemType(emptySlize), emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
+	len := block.NewGetElementPtr(pointer.ElemType(emptySlice), emptySlice, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
 	len.SetName(name.Var("len"))
-	cap := block.NewGetElementPtr(pointer.ElemType(emptySlize), emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 1))
+	cap := block.NewGetElementPtr(pointer.ElemType(emptySlice), emptySlice, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 1))
 	cap.SetName(name.Var("cap"))
-	offset := block.NewGetElementPtr(pointer.ElemType(emptySlize), emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 2))
+	offset := block.NewGetElementPtr(pointer.ElemType(emptySlice), emptySlice, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 2))
 	offset.SetName(name.Var("offset"))
-	backingArray := block.NewGetElementPtr(pointer.ElemType(emptySlize), emptySlize, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 3))
+	backingArray := block.NewGetElementPtr(pointer.ElemType(emptySlice), emptySlice, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 3))
 	backingArray.SetName(name.Var("backing"))
 
 	block.NewStore(constant.NewInt(types.I32, 0), len)
@@ -308,8 +306,6 @@ func (s Slice) SliceZero(block *ir.Block, mallocFunc llvmValue.Named, initCap in
 	mallocatedSpaceRaw.SetName(name.Var("slicezero"))
 	bitcasted := block.NewBitCast(mallocatedSpaceRaw, types.NewPointer(s.Type.LLVM()))
 	block.NewStore(bitcasted, backingArray)
-
-	return emptySlize
 }
 
 type Pointer struct {

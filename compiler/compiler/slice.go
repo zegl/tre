@@ -354,7 +354,8 @@ func (c *Compiler) compileInitializeSliceWithValues(itemType types.Type, values 
 	}
 
 	// Create slice with cap set to the requested size
-	allocSlice := sliceType.SliceZero(c.contextBlock, c.externalFuncs.Malloc.Value.(llvmValue.Named), len(values))
+	allocSlice := c.contextBlock.NewAlloca(sliceType.LLVM())
+	sliceType.SliceZero(c.contextBlock, c.externalFuncs.Malloc.Value.(llvmValue.Named), len(values), allocSlice)
 
 	backingArrayPtr := c.contextBlock.NewGetElementPtr(pointer.ElemType(allocSlice), allocSlice,
 		constant.NewInt(llvmTypes.I32, 0),

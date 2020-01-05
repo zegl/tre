@@ -113,16 +113,21 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 
 	funcRetType, treReturnTypes, llvmParams, treParams, isVariadicFunc, argumentReturnValuesCount := c.funcType(argTypes, retTypes)
 
+	var fn *ir.Func
+	var entry *ir.Block
+
 	if c.currentPackageName == "main" && v.Name == "main" {
 		if len(v.ReturnValues) != 0 {
 			panic("main func can not have a return type")
 		}
 
 		funcRetType = types.I32
-		compiledName = "main"
+		fn = c.mainFunc
+		entry = fn.Blocks[0] // use already defined block
+	} else {
+		fn = c.module.NewFunc(compiledName, funcRetType.LLVM(), llvmParams...)
+		entry = fn.NewBlock(name.Block())
 	}
-
-	fn := c.module.NewFunc(compiledName, funcRetType.LLVM(), llvmParams...)
 
 	typesFunc := &types.Function{
 		FuncType:       fn.Type(),
@@ -153,8 +158,6 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 			Value: fn,
 		})
 	}
-
-	entry := fn.NewBlock(name.Block())
 
 	prevContextFunc := c.contextFunc
 	prevContextBlock := c.contextBlock
