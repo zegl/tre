@@ -6,6 +6,7 @@ import (
 	"runtime/debug"
 
 	"github.com/zegl/tre/compiler/compiler/internal"
+	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/strings"
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
@@ -32,6 +33,9 @@ type Compiler struct {
 	currentPackageName string
 
 	contextFunc *types.Function
+
+	initGlobalsFunc *ir.Func
+	mainFunc        *ir.Func
 
 	// Stack of return values pointers, is used both used if a function returns more
 	// than one value (arg pointers), and single stack based returns
@@ -192,6 +196,16 @@ func (c *Compiler) addGlobal() {
 	c.packages["global"] = global
 
 	c.module.Funcs = append(c.module.Funcs, strLen)
+
+	// Initialization function
+	c.initGlobalsFunc = c.module.NewFunc(name.Var("global-init"), types.Void.LLVM())
+	b := c.initGlobalsFunc.NewBlock(name.Block())
+	b.NewRet(nil)
+
+	// main.main function, body will be added later
+	c.mainFunc = c.module.NewFunc("main", types.I32.LLVM())
+	mainBlock := c.mainFunc.NewBlock(name.Block())
+	mainBlock.NewCall(c.initGlobalsFunc)
 }
 
 func (c *Compiler) compile(instructions []parser.Node) {
