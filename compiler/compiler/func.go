@@ -124,6 +124,10 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		funcRetType = types.I32
 		fn = c.mainFunc
 		entry = fn.Blocks[0] // use already defined block
+	} else if v.Name == "init" {
+		fn = c.module.NewFunc(name.Var("init"), funcRetType.LLVM(), llvmParams...)
+		entry = fn.NewBlock(name.Block())
+		c.initGlobalsFunc.Blocks[0].NewCall(fn) // Setup call to init from the global init func
 	} else {
 		fn = c.module.NewFunc(compiledName, funcRetType.LLVM(), llvmParams...)
 		entry = fn.NewBlock(name.Block())
