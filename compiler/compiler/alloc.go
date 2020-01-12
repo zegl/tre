@@ -21,51 +21,49 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 	}()
 
 	// Allocate from type
-	if len(v.Val) == 1 {
-		if typeNode, ok := v.Val[0].(parser.TypeNode); ok {
-			treType := c.parserTypeToType(typeNode)
+	if len(v.Val) == 0 && v.Type != nil {
+		treType := c.parserTypeToType(v.Type)
 
-			var val llvmValue.Value
-			var block *ir.Block
+		var val llvmValue.Value
+		var block *ir.Block
 
-			// Package level variables
-			if c.contextBlock == nil {
-				globType := treType.LLVM()
-				glob := c.module.NewGlobal(name.Var(v.Name[0]), globType)
-				glob.Init = constant.NewZeroInitializer(globType)
+		// Package level variables
+		if c.contextBlock == nil {
+			globType := treType.LLVM()
+			glob := c.module.NewGlobal(name.Var(v.Name[0]), globType)
+			glob.Init = constant.NewZeroInitializer(globType)
 
-				c.currentPackage.DefinePkgVar(v.Name[0], value.Value{
-					Value:      glob,
-					Type:       treType,
-					IsVariable: true,
-				})
+			c.currentPackage.DefinePkgVar(v.Name[0], value.Value{
+				Value:      glob,
+				Type:       treType,
+				IsVariable: true,
+			})
 
-				val = glob
-				block = c.initGlobalsFunc.Blocks[0]
-			} else {
-				alloc := c.contextBlock.NewAlloca(treType.LLVM())
-				alloc.SetName(name.Var(v.Name[0]))
+			val = glob
+			block = c.initGlobalsFunc.Blocks[0]
+		} else {
+			alloc := c.contextBlock.NewAlloca(treType.LLVM())
+			alloc.SetName(name.Var(v.Name[0]))
 
-				c.setVar(v.Name[0], value.Value{
-					Value:      alloc,
-					Type:       treType,
-					IsVariable: true,
-				})
+			c.setVar(v.Name[0], value.Value{
+				Value:      alloc,
+				Type:       treType,
+				IsVariable: true,
+			})
 
-				val = alloc
-				block = c.contextBlock
-			}
-
-			// Set to zero values
-			// TODO: Make slices less special
-			if sliceType, ok := treType.(*types.Slice); ok {
-				sliceType.SliceZero(block, c.externalFuncs.Malloc.Value.(llvmValue.Named), 2, val)
-			} else {
-				treType.Zero(block, val)
-			}
-
-			return
+			val = alloc
+			block = c.contextBlock
 		}
+
+		// Set to zero values
+		// TODO: Make slices less special
+		if sliceType, ok := treType.(*types.Slice); ok {
+			sliceType.SliceZero(block, c.externalFuncs.Malloc.Value.(llvmValue.Named), 2, val)
+		} else {
+			treType.Zero(block, val)
+		}
+
+		return
 	}
 
 	for valIndex, valNode := range v.Val {

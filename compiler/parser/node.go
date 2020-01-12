@@ -235,10 +235,21 @@ type AllocNode struct {
 
 	Name []string
 	Val  []Node
+
+	Type TypeNode // Is set when allocating on the format "var ident int" and "var ident, ident int = expr, expr"
 }
 
 func (an AllocNode) String() string {
-	return fmt.Sprintf("alloc(%s) = %v (escapes: %v)", an.Name, an.Val, an.Escapes)
+	return fmt.Sprintf("alloc(%s) = %v (escapes: %v type: %v)", an.Name, an.Val, an.Escapes, an.Type)
+}
+
+type AllocGroup struct {
+	baseNode
+	Allocs []*AllocNode
+}
+
+func (an AllocGroup) String() string {
+	return fmt.Sprintf("alloc(%+v)", an.Allocs)
 }
 
 // AssignNode assign Val to Target (or Name)
