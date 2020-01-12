@@ -218,7 +218,7 @@ func Lex(inputFullSource string) []Item {
 		}
 	}
 
-	res = append(res, Item{Type: EOF})
+	res = append(res, Item{Type: EOL}, Item{Type: EOF})
 
 	return res
 }

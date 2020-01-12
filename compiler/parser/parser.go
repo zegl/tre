@@ -530,22 +530,26 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 		if current.Val == "var" {
 			p.i++
 
-			name := p.lookAhead(0)
-			if name.Type != lexer.IDENTIFIER {
-				panic("expected IDENTIFIER after var")
+			isGroup := p.lookAhead(0)
+			if isGroup.Val == "(" {
+				p.i++
+
+				var allocs []*AllocNode
+				for {
+					nextToken := p.lookAhead(0)
+					if nextToken.Val == ")" {
+						break
+					}
+					if nextToken.Type == lexer.EOL {
+						p.i++
+						continue
+					}
+					allocs = append(allocs, p.parseVarDecl())
+				}
+				return &AllocGroup{Allocs: allocs}
 			}
 
-			p.i++
-
-			tp, err := p.parseOneType()
-			if err != nil {
-				panic(err)
-			}
-
-			return &AllocNode{
-				Name: []string{name.Val},
-				Val:  []Node{tp},
-			}
+			return p.parseVarDecl()
 		}
 
 		if current.Val == "package" {
@@ -606,6 +610,65 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 	p.printInput()
 	log.Panicf("unable to handle default: %d - %+v", p.i, current)
 	panic("")
+}
+
+func (p *parser) parseVarDecl() *AllocNode {
+	allocNode := &AllocNode{Name: p.identifierList()}
+
+	isEq := p.lookAhead(0)
+	if isEq.Type == lexer.OPERATOR && isEq.Val == "=" {
+		p.i++
+		allocNode.Val = p.expressionList()
+		return allocNode
+	} else {
+		tp, err := p.parseOneType()
+		if err != nil {
+			panic(err)
+		}
+		allocNode.Type = tp
+		p.i++
+	}
+
+	isEq = p.lookAhead(0)
+	if isEq.Type == lexer.OPERATOR && isEq.Val == "=" {
+		p.i++
+		allocNode.Val = p.expressionList()
+	}
+
+	return allocNode
+}
+
+func (p *parser) identifierList() (res []string) {
+	for {
+		n := p.lookAhead(0)
+		p.expect(n, lexer.Item{Type: lexer.IDENTIFIER})
+		res = append(res, n.Val)
+
+		p.i++
+
+		isComma := p.lookAhead(0)
+		if isComma.Type == lexer.OPERATOR && isComma.Val == "," {
+			p.i++
+			continue
+		}
+
+		return
+	}
+}
+
+func (p *parser) expressionList() (res []Node) {
+	for {
+		res = append(res, p.parseOne(true))
+		p.i++
+
+		isComma := p.lookAhead(0)
+		if isComma.Type == lexer.OPERATOR && isComma.Val == "," {
+			p.i++
+			continue
+		}
+
+		return
+	}
 }
 
 func (p *parser) aheadParse(input Node) Node {

@@ -219,6 +219,10 @@ func (c *Compiler) compile(instructions []parser.Node) {
 			c.compileReturnNode(v)
 		case *parser.AllocNode:
 			c.compileAllocNode(v)
+		case *parser.AllocGroup:
+			for _, a := range v.Allocs {
+				c.compileAllocNode(a)
+			}
 		case *parser.AssignNode:
 			c.compileAssignNode(v)
 		case *parser.ForNode:

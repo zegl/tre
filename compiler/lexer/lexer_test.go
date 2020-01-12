@@ -13,7 +13,8 @@ func TestLexerSimpleAdd(t *testing.T) {
 		{Type: IDENTIFIER, Val: "aa", Line: 1},
 		{Type: OPERATOR, Val: "+", Line: 1},
 		{Type: IDENTIFIER, Val: "b", Line: 1},
-		{Type: EOF, Val: ""},
+		{Type: EOL},
+		{Type: EOF},
 	}
 
 	assert.Equal(t, expected, r)
@@ -33,7 +34,8 @@ func TestLexerSimpleAddWithNewlines(t *testing.T) {
 		{Type: OPERATOR, Val: "+", Line: 2},
 		{Type: IDENTIFIER, Val: "b", Line: 2},
 
-		{Type: EOF, Val: ""},
+		{Type: EOL},
+		{Type: EOF},
 	}
 
 	assert.Equal(t, expected, r)
@@ -46,7 +48,9 @@ func TestLexerSimpleAddNumber(t *testing.T) {
 		{Type: IDENTIFIER, Val: "aa", Line: 1},
 		{Type: OPERATOR, Val: "+", Line: 1},
 		{Type: NUMBER, Val: "14", Line: 1},
-		{Type: EOF, Val: ""},
+
+		{Type: EOL},
+		{Type: EOF},
 	}
 
 	assert.Equal(t, expected, r)
@@ -60,7 +64,9 @@ func TestLexerSimpleCall(t *testing.T) {
 		{Type: OPERATOR, Val: "(", Line: 1},
 		{Type: IDENTIFIER, Val: "bar", Line: 1},
 		{Type: OPERATOR, Val: ")", Line: 1},
-		{Type: EOF, Val: ""},
+
+		{Type: EOL},
+		{Type: EOF},
 	}
 
 	assert.Equal(t, expected, r)
@@ -74,7 +80,9 @@ func TestLexerSimpleCallWithString(t *testing.T) {
 		{Type: OPERATOR, Val: "(", Line: 1},
 		{Type: STRING, Val: "bar", Line: 1},
 		{Type: OPERATOR, Val: ")", Line: 1},
-		{Type: EOF, Val: ""},
+
+		{Type: EOL},
+		{Type: EOF},
 	}
 
 	assert.Equal(t, expected, r)
@@ -85,7 +93,8 @@ func TestString(t *testing.T) {
 
 	expected := []Item{
 		{Type: STRING, Val: "bar", Line: 1},
-		{Type: EOF, Val: ""},
+		{Type: EOL},
+		{Type: EOF},
 	}
 
 	assert.Equal(t, expected, r)
@@ -96,7 +105,8 @@ func TestEscapedString(t *testing.T) {
 
 	expected := []Item{
 		{Type: STRING, Val: "bar\"", Line: 1},
-		{Type: EOF, Val: ""},
+		{Type: EOL},
+		{Type: EOF},
 	}
 
 	assert.Equal(t, expected, r)
@@ -112,7 +122,8 @@ func TestLexerSimpleCallWithTwoStrings(t *testing.T) {
 		{Type: OPERATOR, Val: ",", Line: 1},
 		{Type: STRING, Val: "baz", Line: 1},
 		{Type: OPERATOR, Val: ")", Line: 1},
-		{Type: EOF, Val: ""},
+		{Type: EOL},
+		{Type: EOF},
 	}
 
 	assert.Equal(t, expected, r)
@@ -128,7 +139,8 @@ func TestLexerSimpleCallWithStringNum(t *testing.T) {
 		{Type: OPERATOR, Val: ",", Line: 1},
 		{Type: NUMBER, Val: "123", Line: 1},
 		{Type: OPERATOR, Val: ")", Line: 1},
-		{Type: EOF, Val: ""},
+		{Type: EOL},
+		{Type: EOF},
 	}
 
 	assert.Equal(t, expected, r)
