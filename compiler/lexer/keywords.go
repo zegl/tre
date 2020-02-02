@@ -8,6 +8,7 @@ var keywords = map[string]struct{}{
 	"type":        {},
 	"struct":      {},
 	"var":         {},
+	"const":       {},
 	"package":     {},
 	"for":         {},
 	"break":       {},
