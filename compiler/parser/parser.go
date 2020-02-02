@@ -618,10 +618,11 @@ func (p *parser) parseVarDecl(isConst bool) *AllocNode {
 	allocNode := &AllocNode{Name: p.identifierList(), IsConst: isConst}
 
 	isEq := p.lookAhead(0)
-	if isEq.Type != lexer.OPERATOR && isEq.Val != "=" {
+	if isEq.Type != lexer.OPERATOR || isEq.Val != "=" {
 		if isConst {
 			panic("unexpected type in const declaration")
 		}
+
 		tp, err := p.parseOneType()
 		if err != nil {
 			panic(err)
