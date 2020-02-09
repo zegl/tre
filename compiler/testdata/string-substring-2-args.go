@@ -28,4 +28,10 @@ func main() {
 	start := 1
 	end := 3
 	external.Printf("%s\n", mystr[start:end]) // el
+
+	external.Printf("%s\n", mystr[1:]) // ello
+	external.Printf("%s\n", mystr[3:]) // lo
+
+	external.Printf("%d\n", len(mystr[1:])) // 4
+	external.Printf("%d\n", len(mystr[3:])) // 2
 }

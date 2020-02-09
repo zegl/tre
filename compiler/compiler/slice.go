@@ -62,7 +62,7 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 
 		length = safeBlock.NewSub(endVar, startVar)
 	} else {
-		length = constant.NewInt(llvmTypes.I64, 1)
+		length = safeBlock.NewSub(originalLength, startVar)
 	}
 
 	// Check end is in bounds in this block
