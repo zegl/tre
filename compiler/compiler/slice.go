@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/enum"
@@ -31,27 +32,47 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 	}
 
 	start := c.compileValue(v.Start)
+	startVar := start.Value
+	if start.IsVariable {
+		startVar = c.contextBlock.NewLoad(pointer.ElemType(startVar), startVar)
+	}
 
 	outsideOfLengthBr := c.contextBlock.Parent.NewBlock(name.Block())
-	c.panic(outsideOfLengthBr, "Substring start larger than len")
+	c.panic(outsideOfLengthBr, "substring out of bounds")
 	outsideOfLengthBr.NewUnreachable()
 
+	// Block jumped to after the bounds checks
 	safeBlock := c.contextBlock.Parent.NewBlock(name.Block())
 
 	// Make sure that the offset is within the string length
-	cmp := c.contextBlock.NewICmp(enum.IPredUGE, start.Value, originalLength)
-	c.contextBlock.NewCondBr(cmp, outsideOfLengthBr, safeBlock)
+	startIsInBounds := c.contextBlock.NewICmp(enum.IPredSLE, startVar, originalLength)
 
-	c.contextBlock = safeBlock
-
-	offset := safeBlock.NewGetElementPtr(pointer.ElemType(srcVal), srcVal, start.Value)
+	var endIsInBounds llvmValue.Value
+	endIsInBounds = constant.NewInt(llvmTypes.I1, 1)
 
 	var length llvmValue.Value
 	if v.HasEnd {
-		length = c.compileValue(v.End).Value
+		end := c.compileValue(v.End)
+		endVar := end.Value
+		if end.IsVariable {
+			endVar = c.contextBlock.NewLoad(pointer.ElemType(endVar), endVar)
+		}
+
+		endIsInBounds = c.contextBlock.NewICmp(enum.IPredSLE, endVar, originalLength)
+
+		length = safeBlock.NewSub(endVar, startVar)
 	} else {
-		length = constant.NewInt(llvmTypes.I64, 1)
+		length = safeBlock.NewSub(originalLength, startVar)
 	}
+
+	// Check end is in bounds in this block
+	checkEndIsInBoundsBlock := c.contextBlock.Parent.NewBlock(name.Block())
+	c.contextBlock.NewCondBr(startIsInBounds, checkEndIsInBoundsBlock, outsideOfLengthBr)
+	checkEndIsInBoundsBlock.NewCondBr(endIsInBounds, safeBlock, outsideOfLengthBr)
+
+	c.contextBlock = safeBlock
+
+	offset := safeBlock.NewGetElementPtr(pointer.ElemType(srcVal), srcVal, startVar)
 
 	dst := safeBlock.NewCall(c.externalFuncs.Strndup.Value.(llvmValue.Named), offset, length)
 
@@ -65,7 +86,7 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 	// Save length of the string
 	lenItem := safeBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
 	lenItem.SetName(name.Var("len"))
-	safeBlock.NewStore(constant.NewInt(llvmTypes.I64, 100), lenItem) // TODO
+	safeBlock.NewStore(length, lenItem) // TODO
 
 	// Save i8* version of string
 	strItem := safeBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))

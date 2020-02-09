@@ -803,13 +803,23 @@ func (p *parser) aheadParseWithOptions(input Node, withArithAhead, withIdentifie
 
 			checkIfColon := p.lookAhead(1)
 			if checkIfColon.Type == lexer.OPERATOR && checkIfColon.Val == ":" {
-				p.i += 2
-				res = &SliceArrayNode{
-					Val:    input,
-					Start:  index,
-					HasEnd: true,
-					End:    p.parseOne(true),
+				checkIfEndSquare := p.lookAhead(2)
+				if checkIfEndSquare.Type == lexer.OPERATOR && checkIfEndSquare.Val == "]" {
+					p.i++
+					res = &SliceArrayNode{
+						Val:   input,
+						Start: index,
+					}
+				} else {
+					p.i += 2
+					res = &SliceArrayNode{
+						Val:    input,
+						Start:  index,
+						HasEnd: true,
+						End:    p.parseOne(true),
+					}
 				}
+
 			} else {
 				res = &LoadArrayElement{
 					Array: input,
