@@ -38,32 +38,41 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 	}
 
 	outsideOfLengthBr := c.contextBlock.Parent.NewBlock(name.Block())
-	c.panic(outsideOfLengthBr, "Substring start larger than len")
+	c.panic(outsideOfLengthBr, "substring out of bounds")
 	outsideOfLengthBr.NewUnreachable()
 
 	// Block jumped to after the bounds checks
 	safeBlock := c.contextBlock.Parent.NewBlock(name.Block())
 
 	// Make sure that the offset is within the string length
-	cmp := c.contextBlock.NewICmp(enum.IPredUGE, startVar, originalLength)
-	c.contextBlock.NewCondBr(cmp, outsideOfLengthBr, safeBlock)
+	startIsInBounds := c.contextBlock.NewICmp(enum.IPredSLE, startVar, originalLength)
 
-	c.contextBlock = safeBlock
-
-	offset := safeBlock.NewGetElementPtr(pointer.ElemType(srcVal), srcVal, startVar)
+	var endIsInBounds llvmValue.Value
+	endIsInBounds = constant.NewInt(llvmTypes.I1, 1)
 
 	var length llvmValue.Value
 	if v.HasEnd {
 		end := c.compileValue(v.End)
 		endVar := end.Value
 		if end.IsVariable {
-			endVar = safeBlock.NewLoad(pointer.ElemType(endVar), endVar)
+			endVar = c.contextBlock.NewLoad(pointer.ElemType(endVar), endVar)
 		}
+
+		endIsInBounds = c.contextBlock.NewICmp(enum.IPredSLE, endVar, originalLength)
 
 		length = safeBlock.NewSub(endVar, startVar)
 	} else {
 		length = constant.NewInt(llvmTypes.I64, 1)
 	}
+
+	// Check end is in bounds in this block
+	checkEndIsInBoundsBlock := c.contextBlock.Parent.NewBlock(name.Block())
+	c.contextBlock.NewCondBr(startIsInBounds, checkEndIsInBoundsBlock, outsideOfLengthBr)
+	checkEndIsInBoundsBlock.NewCondBr(endIsInBounds, safeBlock, outsideOfLengthBr)
+
+	c.contextBlock = safeBlock
+
+	offset := safeBlock.NewGetElementPtr(pointer.ElemType(srcVal), srcVal, startVar)
 
 	dst := safeBlock.NewCall(c.externalFuncs.Strndup.Value.(llvmValue.Named), offset, length)
 
