@@ -32,25 +32,35 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 	}
 
 	start := c.compileValue(v.Start)
+	startVar := start.Value
+	if start.IsVariable {
+		startVar = c.contextBlock.NewLoad(pointer.ElemType(startVar), startVar)
+	}
 
 	outsideOfLengthBr := c.contextBlock.Parent.NewBlock(name.Block())
 	c.panic(outsideOfLengthBr, "Substring start larger than len")
 	outsideOfLengthBr.NewUnreachable()
 
+	// Block jumped to after the bounds checks
 	safeBlock := c.contextBlock.Parent.NewBlock(name.Block())
 
 	// Make sure that the offset is within the string length
-	cmp := c.contextBlock.NewICmp(enum.IPredUGE, start.Value, originalLength)
+	cmp := c.contextBlock.NewICmp(enum.IPredUGE, startVar, originalLength)
 	c.contextBlock.NewCondBr(cmp, outsideOfLengthBr, safeBlock)
 
 	c.contextBlock = safeBlock
 
-	offset := safeBlock.NewGetElementPtr(pointer.ElemType(srcVal), srcVal, start.Value)
+	offset := safeBlock.NewGetElementPtr(pointer.ElemType(srcVal), srcVal, startVar)
 
 	var length llvmValue.Value
 	if v.HasEnd {
-		end := c.compileValue(v.End).Value
-		length = c.contextBlock.NewSub(end, start.Value)
+		end := c.compileValue(v.End)
+		endVar := end.Value
+		if end.IsVariable {
+			endVar = safeBlock.NewLoad(pointer.ElemType(endVar), endVar)
+		}
+
+		length = safeBlock.NewSub(endVar, startVar)
 	} else {
 		length = constant.NewInt(llvmTypes.I64, 1)
 	}

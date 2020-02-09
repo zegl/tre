@@ -24,4 +24,8 @@ func main() {
 	external.Printf("%d\n", len(mystr[0:4])) // 4
 	external.Printf("%d\n", len(mystr[2:2])) // 0
 	external.Printf("%d\n", len(mystr[2:5])) // 3
+
+	start := 1
+	end := 3
+	external.Printf("%s\n", mystr[start:end]) // el
 }
