@@ -18,24 +18,18 @@ import (
 )
 
 func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) value.Value {
-	srcVal := src.Value
 
 	var originalLength *ir.InstExtractValue
 
 	// Get backing array from string type
-	if src.IsVariable {
-		srcVal = c.contextBlock.NewLoad(pointer.ElemType(srcVal), srcVal)
-	}
+	srcVal := internal.LoadIfVariable(c.contextBlock, src)
 	if src.Type.Name() == "string" {
 		originalLength = c.contextBlock.NewExtractValue(srcVal, 0)
 		srcVal = c.contextBlock.NewExtractValue(srcVal, 1)
 	}
 
 	start := c.compileValue(v.Start)
-	startVar := start.Value
-	if start.IsVariable {
-		startVar = c.contextBlock.NewLoad(pointer.ElemType(startVar), startVar)
-	}
+	startVar := internal.LoadIfVariable(c.contextBlock, start)
 
 	outsideOfLengthBr := c.contextBlock.Parent.NewBlock(name.Block())
 	c.panic(outsideOfLengthBr, "substring out of bounds")
@@ -53,11 +47,7 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 	var length llvmValue.Value
 	if v.HasEnd {
 		end := c.compileValue(v.End)
-		endVar := end.Value
-		if end.IsVariable {
-			endVar = c.contextBlock.NewLoad(pointer.ElemType(endVar), endVar)
-		}
-
+		endVar := internal.LoadIfVariable(c.contextBlock, end)
 		endIsInBounds = c.contextBlock.NewICmp(enum.IPredSLE, endVar, originalLength)
 
 		length = safeBlock.NewSub(endVar, startVar)
@@ -332,11 +322,7 @@ func (c *Compiler) generateAppendToSliceBlock(appendToSliceBlock *ir.Block, slic
 
 	// Convert type if necessary
 	addItem = c.valueToInterfaceValue(addItem, inputSlice.Type)
-
-	addItemVal := addItem.Value
-	if addItem.IsVariable {
-		addItemVal = appendToSliceBlock.NewLoad(pointer.ElemType(addItemVal), addItemVal)
-	}
+	addItemVal := internal.LoadIfVariable(appendToSliceBlock, addItem)
 
 	// Pop assigning type stack
 	c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
@@ -392,10 +378,7 @@ func (c *Compiler) compileInitializeSliceWithValues(itemType types.Type, values 
 		storePtr.SetName(name.Var(fmt.Sprintf("storeptr-%d", i)))
 
 		val = c.valueToInterfaceValue(val, itemType)
-		v := val.Value
-		if val.IsVariable {
-			v = c.contextBlock.NewLoad(pointer.ElemType(v), v)
-		}
+		v := internal.LoadIfVariable(c.contextBlock, val)
 		c.contextBlock.NewStore(v, storePtr)
 	}
 

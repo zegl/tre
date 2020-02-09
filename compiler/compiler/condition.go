@@ -3,6 +3,7 @@ package compiler
 import (
 	"fmt"
 
+	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 
@@ -47,16 +48,8 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 		left = value.UntypedConstAs(left, right)
 	}
 
-	leftLLVM := left.Value
-	rightLLVM := right.Value
-
-	if left.IsVariable {
-		leftLLVM = c.contextBlock.NewLoad(pointer.ElemType(leftLLVM), leftLLVM)
-	}
-
-	if right.IsVariable {
-		rightLLVM = c.contextBlock.NewLoad(pointer.ElemType(rightLLVM), rightLLVM)
-	}
+	leftLLVM := internal.LoadIfVariable(c.contextBlock, left)
+	rightLLVM := internal.LoadIfVariable(c.contextBlock, right)
 
 	if !leftLLVM.Type().Equal(rightLLVM.Type()) && !rightIsUntyped && !leftIsUntyped {
 		panic(fmt.Sprintf("Different types in operation: %T and %T (%+v and %+v)", left.Type, right.Type, leftLLVM.Type(), rightLLVM.Type()))
@@ -148,11 +141,7 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 
 func (c *Compiler) compileSubNode(v *parser.SubNode) value.Value {
 	right := c.compileValue(v.Item)
-	rVal := right.Value
-
-	if right.IsVariable {
-		rVal = c.contextBlock.NewLoad(pointer.ElemType(rVal), rVal)
-	}
+	rVal := internal.LoadIfVariable(c.contextBlock, right)
 
 	res := c.contextBlock.NewSub(
 		constant.NewInt(rVal.Type().(*llvmTypes.IntType), 0),

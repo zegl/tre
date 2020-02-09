@@ -7,6 +7,7 @@ import (
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
 
+	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
@@ -20,11 +21,7 @@ func (c *Compiler) lenFuncCall(v *parser.CallNode) value.Value {
 		if !ok {
 			panic("could not find len_string func")
 		}
-
-		val := arg.Value
-		if arg.IsVariable {
-			val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
-		}
+		val := internal.LoadIfVariable(c.contextBlock, arg)
 
 		return value.Value{
 			Value:      c.contextBlock.NewCall(f.Value.(llvmValue.Named), val),

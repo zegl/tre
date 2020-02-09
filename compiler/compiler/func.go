@@ -332,11 +332,7 @@ func (c *Compiler) compileReturnNode(v *parser.ReturnNode) {
 			// TODO: Type cast if necessary
 			// compVal = c.valueToInterfaceValue(compVal, c.contextFunc.ReturnType)
 
-			retVal := compVal.Value
-
-			if compVal.IsVariable {
-				retVal = c.contextBlock.NewLoad(pointer.ElemType(retVal), retVal)
-			}
+			retVal := internal.LoadIfVariable(c.contextBlock, compVal)
 
 			// Assign to ptr
 			retValPtr := c.contextFuncRetVals[len(c.contextFuncRetVals)-1][i]
@@ -352,10 +348,7 @@ func (c *Compiler) compileReturnNode(v *parser.ReturnNode) {
 	if len(v.Vals) == 0 {
 		retVals := c.contextFuncRetVals[len(c.contextFuncRetVals)-1]
 		if len(retVals) == 1 {
-			val := retVals[0].Value
-			if retVals[0].IsVariable {
-				val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
-			}
+			val := internal.LoadIfVariable(c.contextBlock, retVals[0])
 			c.contextBlock.NewRet(val)
 			return
 		}
@@ -475,11 +468,7 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 			v = c.valueToInterfaceValue(v, fnType.ArgumentTypes[i])
 		}
 
-		val := v.Value
-
-		if v.IsVariable {
-			val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
-		}
+		val := internal.LoadIfVariable(c.contextBlock, v)
 
 		// Convert strings and arrays to i8* when calling external functions
 		if fnType.IsExternal {
