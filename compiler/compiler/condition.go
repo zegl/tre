@@ -35,9 +35,19 @@ func getConditionLLVMpred(operator parser.Operator) enum.IPred {
 
 func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 	left := c.compileValue(v.Left)
-	leftLLVM := left.Value
-
 	right := c.compileValue(v.Right)
+
+	_, rightIsUntyped := right.Type.(*types.UntypedConstantNumber)
+	_, leftIsUntyped := left.Type.(*types.UntypedConstantNumber)
+
+	if rightIsUntyped && !leftIsUntyped {
+		right = value.UntypedConstAs(right, left)
+	}
+	if leftIsUntyped && !rightIsUntyped {
+		left = value.UntypedConstAs(left, right)
+	}
+
+	leftLLVM := left.Value
 	rightLLVM := right.Value
 
 	if left.IsVariable {
@@ -48,7 +58,7 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 		rightLLVM = c.contextBlock.NewLoad(pointer.ElemType(rightLLVM), rightLLVM)
 	}
 
-	if !leftLLVM.Type().Equal(rightLLVM.Type()) {
+	if !leftLLVM.Type().Equal(rightLLVM.Type()) && !rightIsUntyped && !leftIsUntyped {
 		panic(fmt.Sprintf("Different types in operation: %T and %T (%+v and %+v)", left.Type, right.Type, leftLLVM.Type(), rightLLVM.Type()))
 	}
 

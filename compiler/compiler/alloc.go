@@ -20,6 +20,11 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 		c.contextAlloc = c.contextAlloc[0 : len(c.contextAlloc)-1]
 	}()
 
+	if v.IsConst {
+		c.compileAllocConstNode(v)
+		return
+	}
+
 	// Allocate from type
 	if len(v.Val) == 0 && v.Type != nil {
 		treType := c.parserTypeToType(v.Type)
@@ -125,6 +130,16 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 	return
 }
 
+func (c *Compiler) compileAllocConstNode(v *parser.AllocNode) {
+	for i, varName := range v.Name {
+		cnst := v.Val[i].(*parser.ConstantNode)
+		c.setVar(varName, value.Value{
+			Type:  &types.UntypedConstantNumber{},
+			Value: constant.NewInt(i64.LLVM().(*irTypes.IntType), cnst.Value),
+		})
+	}
+}
+
 func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
 	// Allocate from type
 	if typeNode, ok := v.Val[0].(parser.TypeNode); ok {
@@ -143,6 +158,9 @@ func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
 	// Skip temporary variables if we're assigning to one single var
 	if len(v.Target) == 1 {
 		dst := c.compileValue(v.Target[0])
+		if !dst.IsVariable {
+			compilePanic("Can only assign to variable")
+		}
 		s := c.compileSingleAssign(dst.Type, dst, v.Val[0])
 		c.contextBlock.NewStore(s, dst.Value)
 		return

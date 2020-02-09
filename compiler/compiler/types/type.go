@@ -2,11 +2,12 @@ package types
 
 import (
 	"fmt"
+	"math/big"
+
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
-	"math/big"
 
 	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
@@ -341,4 +342,16 @@ func (m MultiValue) Name() string {
 
 func (m MultiValue) LLVM() types.Type {
 	panic("MutliValue has no LLVM type")
+}
+
+type UntypedConstantNumber struct {
+	backingType
+}
+
+func (m UntypedConstantNumber) Name() string {
+	return "UntypedConstantNumber"
+}
+
+func (m UntypedConstantNumber) LLVM() types.Type {
+	panic("UntypedConstantNumber has no LLVM type")
 }
