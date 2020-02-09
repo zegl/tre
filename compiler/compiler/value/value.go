@@ -1,6 +1,7 @@
 package value
 
 import (
+	"github.com/llir/llvm/ir/constant"
 	llvmValue "github.com/llir/llvm/ir/value"
 
 	"github.com/zegl/tre/compiler/compiler/types"
@@ -20,4 +21,22 @@ type Value struct {
 	// Type is set to MultiValue when this is case, and will also contain the
 	// type information
 	MultiValues []Value
+}
+
+func UntypedConstAs(val Value, context Value) Value {
+	switch val.Type.(type) {
+	case *types.UntypedConstantNumber:
+		if contextInt, ok := context.Type.(*types.Int); ok {
+			return Value{
+				Type: contextInt,
+				Value: &constant.Int{
+					Typ: contextInt.Type,
+					X:   val.Value.(*constant.Int).X,
+				},
+			}
+		}
+		panic("unexpected type in UntypedConstAs")
+	default:
+		panic("unexpected type in UntypedConstAs")
+	}
 }

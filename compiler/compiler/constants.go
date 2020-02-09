@@ -31,7 +31,7 @@ func (c *Compiler) compileConstantNode(v *parser.ConstantNode) value.Value {
 
 		return value.Value{
 			Value:      constant.NewInt(intType.Type, v.Value),
-			Type:       i64,
+			Type:       intType,
 			IsVariable: false,
 		}
 

@@ -18,6 +18,12 @@ func namedReturnNotUsed(inp int) (res int) {
 	return 500
 }
 
+func multiNamedReturnRef(inp int) (x int, y int) {
+	x = inp * 2
+	y = x + 2
+	return
+}
+
 func main() {
 	// 34 8
 	a, b := multiNamedReturn(17)
@@ -28,4 +34,8 @@ func main() {
 
 	// 500
 	external.Printf("%d\n", namedReturnNotUsed(18))
+
+	// 36 38
+	c, d := multiNamedReturnRef(18)
+	external.Printf("%d %d\n", c, d)
 }

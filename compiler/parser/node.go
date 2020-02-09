@@ -237,6 +237,8 @@ type AllocNode struct {
 	Val  []Node
 
 	Type TypeNode // Is set when allocating on the format "var ident int" and "var ident, ident int = expr, expr"
+
+	IsConst bool // Is true when in a const expression.
 }
 
 func (an AllocNode) String() string {

@@ -186,15 +186,16 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 	}
 
 	// Save all parameters in the block mapping
-	// Return value arguments are ignored
 	for i, param := range llvmParams {
 		var paramName string
 		var dataType types.Type
+		var isVariable bool
 
 		// Named return values
 		if i < argumentReturnValuesCount {
 			paramName = v.ReturnValues[i].Name
 			dataType = treReturnTypes[i]
+			isVariable = true
 		} else {
 			paramName = v.Arguments[i-argumentReturnValuesCount].Name
 			dataType = treParams[i-argumentReturnValuesCount]
@@ -218,7 +219,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		c.setVar(paramName, value.Value{
 			Value:      param,
 			Type:       dataType,
-			IsVariable: false,
+			IsVariable: isVariable,
 		})
 	}
 

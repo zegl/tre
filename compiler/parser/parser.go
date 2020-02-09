@@ -527,8 +527,10 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 		}
 
 		// New instance of type
-		if current.Val == "var" {
+		if current.Val == "var" || current.Val == "const" {
 			p.i++
+
+			isConst := current.Val == "const"
 
 			isGroup := p.lookAhead(0)
 			if isGroup.Val == "(" {
@@ -544,12 +546,12 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 						p.i++
 						continue
 					}
-					allocs = append(allocs, p.parseVarDecl())
+					allocs = append(allocs, p.parseVarDecl(isConst))
 				}
 				return &AllocGroup{Allocs: allocs}
 			}
 
-			return p.parseVarDecl()
+			return p.parseVarDecl(isConst)
 		}
 
 		if current.Val == "package" {
@@ -612,15 +614,15 @@ func (p *parser) parseOneWithOptions(withAheadParse, withArithAhead, withIdentif
 	panic("")
 }
 
-func (p *parser) parseVarDecl() *AllocNode {
-	allocNode := &AllocNode{Name: p.identifierList()}
+func (p *parser) parseVarDecl(isConst bool) *AllocNode {
+	allocNode := &AllocNode{Name: p.identifierList(), IsConst: isConst}
 
 	isEq := p.lookAhead(0)
-	if isEq.Type == lexer.OPERATOR && isEq.Val == "=" {
-		p.i++
-		allocNode.Val = p.expressionList()
-		return allocNode
-	} else {
+	if isEq.Type != lexer.OPERATOR || isEq.Val != "=" {
+		if isConst {
+			panic("unexpected type in const declaration")
+		}
+
 		tp, err := p.parseOneType()
 		if err != nil {
 			panic(err)
