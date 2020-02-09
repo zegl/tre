@@ -4,7 +4,7 @@ import (
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 
-	"github.com/zegl/tre/compiler/compiler/internal/pointer"
+	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/parser"
 )
@@ -53,11 +53,7 @@ func (c *Compiler) compileSwitchNode(v *parser.SwitchNode) {
 		}
 	}
 
-	val := switchItem.Value
-	if switchItem.IsVariable {
-		val = c.contextBlock.NewLoad(pointer.ElemType(val), val)
-	}
-
+	val := internal.LoadIfVariable(c.contextBlock, switchItem)
 	c.contextBlock.Term = c.contextBlock.NewSwitch(val, defaultCase, cases...)
 
 	c.contextBlock = afterSwitch

@@ -7,6 +7,7 @@ import (
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
 
+	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
@@ -63,10 +64,7 @@ func (c *Compiler) compileLoadArrayElement(v *parser.LoadArrayElement) value.Val
 	arrayValue := arr.Value
 
 	index := c.compileValue(v.Pos)
-	indexVal := index.Value
-	if index.IsVariable {
-		indexVal = c.contextBlock.NewLoad(pointer.ElemType(indexVal), indexVal)
-	}
+	indexVal := internal.LoadIfVariable(c.contextBlock, index)
 
 	var runtimeLength llvmValue.Value
 	var compileTimeLength uint64

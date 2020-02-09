@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+
 	"github.com/llir/llvm/ir"
 
 	"github.com/zegl/tre/compiler/compiler/internal/pointer"
@@ -151,10 +152,7 @@ func (c *Compiler) compileTypeCastNode(v *parser.TypeCastNode) value.Value {
 		panic("TypeCast target must be int type")
 	}
 
-	llvmVal := val.Value
-	if val.IsVariable {
-		llvmVal = c.contextBlock.NewLoad(pointer.ElemType(llvmVal), llvmVal)
-	}
+	llvmVal := internal.LoadIfVariable(c.contextBlock, val)
 
 	// Same size, nothing to do here
 	if current.BitSize == target.BitSize {

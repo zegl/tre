@@ -6,6 +6,7 @@ import (
 	irTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
 
+	"github.com/zegl/tre/compiler/compiler/internal"
 	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
 	"github.com/zegl/tre/compiler/compiler/types"
@@ -204,12 +205,7 @@ func (c *Compiler) compileSingleAssign(temporaryDst types.Type, realDst value.Va
 
 	// Cast to interface if needed
 	comVal = c.valueToInterfaceValue(comVal, temporaryDst)
-
-	llvmV := comVal.Value
-
-	if comVal.IsVariable {
-		llvmV = c.contextBlock.NewLoad(pointer.ElemType(llvmV), llvmV)
-	}
+	llvmV := internal.LoadIfVariable(c.contextBlock, comVal)
 
 	// Pop assigng type stack
 	c.contextAssignDest = c.contextAssignDest[0 : len(c.contextAssignDest)-1]
