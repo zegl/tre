@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/enum"
@@ -48,7 +49,8 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 
 	var length llvmValue.Value
 	if v.HasEnd {
-		length = c.compileValue(v.End).Value
+		end := c.compileValue(v.End).Value
+		length = c.contextBlock.NewSub(end, start.Value)
 	} else {
 		length = constant.NewInt(llvmTypes.I64, 1)
 	}
@@ -65,7 +67,7 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 	// Save length of the string
 	lenItem := safeBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 0))
 	lenItem.SetName(name.Var("len"))
-	safeBlock.NewStore(constant.NewInt(llvmTypes.I64, 100), lenItem) // TODO
+	safeBlock.NewStore(length, lenItem) // TODO
 
 	// Save i8* version of string
 	strItem := safeBlock.NewGetElementPtr(pointer.ElemType(alloc), alloc, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, 1))
