@@ -25,7 +25,7 @@ type parser struct {
 	packages map[string]struct{}
 }
 
-func Parse(input []lexer.Item, debug bool) FileNode {
+func Parse(input []lexer.Item, debug bool) *FileNode {
 	p := &parser{
 		i:        0,
 		input:    input,
@@ -45,7 +45,7 @@ func Parse(input []lexer.Item, debug bool) FileNode {
 		},
 	}
 
-	return FileNode{
+	return &FileNode{
 		Instructions: p.parseUntil(lexer.Item{Type: lexer.EOF}),
 	}
 }
@@ -620,7 +620,7 @@ func (p *parser) parseVarDecl(isConst bool) *AllocNode {
 	isEq := p.lookAhead(0)
 	if isEq.Type != lexer.OPERATOR || isEq.Val != "=" {
 		if isConst {
-			panic("unexpected type in const declaration")
+			// panic("unexpected type in const declaration")
 		}
 
 		tp, err := p.parseOneType()

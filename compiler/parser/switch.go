@@ -9,11 +9,12 @@ import (
 type SwitchNode struct {
 	baseNode
 	Item        Node
-	Cases       []SwitchCaseNode
+	Cases       []*SwitchCaseNode
 	DefaultBody []Node // can be null
 }
 
 type SwitchCaseNode struct {
+	baseNode
 	Conditions  []Node
 	Body        []Node
 	Fallthrough bool
@@ -23,12 +24,16 @@ func (s SwitchNode) String() string {
 	return fmt.Sprintf("switch %s", s.Item)
 }
 
+func (s SwitchCaseNode) String() string {
+	return fmt.Sprintf("case %+v", s.Conditions)
+}
+
 func (p *parser) parseSwitch() *SwitchNode {
 	p.i++
 
 	s := &SwitchNode{
 		Item:  p.parseOne(true),
-		Cases: make([]SwitchCaseNode, 0),
+		Cases: make([]*SwitchCaseNode, 0),
 	}
 
 	p.i++
@@ -85,7 +90,7 @@ func (p *parser) parseSwitch() *SwitchNode {
 				p.i++
 			}
 
-			s.Cases = append(s.Cases, switchCase)
+			s.Cases = append(s.Cases, &switchCase)
 
 			// reached end of switch
 			if reached.Type == lexer.OPERATOR && reached.Val == "}" {

@@ -12,6 +12,7 @@ import (
 	"github.com/zegl/tre/compiler/compiler"
 	"github.com/zegl/tre/compiler/lexer"
 	"github.com/zegl/tre/compiler/parser"
+	"github.com/zegl/tre/compiler/passes/const_iota"
 	"github.com/zegl/tre/compiler/passes/escape"
 )
 
@@ -50,7 +51,7 @@ func Build(path, goroot, outputBinaryPath string, setDebug bool, optimize bool) 
 
 	clangArgs := []string{
 		"-Wno-override-module", // Disable override target triple warnings
-		tmpDir+"/main.ll",      // Path to LLVM IR
+		tmpDir + "/main.ll",    // Path to LLVM IR
 		"-o", outputBinaryPath, // Output path
 	}
 
@@ -177,12 +178,13 @@ func parseFile(path string) parser.FileNode {
 	parsed := parser.Parse(lexed, debug)
 
 	// List of passes to run on the AST
-	passes := []func(parser.FileNode) parser.FileNode{
+	passes := []func(*parser.FileNode) *parser.FileNode{
+		const_iota.Iota,
 		escape.Escape,
 	}
 	for _, pass := range passes {
 		parsed = pass(parsed)
 	}
 
-	return parsed
+	return *parsed
 }
