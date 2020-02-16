@@ -1,8 +1,6 @@
 package const_iota
 
 import (
-	"log"
-
 	"github.com/zegl/tre/compiler/parser"
 )
 
@@ -27,20 +25,26 @@ func (i *iotaVisitor) Visit(node parser.Node) (w parser.Visitor) {
 			return
 		}
 
-		if len(a.Val) != 1 {
+		if len(a.Val) == 0 && i.count > 0 {
+			a.Val = []parser.Node{&parser.ConstantNode{
+				Type:  parser.NUMBER,
+				Value: i.count,
+			}}
+
+			i.count++
 			return
 		}
 
-		if n, ok := a.Val[0].(*parser.NameNode); ok {
-			if n.Name == "iota" {
-				log.Println("found iota!", i.count)
+		if len(a.Val) == 1 {
+			if n, ok := a.Val[0].(*parser.NameNode); ok {
+				if n.Name == "iota" {
+					a.Val[0] = &parser.ConstantNode{
+						Type:  parser.NUMBER,
+						Value: i.count,
+					}
 
-				a.Val[0] = &parser.ConstantNode{
-					Type:  parser.NUMBER,
-					Value: i.count,
+					i.count++
 				}
-
-				i.count++
 			}
 		}
 	}
