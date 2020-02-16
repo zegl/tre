@@ -17,6 +17,8 @@ const (
 	a = iota
 	b = iota
 	c = iota
+	d = 19
+	e = iota
 )
 
 `)
@@ -42,6 +44,16 @@ const (
 					&parser.AllocNode{
 						Name:    []string{"c"},
 						Val:     []parser.Node{&parser.ConstantNode{Type: parser.NUMBER, Value: 2}},
+						IsConst: true,
+					},
+					&parser.AllocNode{
+						Name:    []string{"d"},
+						Val:     []parser.Node{&parser.ConstantNode{Type: parser.NUMBER, Value: 19}},
+						IsConst: true,
+					},
+					&parser.AllocNode{
+						Name:    []string{"e"},
+						Val:     []parser.Node{&parser.ConstantNode{Type: parser.NUMBER, Value: 4}},
 						IsConst: true,
 					},
 				},
@@ -86,6 +98,68 @@ const (
 					&parser.AllocNode{
 						Name:    []string{"c"},
 						Val:     []parser.Node{&parser.ConstantNode{Type: parser.NUMBER, Value: 2}},
+						IsConst: true,
+					},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, expected, res)
+}
+
+func TestIotaInOp(t *testing.T) {
+	// Run input code through the lexer. A list of tokens is returned.
+	lexed := lexer.Lex(`
+package main
+
+const (
+	a = iota * 2
+	b = iota * 2
+	c = 5 * iota
+)
+
+`)
+
+	parsed := parser.Parse(lexed, false)
+	res := Iota(parsed)
+
+	expected := &parser.FileNode{
+		Instructions: []parser.Node{
+			&parser.DeclarePackageNode{PackageName: "main"},
+			&parser.AllocGroup{
+				Allocs: []*parser.AllocNode{
+					&parser.AllocNode{
+						Name: []string{"a"},
+						Val: []parser.Node{
+							&parser.OperatorNode{
+								Left:     &parser.ConstantNode{Type: parser.NUMBER, Value: 0},
+								Operator: parser.OP_MUL,
+								Right:    &parser.ConstantNode{Type: parser.NUMBER, Value: 2},
+							},
+						},
+						IsConst: true,
+					},
+					&parser.AllocNode{
+						Name: []string{"b"},
+						Val: []parser.Node{
+							&parser.OperatorNode{
+								Left:     &parser.ConstantNode{Type: parser.NUMBER, Value: 1},
+								Operator: parser.OP_MUL,
+								Right:    &parser.ConstantNode{Type: parser.NUMBER, Value: 2},
+							},
+						},
+						IsConst: true,
+					},
+					&parser.AllocNode{
+						Name: []string{"c"},
+						Val: []parser.Node{
+							&parser.OperatorNode{
+								Left:     &parser.ConstantNode{Type: parser.NUMBER, Value: 5},
+								Operator: parser.OP_MUL,
+								Right:    &parser.ConstantNode{Type: parser.NUMBER, Value: 2},
+							},
+						},
 						IsConst: true,
 					},
 				},
