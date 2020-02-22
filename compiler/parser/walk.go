@@ -1,6 +1,8 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Visitor interface {
 	Visit(node Node) (n Node, w Visitor)
@@ -11,6 +13,10 @@ func Walk(v Visitor, node Node) (r Node) {
 		return node
 	}
 	r = node
+
+	if node == nil {
+		return
+	}
 
 	switch n := node.(type) {
 	case *FileNode:
@@ -104,7 +110,11 @@ func Walk(v Visitor, node Node) (r Node) {
 		n.Item = Walk(v, n.Item)
 	case *ForNode:
 		n.BeforeLoop = Walk(v, n.BeforeLoop)
-		n.Condition = Walk(v, n.Condition).(*OperatorNode)
+		if n.Condition != nil {
+			if cond, ok := Walk(v, n.Condition).(*OperatorNode); ok {
+				n.Condition = cond
+			}
+		}
 		n.AfterIteration = Walk(v, n.AfterIteration)
 		for i, a := range n.Block {
 			n.Block[i] = Walk(v, a)
@@ -132,6 +142,10 @@ func Walk(v Visitor, node Node) (r Node) {
 		}
 		for i, a := range n.Val {
 			n.Val[i] = Walk(v, a)
+		}
+	case *InitializeStructNode:
+		for i, a := range n.Items {
+			n.Items[i] = Walk(v, a)
 		}
 	default:
 		panic(fmt.Sprintf("unexpected type in Walk(): %T", node))
