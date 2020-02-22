@@ -1,8 +1,9 @@
 package parser
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/zegl/tre/compiler/lexer"
 )
@@ -10,7 +11,7 @@ import (
 func TestAllocType(t *testing.T) {
 	lexed := lexer.Lex(`var a int`)
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&AllocNode{
 				Name: []string{"a"},
@@ -25,7 +26,7 @@ func TestAllocType(t *testing.T) {
 func TestAllocTypeWithValue(t *testing.T) {
 	lexed := lexer.Lex(`var a int = 10`)
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&AllocNode{
 				Name: []string{"a"},
@@ -41,7 +42,7 @@ func TestAllocTypeWithValue(t *testing.T) {
 func TestAllocImplicitTypeValue(t *testing.T) {
 	lexed := lexer.Lex(`var a = 10`)
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&AllocNode{
 				Name: []string{"a"},
@@ -56,7 +57,7 @@ func TestAllocImplicitTypeValue(t *testing.T) {
 func TestAllocMultiWithType(t *testing.T) {
 	lexed := lexer.Lex(`var a, b int`)
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&AllocNode{
 				Name: []string{"a", "b"},
@@ -75,7 +76,7 @@ func TestAllocGroup(t *testing.T) {
 	d = 10
 )`)
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&AllocGroup{
 				Allocs: []*AllocNode{
@@ -101,7 +102,7 @@ func TestAllocGroup(t *testing.T) {
 
 func TestConstAlloc(t *testing.T) {
 	lexed := lexer.Lex(`const a = 30`)
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&AllocNode{
 				IsConst: true,
@@ -121,7 +122,7 @@ func TestAllocConstGroup(t *testing.T) {
 	d = 20
 )`)
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&AllocGroup{
 				Allocs: []*AllocNode{

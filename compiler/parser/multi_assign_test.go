@@ -41,7 +41,7 @@ func TestMultiAssignVar(t *testing.T) {
 		{Type: lexer.EOF, Val: "", Line: 0},
 	}
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&DeclarePackageNode{PackageName: "main"},
 			&DefineFuncNode{Name: "main", IsNamed: true,
@@ -84,7 +84,7 @@ func TestMultiAllocVar(t *testing.T) {
 		{Type: lexer.EOF, Val: "", Line: 0},
 	}
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&DeclarePackageNode{PackageName: "main"},
 			&DefineFuncNode{Name: "main", IsNamed: true,
