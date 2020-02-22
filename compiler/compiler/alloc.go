@@ -142,17 +142,6 @@ func (c *Compiler) compileAllocConstNode(v *parser.AllocNode) {
 }
 
 func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
-	// Allocate from type
-	if typeNode, ok := v.Val[0].(parser.TypeNode); ok {
-		if singleTypeNode, ok := typeNode.(*parser.SingleTypeNode); ok {
-			alloc := c.contextBlock.NewAlloca(c.parserTypeToType(singleTypeNode).LLVM())
-			dst := c.compileValue(v.Target[0])
-			c.contextBlock.NewStore(c.contextBlock.NewLoad(pointer.ElemType(alloc), alloc), dst.Value)
-			return
-		}
-		panic("AssignNode from non TypeNode is not allowed")
-	}
-
 	tmpStores := make([]llvmValue.Value, len(v.Target))
 	realTargets := make([]value.Value, len(v.Target))
 
