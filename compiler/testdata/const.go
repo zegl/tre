@@ -33,9 +33,9 @@ func main() {
 	external.Printf("%d\n", b32+a) // 222288832
 	external.Printf("%d\n", a+b32) // 222288832
 
-	external.Printf("%d\n", a1) // 0
-	external.Printf("%d\n", a2) // 1
-	external.Printf("%d\n", a3) // 2
+	external.Printf("%d\n", a1) // 3
+	external.Printf("%d\n", a2) // 4
+	external.Printf("%d\n", a3) // 5
 
 	external.Printf("%d\n", b1) // 0
 	external.Printf("%d\n", b2) // 1
