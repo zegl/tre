@@ -7,6 +7,15 @@ const (
 	c = 12
 
 	big = 100000000
+
+	a1 = iota
+	a2 = iota
+	a3 = iota
+)
+
+const (
+	b1 = iota
+	b2 = iota
 )
 
 func main() {
@@ -23,4 +32,11 @@ func main() {
 	b32 = 222288822
 	external.Printf("%d\n", b32+a) // 222288832
 	external.Printf("%d\n", a+b32) // 222288832
+
+	external.Printf("%d\n", a1) // 3
+	external.Printf("%d\n", a2) // 4
+	external.Printf("%d\n", a3) // 5
+
+	external.Printf("%d\n", b1) // 0
+	external.Printf("%d\n", b2) // 1
 }

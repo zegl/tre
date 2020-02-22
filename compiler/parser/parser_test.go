@@ -17,7 +17,7 @@ func TestCall(t *testing.T) {
 		{Type: lexer.EOF, Val: ""},
 	}
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&CallNode{
 				Function:  &NameNode{Name: "printf"},
@@ -37,7 +37,7 @@ func TestAdd(t *testing.T) {
 		{Type: lexer.EOF, Val: ""},
 	}
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&OperatorNode{
 				Operator: OP_ADD,
@@ -66,7 +66,7 @@ func TestInfixPriority(t *testing.T) {
 		{Type: lexer.EOF, Val: ""},
 	}
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&OperatorNode{
 				Operator: OP_ADD,
@@ -102,7 +102,7 @@ func TestInfixPriority2(t *testing.T) {
 		{Type: lexer.EOF, Val: ""},
 	}
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&OperatorNode{
 				Operator: OP_ADD,
@@ -140,7 +140,7 @@ func TestInfixPriority3(t *testing.T) {
 		{Type: lexer.EOF, Val: ""},
 	}
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&OperatorNode{
 				Operator: OP_ADD,
@@ -190,7 +190,7 @@ func TestInfixPriority4(t *testing.T) {
 
 	*/
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&OperatorNode{
 				Operator: OP_MUL,
@@ -231,7 +231,7 @@ func TestInfixPriority4Load(t *testing.T) {
 		OP(OP(OP(100/f.a)/4) * 7)
 	*/
 
-	expected := FileNode{
+	expected := &FileNode{
 		Instructions: []Node{
 			&OperatorNode{
 				Operator: OP_MUL,

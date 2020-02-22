@@ -5,7 +5,7 @@ import (
 )
 
 // Escape performs variable escape analysis on variables allocated in functions
-func Escape(input parser.FileNode) parser.FileNode {
+func Escape(input *parser.FileNode) *parser.FileNode {
 	for _, ins := range input.Instructions {
 		if defFunc, ok := ins.(*parser.DefineFuncNode); ok {
 
