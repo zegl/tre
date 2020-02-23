@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+
 	"github.com/llir/llvm/ir/constant"
 	llvmTypes "github.com/llir/llvm/ir/types"
 	llvmValue "github.com/llir/llvm/ir/value"
@@ -15,16 +16,6 @@ import (
 
 func (c *Compiler) compileStructLoadElementNode(v *parser.StructLoadElementNode) value.Value {
 	src := c.compileValue(v.Struct)
-
-	// TODO: Represent packages in a better way
-	if packageRef, ok := src.Type.(*types.PackageInstance); ok {
-		if f, ok := packageRef.GetFunc(v.ElementName); ok {
-			return value.Value{
-				Type: f,
-			}
-		}
-		panic(fmt.Sprintf("Package %s has no member %s", packageRef.Name(), v.ElementName))
-	}
 
 	// Use this type, or the type behind the pointer
 	targetType := src.Type
