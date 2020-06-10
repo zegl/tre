@@ -34,9 +34,26 @@ jobs:
       - run: go test -v github.com/zegl/tre/compiler/... github.com/zegl/tre/cmd/...
       - run: go test -v github.com/zegl/tre/compiler
 
+  tests-buster-clang-10-0-0:
+    docker:
+      - image: golang:1.13-buster
+    working_directory: /src/tre
+    steps:
+      - run: apt-get update -q &&
+          apt-get install -y wget xz-utils libtinfo5 &&
+          mkdir -p /src/llvm && cd /src/llvm &&
+          wget https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.0/clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz -O llvm.tar.xz &&
+          tar -xf llvm.tar.xz --strip-components 1 &&
+          ln -s /src/llvm/bin/clang /usr/local/bin/clang &&
+          cd /src/tre
+      - checkout
+      - run: go test -v github.com/zegl/tre/compiler/... github.com/zegl/tre/cmd/...
+      - run: go test -v github.com/zegl/tre/compiler
+
 workflows:
   version: 2
   build:
     jobs:
       - "tests-stretch-clang-8-0-0"
       - "tests-buster-clang-9-0-0"
+      - "tests-buster-clang-10-0-0"
