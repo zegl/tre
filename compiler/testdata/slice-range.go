@@ -16,6 +16,13 @@ func main() {
 		external.Printf("%d %d\n", k, v)
 	}
 
+	// _, 10
+	// _, 20
+	// _, 30
+	for _, v := range s {
+		external.Printf("_, %d\n", v)
+	}
+
 	// 0
 	// 1
 	// 2
