@@ -67,7 +67,7 @@ func (c *Compiler) compileSubstring(src value.Value, v *parser.SliceArrayNode) v
 	dst := safeBlock.NewCall(c.externalFuncs.Strndup.Value.(llvmValue.Named), offset, length)
 
 	// Convert *i8 to %string
-	sType, ok := c.packages["global"].GetPkgType("string")
+	sType, ok := c.packages["global"].GetPkgType("string", true)
 	if !ok {
 		panic("string type not found")
 	}

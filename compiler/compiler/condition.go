@@ -71,7 +71,7 @@ func (c *Compiler) compileOperatorNode(v *parser.OperatorNode) value.Value {
 			// Append right to backing array
 			c.contextBlock.NewCall(c.externalFuncs.Strcat.Value.(llvmValue.Named), backingArray, c.contextBlock.NewExtractValue(rightLLVM, 1))
 
-			sType, ok := c.packages["global"].GetPkgType("string")
+			sType, ok := c.packages["global"].GetPkgType("string", true)
 			if !ok {
 				panic("string type not found")
 			}

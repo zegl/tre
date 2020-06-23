@@ -47,7 +47,7 @@ func (c *Compiler) compileConstantNode(v *parser.ConstantNode) value.Value {
 			c.stringConstants[v.ValueStr] = constString
 		}
 
-		sType, ok := c.packages["global"].GetPkgType("string")
+		sType, ok := c.packages["global"].GetPkgType("string", true)
 		if !ok {
 			panic("string type not found")
 		}

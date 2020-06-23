@@ -1,6 +1,9 @@
 package compiler
 
 import (
+	"fmt"
+	"unicode"
+
 	"github.com/zegl/tre/compiler/compiler/types"
 	"github.com/zegl/tre/compiler/compiler/value"
 )
@@ -24,7 +27,11 @@ func (p *pkg) DefinePkgVar(name string, val value.Value) {
 	p.vars[name] = val
 }
 
-func (p *pkg) GetPkgVar(name string) (value.Value, bool) {
+func (p *pkg) GetPkgVar(name string, inSamePackage bool) (value.Value, bool) {
+	if unicode.IsLower([]rune(name)[0]) && !inSamePackage {
+		compilePanic(fmt.Sprintf("Can't use %s from outside of %s", name, p.name))
+	}
+
 	v, ok := p.vars[name]
 	return v, ok
 }
@@ -33,7 +40,11 @@ func (p *pkg) DefinePkgType(name string, ty types.Type) {
 	p.types[name] = ty
 }
 
-func (p *pkg) GetPkgType(name string) (types.Type, bool) {
+func (p *pkg) GetPkgType(name string, inSamePackage bool) (types.Type, bool) {
+	if unicode.IsLower([]rune(name)[0]) && !inSamePackage {
+		compilePanic(fmt.Sprintf("Can't use %s from outside of %s", name, p.name))
+	}
+
 	v, ok := p.types[name]
 	return v, ok
 }
