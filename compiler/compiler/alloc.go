@@ -38,27 +38,25 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 			globType := treType.LLVM()
 			glob := c.module.NewGlobal(name.Var(v.Name[0]), globType)
 			glob.Init = constant.NewZeroInitializer(globType)
+			val = glob
+			block = c.initGlobalsFunc.Blocks[0]
 
 			c.currentPackage.DefinePkgVar(v.Name[0], value.Value{
 				Value:      glob,
 				Type:       treType,
 				IsVariable: true,
 			})
-
-			val = glob
-			block = c.initGlobalsFunc.Blocks[0]
 		} else {
 			alloc := c.contextBlock.NewAlloca(treType.LLVM())
 			alloc.SetName(name.Var(v.Name[0]))
+			val = alloc
+			block = c.contextBlock
 
 			c.setVar(v.Name[0], value.Value{
 				Value:      alloc,
 				Type:       treType,
 				IsVariable: true,
 			})
-
-			val = alloc
-			block = c.contextBlock
 		}
 
 		// Set to zero values
@@ -73,12 +71,23 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 	}
 
 	for valIndex, valNode := range v.Val {
+		// When allocating a package var (no context block set),
+		// temporarily use the initGlobalFunc as the context block.
+		// The context block is reset below after the initialization is done.
+		allocPackageVar := c.contextBlock == nil
+		if allocPackageVar {
+			c.contextBlock = c.initGlobalsFunc.Blocks[0]
+		}
+
 		// Allocate from value
 		val := c.compileValue(valNode)
 
 		if _, ok := val.Type.(*types.MultiValue); ok {
 			if len(v.Name) != len(val.MultiValues) {
 				panic("Variable count on left and right side does not match")
+			}
+			if c.contextBlock == nil {
+				panic("Multi alloc pkg vars is not yet supported")
 			}
 
 			// Is currently expecting that the variables are already allocated in this block.
@@ -117,15 +126,31 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 			llvmVal = c.contextBlock.NewLoad(pointer.ElemType(llvmVal), llvmVal)
 		}
 
-		alloc := c.contextBlock.NewAlloca(llvmVal.Type())
-		alloc.SetName(name.Var(v.Name[valIndex]))
-		c.contextBlock.NewStore(llvmVal, alloc)
+		var allVal llvmValue.Value
+		if allocPackageVar {
+			glob := c.module.NewGlobal(name.Var(v.Name[0]), llvmVal.Type())
+			glob.Init = constant.NewZeroInitializer(llvmVal.Type())
+			allVal = glob
+		} else {
+			alloc := c.contextBlock.NewAlloca(llvmVal.Type())
+			alloc.SetName(name.Var(v.Name[valIndex]))
+			allVal = alloc
+		}
 
-		c.setVar(v.Name[valIndex], value.Value{
+		c.contextBlock.NewStore(llvmVal, allVal)
+
+		allocVal := value.Value{
 			Type:       val.Type,
-			Value:      alloc,
+			Value:      allVal,
 			IsVariable: true,
-		})
+		}
+
+		if allocPackageVar {
+			c.contextBlock = nil
+			c.currentPackage.DefinePkgVar(v.Name[valIndex], allocVal)
+		} else {
+			c.setVar(v.Name[valIndex], allocVal)
+		}
 	}
 
 	return
