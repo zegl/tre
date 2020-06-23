@@ -263,11 +263,13 @@ func (c *Compiler) compile(instructions []parser.Node) {
 
 func (c *Compiler) compileNameNode(v *parser.NameNode) value.Value {
 	pkg := c.currentPackage
+	inSamePackage := true
 
 	if len(v.Package) > 0 {
 		// Imported package?
 		if p, ok := c.packages[v.Package]; ok {
 			pkg = p
+			inSamePackage = false
 		} else {
 			panic(fmt.Sprintf("package %s does not exist", v.Package))
 		}
@@ -280,7 +282,7 @@ func (c *Compiler) compileNameNode(v *parser.NameNode) value.Value {
 		}
 	}
 
-	if pkgVar, ok := pkg.GetPkgVar(v.Name); ok {
+	if pkgVar, ok := pkg.GetPkgVar(v.Name, inSamePackage); ok {
 		return pkgVar
 	}
 

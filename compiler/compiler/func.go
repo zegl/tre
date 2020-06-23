@@ -143,7 +143,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 
 	// Save as a method on the type
 	if v.IsMethod {
-		if t, ok := c.currentPackage.GetPkgType(v.MethodOnType.TypeName); ok {
+		if t, ok := c.currentPackage.GetPkgType(v.MethodOnType.TypeName, true); ok {
 			t.AddMethod(v.Name, &types.Method{
 				Function:        typesFunc,
 				LlvmFunction:    fn,

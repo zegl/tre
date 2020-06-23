@@ -38,19 +38,19 @@ func (c *Compiler) parserTypeToType(typeNode parser.TypeNode) types.Type {
 	switch t := typeNode.(type) {
 	case *parser.SingleTypeNode:
 		if len(t.PackageName) > 0 {
-			tp, ok := c.packages[t.PackageName].GetPkgType(t.TypeName)
+			tp, ok := c.packages[t.PackageName].GetPkgType(t.TypeName, false)
 			if !ok {
 				panic("unknown type: " + t.PackageName + "." + t.TypeName)
 			}
 			return tp
 		}
 
-		if res, ok := c.currentPackage.GetPkgType(t.TypeName); ok {
+		if res, ok := c.currentPackage.GetPkgType(t.TypeName, true); ok {
 			return res
 		}
 
 		// TODO: Find a better way to organize builtin types
-		if res, ok := c.packages["global"].GetPkgType(t.TypeName); ok {
+		if res, ok := c.packages["global"].GetPkgType(t.TypeName, true); ok {
 			return res
 		}
 

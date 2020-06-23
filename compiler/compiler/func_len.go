@@ -17,7 +17,7 @@ func (c *Compiler) lenFuncCall(v *parser.CallNode) value.Value {
 	arg := c.compileValue(v.Arguments[0])
 
 	if arg.Type.Name() == "string" {
-		f, ok := c.packages["global"].GetPkgVar("len_string")
+		f, ok := c.packages["global"].GetPkgVar("len_string", true)
 		if !ok {
 			panic("could not find len_string func")
 		}
