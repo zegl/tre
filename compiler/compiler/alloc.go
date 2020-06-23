@@ -147,6 +147,11 @@ func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
 
 	// Skip temporary variables if we're assigning to one single var
 	if len(v.Target) == 1 {
+		// Assignment to _, do nothing.
+		if nameNode, ok := v.Target[0].(*parser.NameNode); ok && nameNode.Name == "_" {
+			return
+		}
+
 		dst := c.compileValue(v.Target[0])
 		if !dst.IsVariable {
 			compilePanic("Can only assign to variable")
@@ -158,6 +163,11 @@ func (c *Compiler) compileAssignNode(v *parser.AssignNode) {
 
 	for i := range v.Target {
 		target := v.Target[i]
+
+		// Assignment to _, do nothing.
+		if nameNode, ok := target.(*parser.NameNode); ok && nameNode.Name == "_" {
+			return
+		}
 
 		dst := c.compileValue(target)
 

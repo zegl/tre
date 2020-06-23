@@ -28,4 +28,6 @@ func main() {
 
 	var c = 21
 	external.Printf("c is = %d\n", c) // c is = 21
+
+	_ = c
 }
