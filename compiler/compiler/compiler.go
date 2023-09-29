@@ -104,6 +104,8 @@ func NewCompiler() *Compiler {
 	switch runtime.GOARCH {
 	case "amd64":
 		targetTriple[0] = "x86_64"
+	case "arm64":
+		targetTriple[0] = "aarch64"
 	default:
 		panic("unsupported GOARCH: " + runtime.GOARCH)
 	}

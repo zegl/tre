@@ -9,7 +9,7 @@ used to compile the IR to an executable.
 
 ```bash
 # Build tre and run a test program
-go build -i github.com/zegl/tre/cmd/tre && ./tre tests/tests/fib.tre && ./output-binary
+go build ./cmd/tre && ./tre -d ./compiler/testdata/fib.go && ./fib
 ```
 
 ## Example
@@ -60,5 +60,5 @@ More examples of what's possible can be found in the [compiler testdata](https:/
 
 ## Dependencies
 
-* [clang](https://clang.llvm.org/) - Supports 8.0 and 9.0
+* [clang](https://clang.llvm.org/) - Supports 8.0, 9.0, and 14
 * [llir/llvm](https://github.com/llir/llvm)
