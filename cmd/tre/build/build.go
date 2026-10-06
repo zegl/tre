@@ -12,6 +12,7 @@ import (
 	"github.com/zegl/tre/compiler/compiler"
 	"github.com/zegl/tre/compiler/lexer"
 	"github.com/zegl/tre/compiler/parser"
+	"github.com/zegl/tre/compiler/passes/capture"
 	"github.com/zegl/tre/compiler/passes/const_iota"
 	"github.com/zegl/tre/compiler/passes/escape"
 )
@@ -180,6 +181,7 @@ func parseFile(path string) parser.FileNode {
 	// List of passes to run on the AST
 	passes := []func(*parser.FileNode) *parser.FileNode{
 		const_iota.Iota,
+		capture.Capture,
 		escape.Escape,
 	}
 	for _, pass := range passes {

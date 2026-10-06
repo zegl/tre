@@ -173,6 +173,15 @@ type DefineFuncNode struct {
 	Arguments    []*NameNode
 	ReturnValues []*NameNode
 	Body         []Node
+
+	// Variables from enclosing functions that are used by this function.
+	// Is set by the capture pass.
+	Captures []string
+
+	// Arguments (including the method receiver) that are captured by
+	// closures, and must outlive the function call.
+	// Is set by the capture pass.
+	EscapingArguments map[string]bool
 }
 
 func (dfn DefineFuncNode) String() string {
