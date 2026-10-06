@@ -46,6 +46,11 @@ type Compiler struct {
 	// Stack of variables that are in scope
 	contextBlockVariables []map[string]value.Value
 
+	// Index in contextBlockVariables of the first scope of the current function.
+	// Variables in scopes before this belongs to enclosing functions, and
+	// can not be used directly. Is 0 outside of functions.
+	contextFuncScope int
+
 	// What a break or continue should resolve to
 	contextLoopBreak    []*ir.Block
 	contextLoopContinue []*ir.Block
@@ -296,10 +301,23 @@ func (c *Compiler) lookupName(v *parser.NameNode) value.Value {
 		}
 	}
 
-	// Search scope in reverse (most specific first)
-	for i := len(c.contextBlockVariables) - 1; i >= 0; i-- {
+	// Search the scopes of the current function in reverse (most specific first)
+	for i := len(c.contextBlockVariables) - 1; i >= c.contextFuncScope; i-- {
 		if val, ok := c.contextBlockVariables[i][v.Name]; ok {
 			return val
+		}
+	}
+
+	// Variables that are declared outside of functions
+	if val, ok := c.contextBlockVariables[0][v.Name]; ok {
+		return val
+	}
+
+	// Variables from enclosing functions are only available if they have
+	// been captured by the closure
+	for i := c.contextFuncScope - 1; i > 0; i-- {
+		if _, ok := c.contextBlockVariables[i][v.Name]; ok {
+			panic(fmt.Sprintf("variable %s from an enclosing function was not captured", v.Name))
 		}
 	}
 

@@ -212,10 +212,38 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 
 	prevContextFunc := c.contextFunc
 	prevContextBlock := c.contextBlock
+	prevContextFuncScope := c.contextFuncScope
+
+	// The function does not share any context with the enclosing function
+	prevContextLoopBreak := c.contextLoopBreak
+	prevContextLoopContinue := c.contextLoopContinue
+	prevContextCondAfter := c.contextCondAfter
+	prevContextAssignDest := c.contextAssignDest
+	prevContextAlloc := c.contextAlloc
+	c.contextLoopBreak = nil
+	c.contextLoopContinue = nil
+	c.contextCondAfter = nil
+	c.contextAssignDest = nil
+	c.contextAlloc = nil
+
+	// Restored with defer, so that the context of the enclosing function is
+	// intact when unwinding from compilation errors
+	defer func() {
+		c.contextFunc = prevContextFunc
+		c.contextBlock = prevContextBlock
+		c.contextFuncScope = prevContextFuncScope
+
+		c.contextLoopBreak = prevContextLoopBreak
+		c.contextLoopContinue = prevContextLoopContinue
+		c.contextCondAfter = prevContextCondAfter
+		c.contextAssignDest = prevContextAssignDest
+		c.contextAlloc = prevContextAlloc
+	}()
 
 	c.contextFunc = typesFunc
 	c.contextBlock = entry
 	c.pushVariablesStack()
+	c.contextFuncScope = len(c.contextBlockVariables) - 1
 
 	// Load the captured variables from the environment.
 	// Arguments are added after this, and can shadow captured variables.
@@ -320,12 +348,11 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		c.contextBlock.NewRet(constant.NewInt(llvmTypes.I32, 0))
 	}
 
-	c.contextFunc = prevContextFunc
-	c.contextBlock = prevContextBlock
-
 	c.popVariablesStack()
 
 	if isClosure {
+		// Created in the enclosing function
+		c.contextBlock = prevContextBlock
 		return c.closureValue(typesFunc, fn, env)
 	}
 
