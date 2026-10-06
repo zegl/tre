@@ -1,8 +1,6 @@
 package capture
 
 import (
-	"fmt"
-
 	"github.com/zegl/tre/compiler/parser"
 )
 
@@ -180,11 +178,6 @@ func (c *capturer) node(node parser.Node) {
 		if n.Package == "" {
 			c.use(n.Name)
 		}
-	case *parser.MultiNameNode:
-		for _, name := range n.Names {
-			c.node(name)
-		}
-
 	case *parser.ConditionNode:
 		c.node(n.Cond)
 		c.block(n.True)
@@ -208,66 +201,8 @@ func (c *capturer) node(node parser.Node) {
 		c.block(n.DefaultBody)
 		c.popScope()
 
-	case *parser.CallNode:
-		c.node(n.Function)
-		c.nodes(n.Arguments)
-	case *parser.OperatorNode:
-		c.node(n.Left)
-		c.node(n.Right)
-	case *parser.ReturnNode:
-		c.nodes(n.Vals)
-	case *parser.AssignNode:
-		c.nodes(n.Target)
-		c.nodes(n.Val)
-	case *parser.TypeCastNode:
-		c.node(n.Val)
-	case *parser.StructLoadElementNode:
-		c.node(n.Struct)
-	case *parser.LoadArrayElement:
-		c.node(n.Array)
-		c.node(n.Pos)
-	case *parser.SliceArrayNode:
-		c.node(n.Val)
-		c.node(n.Start)
-		c.node(n.End)
-	case *parser.InitializeSliceNode:
-		c.nodes(n.Items)
-	case *parser.InitializeArrayNode:
-		c.nodes(n.Items)
-	case *parser.InitializeStructNode:
-		for _, item := range n.Items {
-			c.node(item)
-		}
-
-	case *parser.RangeNode:
-		c.node(n.Item)
-	case *parser.GetReferenceNode:
-		c.node(n.Item)
-	case *parser.DereferenceNode:
-		c.node(n.Item)
-	case *parser.NegateNode:
-		c.node(n.Item)
-	case *parser.SubNode:
-		c.node(n.Item)
-	case *parser.DeVariadicSliceNode:
-		c.node(n.Item)
-	case *parser.TypeCastInterfaceNode:
-		c.node(n.Item)
-	case *parser.DecrementNode:
-		c.node(n.Item)
-	case *parser.IncrementNode:
-		c.node(n.Item)
-	case *parser.GroupNode:
-		c.node(n.Item)
-
-	case *parser.ConstantNode, *parser.BreakNode, *parser.ContinueNode,
-		*parser.DefineTypeNode, *parser.ImportNode, *parser.DeclarePackageNode:
-		// nothing to do
-
-	case parser.TypeNode:
-		// types does not refer to variables
-
 	default:
-		panic(fmt.Sprintf("unexpected type in capture pass: %T", node))
+		// Expressions and statements that does not declare any variables
+		c.nodes(parser.Children(node))
 	}
 }
