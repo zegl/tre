@@ -219,9 +219,12 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 			dataType = treParams[i-argumentReturnValuesCount]
 		}
 
+		// Arguments that are captured by closures are moved to the heap
+		escapes := i >= argumentReturnValuesCount && v.EscapingArguments[paramName]
+
 		// Structs needs to be pointer-allocated
-		if _, ok := param.Type().(*llvmTypes.StructType); ok {
-			paramPtr := entry.NewAlloca(dataType.LLVM())
+		if _, isStruct := param.Type().(*llvmTypes.StructType); isStruct || escapes {
+			paramPtr := c.allocVar(dataType.LLVM(), escapes)
 			paramPtr.SetName(name.Var("paramPtr"))
 			entry.NewStore(param, paramPtr)
 

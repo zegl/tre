@@ -104,16 +104,18 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 
 		// Assignment of key
 		modifiedBlock = append(modifiedBlock, &parser.AllocNode{
-			Name: []string{keyName},
-			Val:  []parser.Node{&parser.NameNode{Name: forKeyName}},
+			Name:    []string{keyName},
+			Val:     []parser.Node{&parser.NameNode{Name: forKeyName}},
+			Escapes: forAlloc.Escapes,
 		})
 
 		// Assignment of value
 
 		if len(forAlloc.Name) >= 2 {
 			modifiedBlock = append(modifiedBlock, &parser.AllocNode{
-				Name: []string{forAlloc.Name[1]},
-				Val:  []parser.Node{&parser.LoadArrayElement{Array: &parser.NameNode{Name: rangeItemName}, Pos: &parser.NameNode{Name: forKeyName}}},
+				Name:    []string{forAlloc.Name[1]},
+				Val:     []parser.Node{&parser.LoadArrayElement{Array: &parser.NameNode{Name: rangeItemName}, Pos: &parser.NameNode{Name: forKeyName}}},
+				Escapes: forAlloc.Escapes,
 			})
 		}
 	}
