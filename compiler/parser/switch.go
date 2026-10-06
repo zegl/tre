@@ -65,9 +65,9 @@ func (p *parser) parseSwitch() *SwitchNode {
 
 				if curr.Type == lexer.OPERATOR && curr.Val == "," {
 					p.i++
-					switchCase.Conditions = append(append(switchCase.Conditions,
+					switchCase.Conditions = append(switchCase.Conditions,
 						p.parseOne(true),
-					))
+					)
 					p.i++
 					continue
 				}
