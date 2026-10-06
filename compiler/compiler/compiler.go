@@ -61,6 +61,9 @@ type Compiler struct {
 	// Is used to decide if values should be stack or heap allocated
 	contextAlloc []*parser.AllocNode
 
+	// Wrappers that makes it possible to use named functions as closures
+	closureWrappers map[*ir.Func]*ir.Func
+
 	stringConstants map[string]*ir.Global
 
 	// runtime.GOOS and runtime.GOARCH
@@ -88,6 +91,8 @@ func NewCompiler() *Compiler {
 		contextCondAfter:    make([]*ir.Block, 0),
 
 		contextAssignDest: make([]value.Value, 0),
+
+		closureWrappers: make(map[*ir.Func]*ir.Func),
 
 		stringConstants: make(map[string]*ir.Global),
 	}
@@ -264,6 +269,20 @@ func (c *Compiler) compile(instructions []parser.Node) {
 }
 
 func (c *Compiler) compileNameNode(v *parser.NameNode) value.Value {
+	val := c.lookupName(v)
+
+	// Named functions are converted to closures when used as values
+	if _, ok := val.Type.(*types.Function); ok && !val.IsVariable {
+		if _, ok := val.Value.(*ir.Func); ok {
+			return c.funcToClosure(val)
+		}
+	}
+
+	return val
+}
+
+// lookupName finds the variable, or package member, with the given name
+func (c *Compiler) lookupName(v *parser.NameNode) value.Value {
 	pkg := c.currentPackage
 	inSamePackage := true
 

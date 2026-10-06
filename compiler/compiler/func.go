@@ -101,6 +101,10 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		compiledName = c.currentPackageName + "_" + name.AnonFunc()
 	}
 
+	// Anonymous functions are closures, and take the closure environment as
+	// the first parameter
+	isClosure := !v.IsMethod && !v.IsNamed
+
 	argTypes := make([]parser.TypeNode, len(v.Arguments))
 	for k, v := range v.Arguments {
 		argTypes[k] = v.Type
@@ -128,13 +132,27 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		fn = c.module.NewFunc(name.Var("init"), funcRetType.LLVM(), llvmParams...)
 		entry = fn.NewBlock(name.Block())
 		c.initGlobalsFunc.Blocks[0].NewCall(fn) // Setup call to init from the global init func
+	} else if isClosure {
+		envParam := ir.NewParam(name.Var("env"), types.ClosureEnvType)
+		fn = c.module.NewFunc(compiledName, funcRetType.LLVM(), append([]*ir.Param{envParam}, llvmParams...)...)
+		entry = fn.NewBlock(name.Block())
 	} else {
 		fn = c.module.NewFunc(compiledName, funcRetType.LLVM(), llvmParams...)
 		entry = fn.NewBlock(name.Block())
 	}
 
+	// The function type without the closure environment
+	var funcType llvmTypes.Type = fn.Type()
+	if isClosure {
+		paramTypes := make([]llvmTypes.Type, len(llvmParams))
+		for i, p := range llvmParams {
+			paramTypes[i] = p.Type()
+		}
+		funcType = llvmTypes.NewPointer(llvmTypes.NewFunc(funcRetType.LLVM(), paramTypes...))
+	}
+
 	typesFunc := &types.Function{
-		FuncType:       fn.Type(),
+		FuncType:       funcType,
 		LlvmReturnType: funcRetType,
 		ReturnTypes:    treReturnTypes,
 		IsVariadic:     isVariadicFunc,
@@ -257,10 +275,72 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 
 	c.popVariablesStack()
 
+	if isClosure {
+		return c.closureValue(typesFunc, fn, constant.NewNull(types.ClosureEnvType))
+	}
+
 	return value.Value{
 		Type:  typesFunc,
 		Value: fn,
 	}
+}
+
+// closureValue creates a closure value from a function and its environment
+func (c *Compiler) closureValue(fnType *types.Function, fn, env llvmValue.Value) value.Value {
+	closureType := fnType.LLVM().(*llvmTypes.StructType)
+
+	// Use a constant when possible, as closures can be created outside of functions
+	fnConst, fnIsConst := fn.(constant.Constant)
+	envConst, envIsConst := env.(constant.Constant)
+	if fnIsConst && envIsConst {
+		return value.Value{
+			Type:  fnType,
+			Value: constant.NewStruct(closureType, fnConst, envConst),
+		}
+	}
+
+	closure := c.contextBlock.NewInsertValue(constant.NewZeroInitializer(closureType), fn, 0)
+	return value.Value{
+		Type:  fnType,
+		Value: c.contextBlock.NewInsertValue(closure, env, 1),
+	}
+}
+
+// funcToClosure converts a named function to a closure, so that it can be
+// used as a func value. The closure calls a wrapper function that discards the
+// closure environment.
+func (c *Compiler) funcToClosure(v value.Value) value.Value {
+	fnType := v.Type.(*types.Function)
+	fn := v.Value.(*ir.Func)
+
+	if fnType.IsExternal {
+		compilePanic("external functions can not be used as values")
+	}
+
+	wrapper, ok := c.closureWrappers[fn]
+	if !ok {
+		params := []*ir.Param{ir.NewParam("env", types.ClosureEnvType)}
+		var args []llvmValue.Value
+		for _, p := range fn.Params {
+			param := ir.NewParam("", p.Type())
+			params = append(params, param)
+			args = append(args, param)
+		}
+
+		wrapper = c.module.NewFunc(fn.Name()+"_closure", fn.Sig.RetType, params...)
+		block := wrapper.NewBlock(name.Block())
+		res := block.NewCall(fn, args...)
+
+		if _, ok := fn.Sig.RetType.(*llvmTypes.VoidType); ok {
+			block.NewRet(nil)
+		} else {
+			block.NewRet(res)
+		}
+
+		c.closureWrappers[fn] = wrapper
+	}
+
+	return c.closureValue(fnType, wrapper, constant.NewNull(types.ClosureEnvType))
 }
 
 func (c *Compiler) compileInterfaceMethodJump(targetFunc *ir.Func) *ir.Func {
@@ -377,14 +457,28 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 	}
 
 	var fnType *types.Function
-	var fn llvmValue.Named
+	var fn llvmValue.Value
 
-	funcByVal := c.compileValue(v.Function)
+	// The environment of the closure that is called, is nil when calling a
+	// named function directly
+	var closureEnv llvmValue.Value
+
+	// Look up named functions without converting them to closures
+	var funcByVal value.Value
+	if isNameNode {
+		funcByVal = c.lookupName(name)
+	} else {
+		funcByVal = c.compileValue(v.Function)
+	}
+
 	if checkIfFunc, ok := funcByVal.Type.(*types.Function); ok {
 		fnType = checkIfFunc
-		fn = funcByVal.Value.(llvmValue.Named)
-		if funcByVal.IsVariable {
-			fn = c.contextBlock.NewLoad(pointer.ElemType(fn), fn)
+		if directFn, ok := funcByVal.Value.(*ir.Func); ok && !funcByVal.IsVariable {
+			fn = directFn
+		} else {
+			closure := internal.LoadIfVariable(c.contextBlock, funcByVal)
+			fn = c.contextBlock.NewExtractValue(closure, 0)
+			closureEnv = c.contextBlock.NewExtractValue(closure, 1)
 		}
 	} else if checkIfMethod, ok := funcByVal.Type.(*types.Method); ok {
 		fnType = checkIfMethod.Function
@@ -505,6 +599,11 @@ func (c *Compiler) compileCallNode(v *parser.CallNode) value.Value {
 
 		// Add to start of argument list
 		llvmArgs = append(retValAllocas, llvmArgs...)
+	}
+
+	// The closure environment is always the first argument
+	if closureEnv != nil {
+		llvmArgs = append([]llvmValue.Value{closureEnv}, llvmArgs...)
 	}
 
 	funcCallRes := c.contextBlock.NewCall(fn, llvmArgs...)
