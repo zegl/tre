@@ -330,6 +330,10 @@ func (p Pointer) Size() int64 {
 	return 8
 }
 
+func (p Pointer) Zero(block *ir.Block, alloca llvmValue.Value) {
+	block.NewStore(constant.NewNull(types.NewPointer(p.Type.LLVM())), alloca)
+}
+
 // MultiValue is used when returning multiple values from a function
 type MultiValue struct {
 	backingType
