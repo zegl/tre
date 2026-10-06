@@ -93,6 +93,17 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 			// Is currently expecting that the variables are already allocated in this block.
 			// Will only add the vars to the map of variables
 			for i, multiVal := range val.MultiValues {
+				// The values are allocated on the stack, copy them to the heap if they escape
+				if v.Escapes {
+					heapVal := c.allocVar(multiVal.Type.LLVM(), true)
+					c.contextBlock.NewStore(internal.LoadIfVariable(c.contextBlock, multiVal), heapVal)
+					multiVal = value.Value{
+						Type:       multiVal.Type,
+						Value:      heapVal,
+						IsVariable: true,
+					}
+				}
+
 				c.setVar(v.Name[i], multiVal)
 			}
 

@@ -119,6 +119,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 
 	var fn *ir.Func
 	var entry *ir.Block
+	var envParam *ir.Param
 
 	if c.currentPackageName == "main" && v.Name == "main" {
 		if len(v.ReturnValues) != 0 {
@@ -133,7 +134,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		entry = fn.NewBlock(name.Block())
 		c.initGlobalsFunc.Blocks[0].NewCall(fn) // Setup call to init from the global init func
 	} else if isClosure {
-		envParam := ir.NewParam(name.Var("env"), types.ClosureEnvType)
+		envParam = ir.NewParam(name.Var("env"), types.ClosureEnvType)
 		fn = c.module.NewFunc(compiledName, funcRetType.LLVM(), append([]*ir.Param{envParam}, llvmParams...)...)
 		entry = fn.NewBlock(name.Block())
 	} else {
@@ -181,12 +182,58 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 		})
 	}
 
+	// Create the environment of captured variables in the enclosing function
+	var env llvmValue.Value = constant.NewNull(types.ClosureEnvType)
+	var envType *llvmTypes.StructType
+	var capturedVals []value.Value
+
+	if len(v.Captures) > 0 {
+		fieldTypes := make([]llvmTypes.Type, len(v.Captures))
+		for i, captured := range v.Captures {
+			val := c.lookupName(&parser.NameNode{Name: captured})
+			capturedVals = append(capturedVals, val)
+			fieldTypes[i] = val.Value.Type()
+		}
+
+		// Variables are captured by reference, the environment contains
+		// pointers to the variables. Values that are not variables (such
+		// as constants) are captured by value.
+		envType = llvmTypes.NewStruct(fieldTypes...)
+		envPtr := c.allocVar(envType, true)
+		envPtr.SetName(name.Var("closure-env"))
+
+		for i, val := range capturedVals {
+			fieldPtr := c.contextBlock.NewGetElementPtr(envType, envPtr, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(i)))
+			c.contextBlock.NewStore(val.Value, fieldPtr)
+		}
+
+		env = c.contextBlock.NewBitCast(envPtr, types.ClosureEnvType)
+	}
+
 	prevContextFunc := c.contextFunc
 	prevContextBlock := c.contextBlock
 
 	c.contextFunc = typesFunc
 	c.contextBlock = entry
 	c.pushVariablesStack()
+
+	// Load the captured variables from the environment.
+	// Arguments are added after this, and can shadow captured variables.
+	if len(capturedVals) > 0 {
+		envPtr := entry.NewBitCast(envParam, llvmTypes.NewPointer(envType))
+
+		for i, val := range capturedVals {
+			fieldPtr := entry.NewGetElementPtr(envType, envPtr, constant.NewInt(llvmTypes.I32, 0), constant.NewInt(llvmTypes.I32, int64(i)))
+			loaded := entry.NewLoad(envType.Fields[i], fieldPtr)
+			loaded.SetName(name.Var(v.Captures[i]))
+
+			c.setVar(v.Captures[i], value.Value{
+				Type:       val.Type,
+				Value:      loaded,
+				IsVariable: val.IsVariable,
+			})
+		}
+	}
 
 	// Push to the return values stack
 	if argumentReturnValuesCount > 0 {
@@ -279,7 +326,7 @@ func (c *Compiler) compileDefineFuncNode(v *parser.DefineFuncNode) value.Value {
 	c.popVariablesStack()
 
 	if isClosure {
-		return c.closureValue(typesFunc, fn, constant.NewNull(types.ClosureEnvType))
+		return c.closureValue(typesFunc, fn, env)
 	}
 
 	return value.Value{
