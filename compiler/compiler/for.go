@@ -2,7 +2,10 @@ package compiler
 
 import (
 	"fmt"
+
+	"github.com/zegl/tre/compiler/compiler/internal/pointer"
 	"github.com/zegl/tre/compiler/compiler/name"
+	"github.com/zegl/tre/compiler/compiler/value"
 	"github.com/zegl/tre/compiler/parser"
 )
 
@@ -45,11 +48,21 @@ func (c *Compiler) compileForThreeType(v *parser.ForNode) {
 
 	// Compiler loop body
 	c.contextBlock = loopBodyBlock
+	c.pushVariablesStack()
+	iterationVars := c.compileForIterationVars(v)
 	c.compile(v.Block)
+	c.popVariablesStack()
 	c.contextBlock.NewBr(loopAfterBodyBlock) // Jump to after body
 
 	// After body block
 	c.contextBlock = loopAfterBodyBlock
+
+	// Copy the values of this iteration back to the loop variables before the post statement
+	for _, iv := range iterationVars {
+		val := c.contextBlock.NewLoad(pointer.ElemType(iv.iteration.Value), iv.iteration.Value)
+		c.contextBlock.NewStore(val, iv.loop.Value)
+	}
+
 	c.compile([]parser.Node{v.AfterIteration})
 	c.contextBlock.NewBr(checkCondBlock)
 
@@ -59,6 +72,47 @@ func (c *Compiler) compileForThreeType(v *parser.ForNode) {
 	// Pop break and continue
 	c.contextLoopBreak = c.contextLoopBreak[0 : len(c.contextLoopBreak)-1]
 	c.contextLoopContinue = c.contextLoopContinue[0 : len(c.contextLoopContinue)-1]
+}
+
+type forIterationVar struct {
+	loop      value.Value
+	iteration value.Value
+}
+
+// compileForIterationVars gives each iteration of the loop its own copy of the
+// variables declared by the loop, if they are captured by closures.
+// The copies are initialized with the value of the loop variable when the
+// iteration starts, and are copied back before the post statement.
+func (c *Compiler) compileForIterationVars(v *parser.ForNode) []forIterationVar {
+	alloc, ok := v.BeforeLoop.(*parser.AllocNode)
+	if !ok || !alloc.Escapes {
+		return nil
+	}
+
+	var res []forIterationVar
+
+	for _, varName := range alloc.Name {
+		loopVar := c.lookupName(&parser.NameNode{Name: varName})
+		if !loopVar.IsVariable {
+			continue
+		}
+
+		elemType := pointer.ElemType(loopVar.Value)
+		iterationVar := c.allocVar(elemType, true)
+		iterationVar.SetName(name.Var(varName))
+		c.contextBlock.NewStore(c.contextBlock.NewLoad(elemType, loopVar.Value), iterationVar)
+
+		iterationVal := value.Value{
+			Type:       loopVar.Type,
+			Value:      iterationVar,
+			IsVariable: true,
+		}
+		c.setVar(varName, iterationVal)
+
+		res = append(res, forIterationVar{loop: loopVar, iteration: iterationVal})
+	}
+
+	return res
 }
 
 func (c *Compiler) compileForRange(v *parser.ForNode) {
@@ -104,16 +158,18 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 
 		// Assignment of key
 		modifiedBlock = append(modifiedBlock, &parser.AllocNode{
-			Name: []string{keyName},
-			Val:  []parser.Node{&parser.NameNode{Name: forKeyName}},
+			Name:    []string{keyName},
+			Val:     []parser.Node{&parser.NameNode{Name: forKeyName}},
+			Escapes: forAlloc.Escapes,
 		})
 
 		// Assignment of value
 
 		if len(forAlloc.Name) >= 2 {
 			modifiedBlock = append(modifiedBlock, &parser.AllocNode{
-				Name: []string{forAlloc.Name[1]},
-				Val:  []parser.Node{&parser.LoadArrayElement{Array: &parser.NameNode{Name: rangeItemName}, Pos: &parser.NameNode{Name: forKeyName}}},
+				Name:    []string{forAlloc.Name[1]},
+				Val:     []parser.Node{&parser.LoadArrayElement{Array: &parser.NameNode{Name: rangeItemName}, Pos: &parser.NameNode{Name: forKeyName}}},
+				Escapes: forAlloc.Escapes,
 			})
 		}
 	}

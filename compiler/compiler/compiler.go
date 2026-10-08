@@ -46,6 +46,11 @@ type Compiler struct {
 	// Stack of variables that are in scope
 	contextBlockVariables []map[string]value.Value
 
+	// Index in contextBlockVariables of the first scope of the current function.
+	// Variables in scopes before this belongs to enclosing functions, and
+	// can not be used directly. Is 0 outside of functions.
+	contextFuncScope int
+
 	// What a break or continue should resolve to
 	contextLoopBreak    []*ir.Block
 	contextLoopContinue []*ir.Block
@@ -60,6 +65,9 @@ type Compiler struct {
 	// Stack of Alloc instructions
 	// Is used to decide if values should be stack or heap allocated
 	contextAlloc []*parser.AllocNode
+
+	// Wrappers that makes it possible to use named functions as closures
+	closureWrappers map[*ir.Func]*ir.Func
 
 	stringConstants map[string]*ir.Global
 
@@ -88,6 +96,8 @@ func NewCompiler() *Compiler {
 		contextCondAfter:    make([]*ir.Block, 0),
 
 		contextAssignDest: make([]value.Value, 0),
+
+		closureWrappers: make(map[*ir.Func]*ir.Func),
 
 		stringConstants: make(map[string]*ir.Global),
 	}
@@ -264,6 +274,20 @@ func (c *Compiler) compile(instructions []parser.Node) {
 }
 
 func (c *Compiler) compileNameNode(v *parser.NameNode) value.Value {
+	val := c.lookupName(v)
+
+	// Named functions are converted to closures when used as values
+	if _, ok := val.Type.(*types.Function); ok && !val.IsVariable {
+		if _, ok := val.Value.(*ir.Func); ok {
+			return c.funcToClosure(val)
+		}
+	}
+
+	return val
+}
+
+// lookupName finds the variable, or package member, with the given name
+func (c *Compiler) lookupName(v *parser.NameNode) value.Value {
 	pkg := c.currentPackage
 	inSamePackage := true
 
@@ -277,10 +301,23 @@ func (c *Compiler) compileNameNode(v *parser.NameNode) value.Value {
 		}
 	}
 
-	// Search scope in reverse (most specific first)
-	for i := len(c.contextBlockVariables) - 1; i >= 0; i-- {
+	// Search the scopes of the current function in reverse (most specific first)
+	for i := len(c.contextBlockVariables) - 1; i >= c.contextFuncScope; i-- {
 		if val, ok := c.contextBlockVariables[i][v.Name]; ok {
 			return val
+		}
+	}
+
+	// Variables that are declared outside of functions
+	if val, ok := c.contextBlockVariables[0][v.Name]; ok {
+		return val
+	}
+
+	// Variables from enclosing functions are only available if they have
+	// been captured by the closure
+	for i := c.contextFuncScope - 1; i > 0; i-- {
+		if _, ok := c.contextBlockVariables[i][v.Name]; ok {
+			panic(fmt.Sprintf("variable %s from an enclosing function was not captured", v.Name))
 		}
 	}
 

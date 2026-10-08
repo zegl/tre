@@ -47,7 +47,7 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 				IsVariable: true,
 			})
 		} else {
-			alloc := c.contextBlock.NewAlloca(treType.LLVM())
+			alloc := c.allocVar(treType.LLVM(), v.Escapes)
 			alloc.SetName(name.Var(v.Name[0]))
 			val = alloc
 			block = c.contextBlock
@@ -93,6 +93,17 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 			// Is currently expecting that the variables are already allocated in this block.
 			// Will only add the vars to the map of variables
 			for i, multiVal := range val.MultiValues {
+				// The values are allocated on the stack, copy them to the heap if they escape
+				if v.Escapes {
+					heapVal := c.allocVar(multiVal.Type.LLVM(), true)
+					c.contextBlock.NewStore(internal.LoadIfVariable(c.contextBlock, multiVal), heapVal)
+					multiVal = value.Value{
+						Type:       multiVal.Type,
+						Value:      heapVal,
+						IsVariable: true,
+					}
+				}
+
 				c.setVar(v.Name[i], multiVal)
 			}
 
@@ -132,7 +143,7 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 			glob.Init = constant.NewZeroInitializer(llvmVal.Type())
 			allVal = glob
 		} else {
-			alloc := c.contextBlock.NewAlloca(llvmVal.Type())
+			alloc := c.allocVar(llvmVal.Type(), v.Escapes)
 			alloc.SetName(name.Var(v.Name[valIndex]))
 			allVal = alloc
 		}
@@ -154,6 +165,24 @@ func (c *Compiler) compileAllocNode(v *parser.AllocNode) {
 	}
 
 	return
+}
+
+// allocVar allocates the storage for a variable of type t.
+// Variables that escapes the function, such as variables captured by
+// closures, are allocated on the heap. Other variables are allocated on the stack.
+func (c *Compiler) allocVar(t irTypes.Type, escapes bool) llvmValue.Named {
+	if !escapes {
+		return c.contextBlock.NewAlloca(t)
+	}
+
+	// The size of t, calculated as the offset of the second element in an array of t
+	size := constant.NewPtrToInt(
+		constant.NewGetElementPtr(t, constant.NewNull(irTypes.NewPointer(t)), constant.NewInt(irTypes.I32, 1)),
+		irTypes.I64,
+	)
+
+	mallocatedSpaceRaw := c.contextBlock.NewCall(c.externalFuncs.Malloc.Value.(llvmValue.Named), size)
+	return c.contextBlock.NewBitCast(mallocatedSpaceRaw, irTypes.NewPointer(t))
 }
 
 func (c *Compiler) compileAllocConstNode(v *parser.AllocNode) {

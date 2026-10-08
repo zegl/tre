@@ -48,7 +48,7 @@ More examples of what's possible can be found in the [compiler testdata](https:/
 
 ### Language features
 
-- [ ] [first class func](https://github.com/zegl/tre/issues/36) 
+- [x] first class func and closures
 - [ ] packages
 - [x] methods
 - [x] pointers

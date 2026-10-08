@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"sort"
 )
 
 type Visitor interface {
@@ -151,4 +152,114 @@ func Walk(v Visitor, node Node) (r Node) {
 		panic(fmt.Sprintf("unexpected type in Walk(): %T", node))
 	}
 	return
+}
+
+// Children returns the direct child nodes of node, in source order.
+// Type nodes are not included.
+func Children(node Node) []Node {
+	var res []Node
+	add := func(nodes ...Node) {
+		for _, n := range nodes {
+			if n != nil {
+				res = append(res, n)
+			}
+		}
+	}
+
+	switch n := node.(type) {
+	case nil:
+		// nothing to do
+	case *FileNode:
+		add(n.Instructions...)
+	case *DefineFuncNode:
+		add(n.Body...)
+	case *AllocNode:
+		add(n.Val...)
+	case *AllocGroup:
+		for _, a := range n.Allocs {
+			add(a)
+		}
+	case *MultiNameNode:
+		for _, name := range n.Names {
+			add(name)
+		}
+	case *ConditionNode:
+		add(n.Cond)
+		add(n.True...)
+		add(n.False...)
+	case *ForNode:
+		add(n.BeforeLoop)
+		if n.Condition != nil {
+			add(n.Condition)
+		}
+		add(n.AfterIteration)
+		add(n.Block...)
+	case *SwitchNode:
+		add(n.Item)
+		for _, c := range n.Cases {
+			add(c)
+		}
+		add(n.DefaultBody...)
+	case *SwitchCaseNode:
+		add(n.Conditions...)
+		add(n.Body...)
+	case *CallNode:
+		add(n.Function)
+		add(n.Arguments...)
+	case *OperatorNode:
+		add(n.Left, n.Right)
+	case *ReturnNode:
+		add(n.Vals...)
+	case *AssignNode:
+		add(n.Target...)
+		add(n.Val...)
+	case *TypeCastNode:
+		add(n.Val)
+	case *StructLoadElementNode:
+		add(n.Struct)
+	case *LoadArrayElement:
+		add(n.Array, n.Pos)
+	case *SliceArrayNode:
+		add(n.Val, n.Start, n.End)
+	case *InitializeSliceNode:
+		add(n.Items...)
+	case *InitializeArrayNode:
+		add(n.Items...)
+	case *InitializeStructNode:
+		keys := make([]string, 0, len(n.Items))
+		for k := range n.Items {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			add(n.Items[k])
+		}
+	case *RangeNode:
+		add(n.Item)
+	case *GetReferenceNode:
+		add(n.Item)
+	case *DereferenceNode:
+		add(n.Item)
+	case *NegateNode:
+		add(n.Item)
+	case *SubNode:
+		add(n.Item)
+	case *DeVariadicSliceNode:
+		add(n.Item)
+	case *TypeCastInterfaceNode:
+		add(n.Item)
+	case *DecrementNode:
+		add(n.Item)
+	case *IncrementNode:
+		add(n.Item)
+	case *GroupNode:
+		add(n.Item)
+	case *NameNode, *ConstantNode, *BreakNode, *ContinueNode, *DefineTypeNode,
+		*ImportNode, *DeclarePackageNode, TypeNode:
+		// no children
+	default:
+		panic(fmt.Sprintf("unexpected type in Children(): %T", node))
+	}
+
+	return res
 }

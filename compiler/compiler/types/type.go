@@ -113,10 +113,16 @@ func (m Method) Name() string {
 	return m.MethodName
 }
 
+// Function is the type of a func.
+//
+// Func values are represented as closures: a struct of a function pointer and
+// a pointer to the environment of captured variables. The function pointer
+// takes the environment as its first parameter. Named functions are called
+// directly, and are only converted to closures when used as values.
 type Function struct {
 	backingType
 
-	// LlvmFunction llvmValue.Named
+	// The type of the function, without the closure environment parameter
 	FuncType types.Type
 
 	// The return type of the LLVM function (is always 1)
@@ -133,11 +139,35 @@ type Function struct {
 }
 
 func (f Function) LLVM() types.Type {
-	return f.FuncType
+	return ClosureType(f.FuncType)
 }
 
 func (f Function) Name() string {
 	return "func"
+}
+
+func (f Function) Size() int64 {
+	return 16
+}
+
+func (f Function) Zero(block *ir.Block, alloca llvmValue.Value) {
+	block.NewStore(constant.NewZeroInitializer(f.LLVM()), alloca)
+}
+
+// ClosureEnvType is the type of the environment pointer in a closure
+var ClosureEnvType = types.NewPointer(types.I8)
+
+// ClosureFuncType returns the type of the function pointer in a closure,
+// which is fnType with the environment added as the first parameter.
+func ClosureFuncType(fnType types.Type) *types.PointerType {
+	sig := fnType.(*types.PointerType).ElemType.(*types.FuncType)
+	params := append([]types.Type{ClosureEnvType}, sig.Params...)
+	return types.NewPointer(types.NewFunc(sig.RetType, params...))
+}
+
+// ClosureType returns the type of a closure of fnType
+func ClosureType(fnType types.Type) *types.StructType {
+	return types.NewStruct(ClosureFuncType(fnType), ClosureEnvType)
 }
 
 type BoolType struct {
