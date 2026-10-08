@@ -46,7 +46,9 @@ func (c *Compiler) compileForThreeType(v *parser.ForNode) {
 	// Compiler loop body
 	c.contextBlock = loopBodyBlock
 	c.compile(v.Block)
-	c.contextBlock.NewBr(loopAfterBodyBlock) // Jump to after body
+	if c.contextBlock.Term == nil {
+		c.contextBlock.NewBr(loopAfterBodyBlock) // Jump to after body
+	}
 
 	// After body block
 	c.contextBlock = loopAfterBodyBlock
@@ -150,8 +152,16 @@ func (c *Compiler) compileForRange(v *parser.ForNode) {
 
 func (c *Compiler) compileBreakNode(v *parser.BreakNode) {
 	c.contextBlock.NewBr(c.contextLoopBreak[len(c.contextLoopBreak)-1])
+	c.startUnreachableBlock()
 }
 
 func (c *Compiler) compileContinueNode(v *parser.ContinueNode) {
 	c.contextBlock.NewBr(c.contextLoopContinue[len(c.contextLoopContinue)-1])
+	c.startUnreachableBlock()
+}
+
+// startUnreachableBlock moves compilation to a new block after a terminating
+// statement, so that any code following it can't overwrite the terminator.
+func (c *Compiler) startUnreachableBlock() {
+	c.contextBlock = c.contextBlock.Parent.NewBlock(name.Block() + "-unreachable")
 }

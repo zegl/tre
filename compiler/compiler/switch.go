@@ -17,22 +17,29 @@ func (c *Compiler) compileSwitchNode(v *parser.SwitchNode) {
 
 	afterSwitch := c.contextBlock.Parent.NewBlock(name.Block() + "after-switch")
 
+	// break inside of a switch jumps to after the switch
+	c.contextLoopBreak = append(c.contextLoopBreak, afterSwitch)
+
 	// build default case
 	defaultCase := c.contextBlock.Parent.NewBlock(name.Block() + "switch-default")
+	preDefaultBlock := c.contextBlock
+	c.contextBlock = defaultCase
 	if v.DefaultBody != nil {
-		preDefaultBlock := c.contextBlock
-		c.contextBlock = defaultCase
 		c.compile(v.DefaultBody)
-		c.contextBlock = preDefaultBlock
 	}
-	defaultCase.NewBr(afterSwitch)
+	if c.contextBlock.Term == nil {
+		c.contextBlock.NewBr(afterSwitch)
+	}
+	c.contextBlock = preDefaultBlock
 
 	// Parse all cases
+	caseEndBlocks := make([]*ir.Block, len(v.Cases))
 	for caseIndex, parseCase := range v.Cases {
 		preCaseBlock := c.contextBlock
 		caseBlock := c.contextBlock.Parent.NewBlock(name.Block() + "case")
 		c.contextBlock = caseBlock
 		c.compile(parseCase.Body)
+		caseEndBlocks[caseIndex] = c.contextBlock
 		c.contextBlock = preCaseBlock
 
 		caseBlocks[caseIndex] = caseBlock
@@ -44,14 +51,20 @@ func (c *Compiler) compileSwitchNode(v *parser.SwitchNode) {
 	}
 
 	for caseIndex, parseCase := range v.Cases {
+		endBlock := caseEndBlocks[caseIndex]
+		if endBlock.Term != nil {
+			continue
+		}
 		if parseCase.Fallthrough {
 			// Jump to the next case body
-			caseBlocks[caseIndex].Term = ir.NewBr(caseBlocks[caseIndex+1])
+			endBlock.NewBr(caseBlocks[caseIndex+1])
 		} else {
 			// Jump to after switch
-			caseBlocks[caseIndex].Term = ir.NewBr(afterSwitch)
+			endBlock.NewBr(afterSwitch)
 		}
 	}
+
+	c.contextLoopBreak = c.contextLoopBreak[:len(c.contextLoopBreak)-1]
 
 	val := internal.LoadIfVariable(c.contextBlock, switchItem)
 	c.contextBlock.Term = c.contextBlock.NewSwitch(val, defaultCase, cases...)
