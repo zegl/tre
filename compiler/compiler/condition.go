@@ -178,8 +178,8 @@ func (c *Compiler) compileConditionNode(v *parser.ConditionNode) {
 	c.compile(v.True)
 
 	// Jump to after-block if no terminator has been set (such as a return statement)
-	if trueBlock.Term == nil {
-		trueBlock.NewBr(afterBlock)
+	if c.contextBlock.Term == nil {
+		c.contextBlock.NewBr(afterBlock)
 	}
 
 	if len(v.False) > 0 {
@@ -187,8 +187,8 @@ func (c *Compiler) compileConditionNode(v *parser.ConditionNode) {
 		c.compile(v.False)
 
 		// Jump to after-block if no terminator has been set (such as a return statement)
-		if falseBlock.Term == nil {
-			falseBlock.NewBr(afterBlock)
+		if c.contextBlock.Term == nil {
+			c.contextBlock.NewBr(afterBlock)
 		}
 	}
 
